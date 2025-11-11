@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HeatmapVisualization } from './HeatmapVisualization';
+import { HeatmapView } from './HeatmapPage/HeatmapView';
 import { FunnelAnalysis } from './FunnelAnalysis';
 import { UserFlow } from './UserFlow';
 import { PerformanceMetrics } from './PerformanceMetrics';
@@ -55,7 +55,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* Tab Content */}
       <div className="space-y-6">
-        {activeTab === 'heatmaps' && <HeatmapVisualization />}
+        {activeTab === 'heatmaps' && <HeatmapView />}
         {activeTab === 'funnels' && <FunnelAnalysis />}
         {activeTab === 'flows' && <UserFlow />}
         {activeTab === 'performance' && <PerformanceMetrics />}
