@@ -1,47 +1,67 @@
-import React, { useState } from 'react';
-import { Search, Filter, Monitor, Smartphone, Tablet, Clock, MousePointer, Eye } from 'lucide-react';
-import { mockSessions } from '../../data/mockData';
-import { Session } from '../../types';
+import React, { useMemo, useState } from 'react';
+import { Search, Monitor, Smartphone, Tablet, Timer, MousePointer, Activity } from 'lucide-react';
+import type { SessionRecording } from '../../types';
 
 interface SessionListProps {
-  selectedSession: Session | null;
-  onSessionSelect: (session: Session) => void;
+  sessions: SessionRecording[];
+  selectedSession: SessionRecording | null;
+  onSessionSelect: (session: SessionRecording) => void;
+  isLoading: boolean;
+  error?: string | null;
 }
 
-export const SessionList: React.FC<SessionListProps> = ({ selectedSession, onSessionSelect }) => {
+const formatDuration = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const getDeviceIcon = (device?: string) => {
+  switch (device) {
+    case 'mobile':
+      return <Smartphone className="h-4 w-4" />;
+    case 'tablet':
+      return <Tablet className="h-4 w-4" />;
+    default:
+      return <Monitor className="h-4 w-4" />;
+  }
+};
+
+const getHostname = (url?: string) => {
+  if (!url) return 'Unknown page';
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch (_error) {
+    return url;
+  }
+};
+
+export const SessionList: React.FC<SessionListProps> = ({
+  sessions,
+  selectedSession,
+  onSessionSelect,
+  isLoading,
+  error,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [deviceFilter, setDeviceFilter] = useState('all');
+  const [deviceFilter, setDeviceFilter] = useState<'all' | 'desktop' | 'mobile' | 'tablet'>('all');
 
-  const filteredSessions = mockSessions.filter(session => {
-    const matchesSearch = session.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         session.country.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDevice = deviceFilter === 'all' || session.device.toLowerCase() === deviceFilter;
-    return matchesSearch && matchesDevice;
-  });
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
+    [sessions]
+  );
 
-  const getDeviceIcon = (device: string) => {
-    switch (device.toLowerCase()) {
-      case 'mobile':
-        return <Smartphone className="h-4 w-4" />;
-      case 'tablet':
-        return <Tablet className="h-4 w-4" />;
-      default:
-        return <Monitor className="h-4 w-4" />;
-    }
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getSessionStatus = (session: Session) => {
-    if (!session.endTime) return { label: 'Live', color: 'bg-green-500' };
-    if (session.bounced) return { label: 'Bounced', color: 'bg-red-500' };
-    if (session.converted) return { label: 'Converted', color: 'bg-blue-500' };
-    return { label: 'Completed', color: 'bg-gray-500' };
-  };
+  const filteredSessions = useMemo(() => {
+    return sortedSessions.filter(session => {
+      const url = session.metadata.url ?? '';
+      const searchText = `${url} ${session.metadata.userAgent ?? ''}`.toLowerCase();
+      const matchesSearch = searchText.includes(searchTerm.toLowerCase());
+      const device = (session.metadata.device ?? 'desktop') as 'desktop' | 'mobile' | 'tablet';
+      const matchesDevice = deviceFilter === 'all' || device === deviceFilter;
+      return matchesSearch && matchesDevice;
+    });
+  }, [sortedSessions, searchTerm, deviceFilter]);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
@@ -51,19 +71,16 @@ export const SessionList: React.FC<SessionListProps> = ({ selectedSession, onSes
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search sessions..."
+              placeholder="Search by URL or user agent"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
-          <button className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <Filter className="h-4 w-4" />
-          </button>
-        </div>
+          </div>
 
         <div className="flex space-x-2">
-          {['all', 'desktop', 'mobile', 'tablet'].map((filter) => (
+          {(['all', 'desktop', 'mobile', 'tablet'] as const).map(filter => (
             <button
               key={filter}
               onClick={() => setDeviceFilter(filter)}
@@ -80,62 +97,64 @@ export const SessionList: React.FC<SessionListProps> = ({ selectedSession, onSes
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="p-2 space-y-1">
-          {filteredSessions.map((session) => {
-            const status = getSessionStatus(session);
+        <div className="p-2 space-y-2">
+          {isLoading && (
+            <div className="px-3 py-4 text-sm text-gray-500">Loading sessions…</div>
+          )}
+
+          {!isLoading && error && (
+            <div className="px-3 py-4 text-sm text-red-500">{error}</div>
+          )}
+
+          {!isLoading && !error && filteredSessions.length === 0 && (
+            <div className="px-3 py-4 text-sm text-gray-500">No sessions found. Interact with the app to record a session.</div>
+          )}
+
+          {filteredSessions.map(session => {
+            const deviceIcon = getDeviceIcon(session.metadata.device);
             const isSelected = selectedSession?.id === session.id;
+            const statusLabel = session.completed ? 'Completed' : 'Recording';
+            const statusColor = session.completed ? 'bg-gray-500' : 'bg-green-500';
 
             return (
-              <div
+              <button
                 key={session.id}
                 onClick={() => onSessionSelect(session)}
-                className={`p-3 rounded-lg cursor-pointer transition-colors group ${
-                  isSelected 
-                    ? 'bg-blue-50 border-l-2 border-blue-500' 
-                    : 'hover:bg-gray-50'
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  isSelected ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    {getDeviceIcon(session.device)}
-                    <span className="text-sm font-medium text-gray-900">
-                      {session.userId ? `User ${session.userId.slice(-6)}` : 'Anonymous'}
-                    </span>
+                  <div className="flex items-center space-x-2 text-sm font-medium text-gray-900">
+                    {deviceIcon}
+                    <span>{getHostname(session.metadata.url)}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${status.color}`}></div>
-                    <span className="text-xs text-gray-500">{status.label}</span>
+                    <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
+                    <span className="text-xs text-gray-500">{statusLabel}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                  <span>{session.country}</span>
-                  <span>{new Date(session.startTime).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <span>{new Date(session.startedAt).toLocaleString()}</span>
+                  {session.endedAt && <span>Duration {formatDuration(session.duration)}</span>}
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-600">
-                  <div className="flex items-center space-x-3">
-                    <span className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatDuration(session.duration)}</span>
-                    </span>
-                    <span className="flex items-center space-x-1">
-                      <Eye className="h-3 w-3" />
-                      <span>{session.pageViews}</span>
-                    </span>
-                    <span className="flex items-center space-x-1">
-                      <MousePointer className="h-3 w-3" />
-                      <span>{session.clicks}</span>
-                    </span>
-                  </div>
-
-                  {session.frustrationEvents > 0 && (
-                    <span className="text-red-500 text-xs font-medium">
-                      {session.frustrationEvents} frustration events
-                    </span>
-                  )}
+                  <span className="flex items-center space-x-1">
+                    <Timer className="h-3 w-3" />
+                    <span>{formatDuration(session.duration)}</span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <MousePointer className="h-3 w-3" />
+                    <span>{session.stats.clicks} clicks</span>
+                  </span>
+                  <span className="flex items-center space-x-1">
+                    <Activity className="h-3 w-3" />
+                    <span>{session.stats.totalEvents} events</span>
+                  </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

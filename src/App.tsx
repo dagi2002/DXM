@@ -7,10 +7,13 @@ import { UsersView } from './components/Users/UsersView';
 import { AlertsView } from './components/Alerts/AlertsView';
 import { mockUser } from './data/mockData';
 import { useRealTimeData } from './hooks/useRealTimeData';
+import { useSessionRecorder } from './hooks/useSessionRecorder';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const { lastUpdate } = useRealTimeData();
+    useSessionRecorder();
+
 
   const renderCurrentView = () => {
     switch (currentView) {

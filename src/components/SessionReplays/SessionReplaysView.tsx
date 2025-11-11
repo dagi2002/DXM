@@ -1,11 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
-import { Session } from '../../types';
+import type { SessionRecording } from '../../types';
+
+const DEFAULT_API_BASE = 'http://localhost:4000';
 
 export const SessionReplaysView: React.FC = () => {
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
+  const [sessions, setSessions] = useState<SessionRecording[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const apiBaseUrl = useMemo(() => {
+    const configured = import.meta.env.VITE_API_URL as string | undefined;
+    return configured && configured.trim().length > 0 ? configured : DEFAULT_API_BASE;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    let refreshTimer: number | undefined;
+
+    const fetchSessions = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/sessions`);
+        if (!response.ok) {
+          throw new Error('Unable to load session recordings');
+        }
+
+        const data = await response.json() as SessionRecording[];
+        if (!isMounted) return;
+
+        setSessions(data);
+        setIsLoading(false);
+        setError(null);
+        setSelectedSession(prev => (prev ? data.find(session => session.id === prev.id) ?? null : null));
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Failed to fetch sessions', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+    refreshTimer = window.setInterval(fetchSessions, 5000);
+
+    return () => {
+      isMounted = false;
+      if (refreshTimer) {
+        window.clearInterval(refreshTimer);
+      }
+    };
+  }, [apiBaseUrl]);
   return (
     <div className="p-6 h-full">
       <div className="flex items-center justify-between mb-6">
@@ -17,9 +63,12 @@ export const SessionReplaysView: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         <div className="lg:col-span-1">
-          <SessionList 
+          <SessionList
+            sessions={sessions}
             selectedSession={selectedSession}
             onSessionSelect={setSelectedSession}
+            isLoading={isLoading}
+            error={error}
           />
         </div>
         

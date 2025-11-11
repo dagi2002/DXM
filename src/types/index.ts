@@ -35,6 +35,52 @@ export interface SessionEvent {
   url: string;
 }
 
+export interface SessionRecordingEvent {
+  type: 'mousemove' | 'click' | 'scroll';
+  timestamp: number;
+  x?: number;
+  y?: number;
+  scrollX?: number;
+  scrollY?: number;
+  button?: number;
+  target?: string;
+}
+
+export interface SessionRecordingMetadata {
+  startedAt?: string;
+  userAgent?: string;
+  url?: string;
+  referrer?: string;
+  language?: string;
+  screen?: {
+    width: number;
+    height: number;
+  };
+  timezone?: string;
+  devicePixelRatio?: number;
+  device?: string;
+  browser?: string;
+}
+
+export interface SessionRecordingStats {
+  clicks: number;
+  scrollDepth: number;
+  totalEvents: number;
+}
+
+export interface SessionRecording {
+  id: string;
+  startedAt: string;
+  endedAt?: string;
+  duration: number;
+  metadata: SessionRecordingMetadata;
+  stats: SessionRecordingStats;
+  events: SessionRecordingEvent[];
+  updatedAt: string;
+  completed: boolean;
+}
+
+
 export interface Metric {
   name: string;
   value: number | string;
