@@ -3,6 +3,7 @@ import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/Dashboard/DashboardView';
 import { SessionReplaysView } from './components/SessionReplays/SessionReplaysView';
 import { AnalyticsView } from './components/Analytics/AnalyticsView';
+import { HeatmapView } from './components/Analytics/HeatmapPage/HeatmapView';
 import { UsersView } from './components/Users/UsersView';
 import { AlertsView } from './components/Alerts/AlertsView';
 import { mockUser } from './data/mockData';
@@ -21,6 +22,8 @@ function App() {
         return <SessionReplaysView />;
       case 'analytics':
         return <AnalyticsView />;
+      case 'heatmap':
+        return <HeatmapView />;
       case 'users':
         return <UsersView />;
       case 'alerts':
