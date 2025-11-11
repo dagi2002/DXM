@@ -1,20 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Session, Metric } from '../types';
+import type { SessionRecording, Metric } from '../types';
 
 const DEFAULT_API_BASE = 'http://localhost:4000';
 
-type ApiSession = Omit<Session, 'startTime' | 'endTime'> & {
-  startTime: string;
-  endTime?: string | null;
-};
-
 type ApiMetric = Metric;
-
-const toSession = (session: ApiSession): Session => ({
-  ...session,
-  startTime: new Date(session.startTime),
-  endTime: session.endTime ? new Date(session.endTime) : undefined
-});
 
 const API_ENDPOINTS = {
   sessions: '/sessions',
@@ -22,7 +11,7 @@ const API_ENDPOINTS = {
 } as const;
 
 export const useRealTimeData = () => {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessions, setSessions] = useState<SessionRecording[]>([]);
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
@@ -45,13 +34,13 @@ export const useRealTimeData = () => {
         }
 
         const [sessionsData, metricsData] = await Promise.all([
-          sessionsResponse.json() as Promise<ApiSession[]>,
+          sessionsResponse.json() as Promise<SessionRecording[]>,
           metricsResponse.json() as Promise<ApiMetric[]>
         ]);
 
         if (!isMounted) return;
 
-        setSessions(sessionsData.map(toSession));
+        setSessions(sessionsData);
         setMetrics(metricsData);
         setLastUpdate(new Date());
         setError(null);
