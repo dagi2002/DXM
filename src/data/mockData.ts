@@ -86,6 +86,7 @@ export const mockHeatmapData: HeatmapData[] = Array.from({ length: 100 }, (_, i)
   type: ['click', 'scroll', 'hover'][Math.floor(Math.random() * 3)] as any
 }));
 
+// ✅ Funnels mock data (used by FunnelAnalysis UI)
 export const mockFunnelData: FunnelStep[] = [
   { name: 'Landing Page', users: 10000, conversionRate: 100, dropoffRate: 0 },
   { name: 'Product View', users: 7500, conversionRate: 75, dropoffRate: 25 },

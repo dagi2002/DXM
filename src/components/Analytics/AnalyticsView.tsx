@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HeatmapView } from './HeatmapPage/HeatmapView';
-import { FunnelAnalysis } from './FunnelAnalysis';
+import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlow } from './UserFlow';
 import { PerformanceMetrics } from './PerformanceMetrics';
 
@@ -10,7 +10,7 @@ export const AnalyticsView: React.FC = () => {
   const tabs = [
     { id: 'heatmaps', label: 'Heatmaps', description: 'Click and scroll patterns' },
     { id: 'funnels', label: 'Funnels', description: 'Conversion analysis' },
-    { id: 'flows', label: 'User Flows', description: 'Navigation patterns' },
+    { id: 'flows', label: 'User Flow', description: 'Navigation patterns' },
     { id: 'performance', label: 'Performance', description: 'Speed and errors' }
   ];
 
