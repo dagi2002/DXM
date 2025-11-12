@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HeatmapView } from './HeatmapPage/HeatmapView';
 import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
-import { UserFlow } from './UserFlow';
+import { UserFlowView } from './UserFlow/UserFlowView';
 import { PerformanceMetrics } from './PerformanceMetrics';
 
 export const AnalyticsView: React.FC = () => {
@@ -57,7 +57,7 @@ export const AnalyticsView: React.FC = () => {
       <div className="space-y-6">
         {activeTab === 'heatmaps' && <HeatmapView />}
         {activeTab === 'funnels' && <FunnelAnalysis />}
-        {activeTab === 'flows' && <UserFlow />}
+        {activeTab === 'flows' && <UserFlowView />}
         {activeTab === 'performance' && <PerformanceMetrics />}
       </div>
     </div>

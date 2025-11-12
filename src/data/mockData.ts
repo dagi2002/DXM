@@ -1,4 +1,4 @@
-import { User, Session, SessionEvent, Metric, Alert, HeatmapData, FunnelStep } from '../types';
+import { User, Session, SessionEvent, Metric, Alert, HeatmapData, FunnelStep, UserFlowNode } from '../types';
 
 export const mockUser: User = {
   id: '1',
@@ -94,4 +94,37 @@ export const mockFunnelData: FunnelStep[] = [
   { name: 'Checkout', users: 2700, conversionRate: 27, dropoffRate: 40 },
   { name: 'Payment', users: 1890, conversionRate: 18.9, dropoffRate: 30 },
   { name: 'Confirmation', users: 1350, conversionRate: 13.5, dropoffRate: 28.5 }
+];
+
+export const mockUserFlowData: UserFlowNode[] = [
+  {
+    page: '/home',
+    users: 10000,
+    next: [
+      { target: '/products', percent: 42 },
+      { target: '/about', percent: 28 },
+      { target: '/contact', percent: 15 },
+      { target: 'exit', percent: 15 }
+    ]
+  },
+  {
+    page: '/products',
+    users: 4200,
+    next: [
+      { target: '/product/detail', percent: 50 },
+      { target: '/pricing', percent: 25 },
+      { target: '/home', percent: 15 },
+      { target: 'exit', percent: 10 }
+    ]
+  },
+  {
+    page: '/product/detail',
+    users: 2100,
+    next: [
+      { target: '/cart', percent: 45 },
+      { target: '/products', percent: 20 },
+      { target: '/pricing', percent: 15 },
+      { target: 'exit', percent: 20 }
+    ]
+  }
 ];
