@@ -19,6 +19,12 @@ interface NormalisedScrollEvent {
   weight?: number;
 }
 
+interface NormalisedHoverEvent {
+  x: number;
+  y: number;
+  weight?: number;
+}
+
 const normaliseClick = (event: { x?: number; y?: number }, width: number, height: number): NormalisedClickEvent | null => {
   if (typeof event.x !== 'number' || typeof event.y !== 'number' || width === 0 || height === 0) {
     return null;
@@ -31,12 +37,35 @@ const normaliseClick = (event: { x?: number; y?: number }, width: number, height
   };
 };
 
+const normaliseHover = (
+  event: { x?: number; y?: number; phase?: 'enter' | 'leave' },
+  width: number,
+  height: number,
+): NormalisedHoverEvent | null => {
+  if (typeof event.x !== 'number' || typeof event.y !== 'number' || width === 0 || height === 0) {
+    return null;
+  }
+
+  return {
+    x: event.x / width,
+    y: event.y / height,
+    weight: event.phase === 'leave' ? 0.6 : 1,
+  };
+};
+
 export const HeatmapView: React.FC = () => {
   const [sessions, setSessions] = useState<SessionRecording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<'click' | 'scroll' | 'hover'>('click');
   const [selectedUrl, setSelectedUrl] = useState<string>('all');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
+
+  const selectedSessionLabel = useMemo(() => {
+    if (selectedSessionId === 'all' || !sessions.length) return '';
+    const session = sessions.find(s => s.id === selectedSessionId);
+    return session ? `"${session.id}"` : 'Selected Session';
+  }, [selectedSessionId, sessions]);
 
   const apiBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_API_URL as string | undefined;
@@ -62,8 +91,7 @@ export const HeatmapView: React.FC = () => {
         setError(null);
       } catch (err) {
         if (!isMounted) return;
-        console.error('Failed to fetch session data', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setIsLoading(false);
       }
     };
@@ -89,20 +117,48 @@ export const HeatmapView: React.FC = () => {
     });
     return Array.from(unique).sort();
   }, [sessions]);
-
-  const filteredSessions = useMemo(() => {
+  const urlFilteredSessions = useMemo(() => {
     const filtered = selectedUrl === 'all'
       ? sessions
       : sessions.filter((session) => session.metadata?.url === selectedUrl);
 
     return filtered.filter((session) => session.events && session.events.length > 0);
   }, [sessions, selectedUrl]);
+const availableSessionOptions = useMemo(() => {
+    return urlFilteredSessions.map((session) => ({
+      id: session.id,
+      label: session.metadata?.url
+        ? `${session.id.slice(0, 8)} • ${session.metadata.url}`
+        : session.id,
+    }));
+  }, [urlFilteredSessions]);
 
-  const { clickEvents, scrollEvents, totalClicks, averageScrollDepth, mostClickedElements } = useMemo(() => {
+  useEffect(() => {
+    if (selectedSessionId === 'all') {
+      return;
+    }
+
+    const stillExists = availableSessionOptions.some((option) => option.id === selectedSessionId);
+    if (!stillExists) {
+      setSelectedSessionId('all');
+    }
+  }, [availableSessionOptions, selectedSessionId]);
+
+  const filteredSessions = useMemo(() => {
+    if (selectedSessionId === 'all') {
+      return urlFilteredSessions;
+    }
+
+    return urlFilteredSessions.filter((session) => session.id === selectedSessionId);
+  }, [selectedSessionId, urlFilteredSessions]);
+
+  const { clickEvents, hoverEvents, scrollEvents, totalClicks, totalHovers, averageScrollDepth, mostClickedElements } = useMemo(() => {
     const clickPoints: NormalisedClickEvent[] = [];
+    const hoverPoints: NormalisedHoverEvent[] = [];
     const scrollValues: number[] = [];
     const clickTargetMap = new Map<string, number>();
     let clicks = 0;
+    let hovers = 0;
     let scrollDepthTotal = 0;
     let scrollSessionCount = 0;
     let maximumScrollY = 0;
@@ -124,6 +180,14 @@ export const HeatmapView: React.FC = () => {
           const target = event.target?.trim();
           if (target) {
             clickTargetMap.set(target, (clickTargetMap.get(target) ?? 0) + 1);
+          }
+        }
+
+        if (event.type === 'hover') {
+          const point = normaliseHover(event, screenWidth, screenHeight);
+          if (point) {
+            hoverPoints.push(point);
+            hovers += 1;
           }
         }
 
@@ -155,15 +219,16 @@ export const HeatmapView: React.FC = () => {
 
     return {
       clickEvents: clickPoints,
+      hoverEvents: hoverPoints,
       scrollEvents: scrollPoints,
       totalClicks: clicks,
+      totalHovers: hovers,
       averageScrollDepth: averageDepth,
       mostClickedElements: topTargets,
     };
   }, [filteredSessions]);
 
   const selectedUrlLabel = selectedUrl === 'all' ? 'All URLs' : selectedUrl;
-  const isHoverMode = activeType === 'hover';
 
   return (
     <div className="space-y-6">
@@ -188,6 +253,24 @@ export const HeatmapView: React.FC = () => {
               {availableUrls.map((url) => (
                 <option key={url} value={url}>
                   {url}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="session-filter" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Session
+            </label>
+            <select
+              id="session-filter"
+              value={selectedSessionId}
+              onChange={(event) => setSelectedSessionId(event.target.value)}
+              className="mt-1 block w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Sessions</option>
+              {availableSessionOptions.map((sessionOption) => (
+                <option key={sessionOption.id} value={sessionOption.id}>
+                  {sessionOption.label}
                 </option>
               ))}
             </select>
@@ -238,7 +321,10 @@ export const HeatmapView: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{selectedUrlLabel}</h3>
-              <p className="text-sm text-gray-600">Showing {activeType} interactions</p>
+              <p className="text-sm text-gray-600">
+                Showing {activeType === 'click' ? 'click' : activeType === 'scroll' ? 'scroll' : 'hover'} interactions
+                {selectedSessionId !== 'all' ? ` for session ${selectedSessionLabel}` : ''}
+              </p>
             </div>
             <div className="relative rounded-lg bg-slate-50 overflow-hidden border border-dashed border-slate-200" style={{ minHeight: '520px' }}>
               <div className="absolute inset-0 opacity-80">
@@ -262,26 +348,22 @@ export const HeatmapView: React.FC = () => {
               <HeatmapCanvas
                 clickEvents={clickEvents}
                 scrollEvents={scrollEvents}
+                hoverEvents={hoverEvents}
                 activeType={activeType}
               />
-              {isHoverMode && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="rounded-lg bg-white/90 px-6 py-4 text-center text-sm text-gray-600 shadow-sm">
-                    Hover tracking is coming soon. Toggle Clicks or Scrolls to explore captured interactions.
-                  </div>
-                </div>
-              )}
-            </div>
+               </div>
           </div>
         </div>
         <HeatmapStats
           totalClicks={totalClicks}
+          totalHovers={totalHovers}
           averageScrollDepth={averageScrollDepth}
           mostClickedElements={mostClickedElements}
           sessionsCount={filteredSessions.length}
           selectedUrlLabel={selectedUrlLabel}
           isLoading={isLoading}
           activeType={activeType}
+          selectedSessionLabel={selectedSessionLabel}
         />
       </div>
     </div>

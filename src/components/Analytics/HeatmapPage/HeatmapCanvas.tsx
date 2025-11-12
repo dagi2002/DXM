@@ -11,9 +11,17 @@ interface NormalisedScrollEvent {
   weight?: number;
 }
 
+interface NormalisedHoverEvent {
+  x: number; // normalised between 0 and 1
+  y: number; // normalised between 0 and 1
+  weight?: number;
+}
+
+
 interface HeatmapCanvasProps {
   clickEvents: NormalisedClickEvent[];
   scrollEvents: NormalisedScrollEvent[];
+  hoverEvents: NormalisedHoverEvent[];
   activeType: 'click' | 'scroll' | 'hover';
 }
 
@@ -28,8 +36,18 @@ const getHeatColor = (intensity: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-export const HeatmapCanvas: React.FC<HeatmapCanvasProps> = ({ clickEvents, scrollEvents, activeType }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+const getHoverColor = (intensity: number, alphaMultiplier = 1) => {
+  const clamped = clamp(intensity, 0, 1);
+  const r = 255;
+  const g = Math.floor(160 + (1 - clamped) * 80);
+  const b = Math.floor(0 + (1 - clamped) * 80);
+
+  const baseAlpha = 0.15 + clamped * 0.65;
+  return `rgba(${r}, ${g}, ${b}, ${clamp(baseAlpha * alphaMultiplier, 0, 1)})`;
+};
+
+
+export const HeatmapCanvas: React.FC<HeatmapCanvasProps> = ({ clickEvents, scrollEvents, hoverEvents, activeType }) => {  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const renderHeatmap = useCallback(() => {
     const canvas = canvasRef.current;
@@ -56,6 +74,41 @@ export const HeatmapCanvas: React.FC<HeatmapCanvasProps> = ({ clickEvents, scrol
     context.clearRect(0, 0, displayWidth, displayHeight);
 
     if (activeType === 'hover') {
+        const bucketSize = 70;
+      const buckets = new Map<string, number>();
+
+      hoverEvents.forEach((event) => {
+        const px = clamp(event.x, 0, 1) * displayWidth;
+        const py = clamp(event.y, 0, 1) * displayHeight;
+        const bucketX = Math.round(px / bucketSize);
+        const bucketY = Math.round(py / bucketSize);
+        const key = `${bucketX},${bucketY}`;
+        const current = buckets.get(key) ?? 0;
+        buckets.set(key, current + (event.weight ?? 1));
+      });
+
+      const intensities = Array.from(buckets.values());
+      const maxIntensity = intensities.length ? Math.max(...intensities) : 1;
+
+      buckets.forEach((count, key) => {
+        const [bucketX, bucketY] = key.split(',').map(Number);
+        const centerX = bucketX * bucketSize;
+        const centerY = bucketY * bucketSize;
+        const intensity = maxIntensity === 0 ? 0 : count / maxIntensity;
+        const innerRadius = bucketSize * 0.8;
+        const outerRadius = bucketSize * 2.1;
+
+        const gradient = context.createRadialGradient(centerX, centerY, innerRadius * 0.35, centerX, centerY, outerRadius);
+        gradient.addColorStop(0, getHoverColor(intensity, 1));
+        gradient.addColorStop(0.35, getHoverColor(intensity, 0.75));
+        gradient.addColorStop(0.65, getHoverColor(intensity * 0.8, 0.5));
+        gradient.addColorStop(1, 'rgba(255, 0, 150, 0)');
+
+        context.fillStyle = gradient;
+        context.beginPath();
+        context.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+        context.fill();
+      });
       context.restore();
       return;
     }
@@ -128,7 +181,7 @@ export const HeatmapCanvas: React.FC<HeatmapCanvasProps> = ({ clickEvents, scrol
     }
 
     context.restore();
-  }, [activeType, clickEvents, scrollEvents]);
+  }, [activeType, clickEvents, hoverEvents, scrollEvents]);
 
   useEffect(() => {
     renderHeatmap();

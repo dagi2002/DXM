@@ -36,7 +36,7 @@ export interface SessionEvent {
 }
 
 export interface SessionRecordingEvent {
-  type: 'mousemove' | 'click' | 'scroll';
+  type: 'mousemove' | 'click' | 'scroll' | 'hover';
   timestamp: number;
   x?: number;
   y?: number;
@@ -44,6 +44,7 @@ export interface SessionRecordingEvent {
   scrollY?: number;
   button?: number;
   target?: string;
+  phase?: 'enter' | 'leave';
 }
 
 export interface SessionRecordingMetadata {

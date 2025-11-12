@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HeatmapView } from './HeatmapPage/HeatmapView';
+import { HeatmapView } from './HeatmapPage/HeatmapView.tsx';
 import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlowView } from './UserFlow/UserFlowView';
 import PerformanceMetrics from './Performance/PerformanceMetrics';

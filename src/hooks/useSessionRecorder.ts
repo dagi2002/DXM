@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 
-type SessionEventType = 'mousemove' | 'click' | 'scroll';
+type SessionEventType = 'mousemove' | 'click' | 'scroll' | 'hover';
 
 type RecordedEvent = {
   type: SessionEventType;
@@ -11,6 +11,7 @@ type RecordedEvent = {
   scrollY?: number;
   button?: number;
   target?: string;
+  phase?: 'enter' | 'leave';
 };
 
 interface UseSessionRecorderOptions {
@@ -95,10 +96,14 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       });
     };
 
-    const handleClick = (event: MouseEvent) => {
-      const target = (event.target as HTMLElement | null)?.closest('[data-recorder-label], a, button, input, textarea');
-      const targetLabel = target?.getAttribute('data-recorder-label')
+     const resolveTargetLabel = (element: EventTarget | null) => {
+      const target = (element as HTMLElement | null)?.closest('[data-recorder-label], a, button, input, textarea');
+      return target?.getAttribute('data-recorder-label')
         ?? (target instanceof HTMLElement ? `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}` : undefined);
+        };
+
+    const handleClick = (event: MouseEvent) => {
+      const targetLabel = resolveTargetLabel(event.target);
 
       recordEvent({
         type: 'click',
@@ -110,6 +115,29 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       });
     };
 
+    const handleMouseEnter = (event: MouseEvent) => {
+      recordEvent({
+        type: 'hover',
+        timestamp: toRelativeTimestamp(startRef.current),
+        x: event.clientX,
+        y: event.clientY,
+        target: resolveTargetLabel(event.target),
+        phase: 'enter',
+      });
+    };
+
+    const handleMouseLeave = (event: MouseEvent) => {
+      recordEvent({
+        type: 'hover',
+        timestamp: toRelativeTimestamp(startRef.current),
+        x: event.clientX,
+        y: event.clientY,
+        target: resolveTargetLabel(event.target),
+        phase: 'leave',
+      });
+    };
+
+    
     const handleScroll = () => {
       const now = performance.now();
       if (now - lastScroll.timestamp < 100) return;
@@ -192,6 +220,8 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('click', handleClick);
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.body?.addEventListener('mouseenter', handleMouseEnter, true);
+    document.body?.addEventListener('mouseleave', handleMouseLeave, true);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -201,6 +231,8 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
       window.removeEventListener('scroll', handleScroll);
+      document.body?.removeEventListener('mouseenter', handleMouseEnter, true);
+      document.body?.removeEventListener('mouseleave', handleMouseLeave, true);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.clearInterval(intervalId);
