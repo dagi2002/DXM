@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 
-type SessionEventType = 'mousemove' | 'click' | 'scroll' | 'hover';
+type SessionEventType = 'mousemove' | 'click' | 'scroll' | 'hover' | 'navigation';
 
 type RecordedEvent = {
   type: SessionEventType;
@@ -127,6 +127,34 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
     const lastMouseMove = { timestamp: 0 };
     const lastScroll = { timestamp: 0 };
 
+    // 🧭 Navigation tracking
+    const getCurrentPath = () =>
+      window.location.pathname + window.location.hash + window.location.search;
+    let lastPath = '';
+
+    const recordNavigation = (newPath: string) => {
+      if (newPath !== lastPath) {
+        recordEvent({
+          type: 'navigation',
+          timestamp: toRelativeTimestamp(startRef.current),
+          target: newPath,
+        });
+        lastPath = newPath;
+      }
+    };
+
+    const handlePopState = () => recordNavigation(getCurrentPath());
+    const handleHashChange = () => recordNavigation(getCurrentPath());
+    const handleDocumentClick = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement | null)?.closest('a');
+      if (anchor && anchor.href) {
+        const url = new URL(anchor.href);
+        if (url.origin === window.location.origin) {
+          recordNavigation(url.pathname + url.hash + url.search);
+        }
+      }
+    };
+
     const handleMouseMove = (event: MouseEvent) => {
       const now = performance.now();
       if (now - lastMouseMove.timestamp < 50) return;
@@ -196,6 +224,23 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
         scrollY: window.scrollY,
       });
     };
+
+    window.addEventListener('popstate', () =>
+      recordNavigation(window.location.pathname + window.location.hash + window.location.search)
+    );
+    window.addEventListener('hashchange', () =>
+      recordNavigation(window.location.pathname + window.location.hash + window.location.search)
+    );
+
+    document.addEventListener('click', (event) => {
+      const anchor = (event.target as HTMLElement)?.closest('a');
+      if (anchor && anchor.href) {
+        const url = new URL(anchor.href);
+        if (url.origin === window.location.origin) {
+          recordNavigation(url.pathname + url.hash + url.search);
+        }
+      }
+    });
 
     const flushEvents = async (completed = false) => {
       if (!sessionIdRef.current) {
@@ -282,6 +327,11 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+    document.addEventListener('click', handleDocumentClick);
+
+    recordNavigation(getCurrentPath());
 
     void ensureMetadataSent().catch(() => undefined);
 
@@ -296,6 +346,9 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleHashChange);
+      document.removeEventListener('click', handleDocumentClick);
       window.clearInterval(intervalId);
       void flushEvents(true);
     };
