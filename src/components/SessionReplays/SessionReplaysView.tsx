@@ -6,7 +6,7 @@ import type { SessionRecording } from '../../types';
 const DEFAULT_API_BASE = 'http://localhost:4000';
 
 export const SessionReplaysView: React.FC = () => {
-const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
   const [sessions, setSessions] = useState<SessionRecording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +30,33 @@ const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(
         const data = await response.json() as SessionRecording[];
         if (!isMounted) return;
 
-        setSessions(data);
+        // ✅ Normalize backend response to expected structure
+        const normalizedSessions: SessionRecording[] = data.map(session => ({
+          ...session,
+          metadata: {
+            url: session.metadata?.url ?? "Unknown URL",
+            device: session.metadata?.device ?? "desktop",
+            browser: session.metadata?.browser ?? "Unknown browser",
+            language: session.metadata?.language ?? "Unknown locale",
+            screen: session.metadata?.screen ?? { width: 1440, height: 900 },
+            startedAt: session.metadata?.startedAt,
+            referrer: session.metadata?.referrer,
+            devicePixelRatio: session.metadata?.devicePixelRatio,
+            timezone: session.metadata?.timezone
+          },
+          // ✅ Ensure events always exist and have correct type
+          events: Array.isArray(session.events) ? session.events : [],
+        }));
+
+        setSessions(normalizedSessions);
         setIsLoading(false);
         setError(null);
-        setSelectedSession(prev => (prev ? data.find(session => session.id === prev.id) ?? null : null));
+
+        // ✅ Preserve session selection after refresh
+        setSelectedSession(prev =>
+          prev ? normalizedSessions.find(s => s.id === prev.id) ?? null : null
+        );
+
       } catch (err) {
         if (!isMounted) return;
         console.error('Failed to fetch sessions', err);
@@ -47,11 +70,10 @@ const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(
 
     return () => {
       isMounted = false;
-      if (refreshTimer) {
-        window.clearInterval(refreshTimer);
-      }
+      if (refreshTimer) window.clearInterval(refreshTimer);
     };
   }, [apiBaseUrl]);
+
   return (
     <div className="p-6 h-full">
       <div className="flex items-center justify-between mb-6">
@@ -71,7 +93,7 @@ const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(
             error={error}
           />
         </div>
-        
+
         <div className="lg:col-span-2">
           {selectedSession ? (
             <SessionPlayer session={selectedSession} />
