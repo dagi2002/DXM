@@ -38,33 +38,6 @@ const segmentDescriptions: Record<string, string> = {
   desktop: 'Desktop-focused researchers and decision makers.',
 };
 
-const roadmapHighlights = [
-  {
-    title: 'Multi-Dimensional Analysis',
-    caption:
-      'Period-over-period comparisons, audience segmentation, traffic source attribution, and cohort conversion tracking.',
-    icon: Percent,
-  },
-  {
-    title: 'Actionable Insights Engine',
-    caption:
-      'Automatically surfaces critical drop-offs, exit drivers, device friction, and optimisation opportunities.',
-    icon: AlertTriangle,
-  },
-  {
-    title: 'Enhanced Visualisation',
-    caption:
-      'Gradient funnel overlays, severity coding, contextual step cards, and adaptive controls for deep dives.',
-    icon: Target,
-  },
-  {
-    title: 'Business Intelligence',
-    caption:
-      'Revenue projections, time-to-conversion metrics, benchmarking, and export-ready reporting.',
-    icon: DollarSign,
-  },
-];
-
 const deviceKeys = ['desktop', 'mobile', 'tablet'] as const;
 const trafficKeys = ['organic', 'paid', 'social', 'direct'] as const;
 
