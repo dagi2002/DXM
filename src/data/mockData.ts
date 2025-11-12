@@ -128,3 +128,76 @@ export const mockUserFlowData: UserFlowNode[] = [
     ]
   }
 ];
+
+export const mockPerformanceData = {
+  coreWebVitals: {
+    lcp: {
+      value: 1.8,
+      percentiles: {
+        p50: 1.5,
+        p75: 2.3,
+        p95: 3.6
+      }
+    },
+    fid: {
+      value: 12,
+      percentiles: {
+        p50: 10,
+        p75: 18,
+        p95: 45
+      }
+    },
+    cls: {
+      value: 0.03,
+      percentiles: {
+        p50: 0.02,
+        p75: 0.08,
+        p95: 0.22
+      }
+    },
+    inp: {
+      value: 120,
+      percentiles: {
+        p50: 95,
+        p75: 160,
+        p95: 320
+      }
+    },
+    fcp: {
+      value: 1.1,
+      percentiles: {
+        p50: 0.9,
+        p75: 1.6,
+        p95: 2.8
+      }
+    },
+    ttfb: {
+      value: 0.42,
+      percentiles: {
+        p50: 0.28,
+        p75: 0.6,
+        p95: 1.1
+      }
+    }
+  },
+  errorRate: 0.3,
+  apiLatency: 320,
+  deviceBreakdown: {
+    desktop: 54,
+    mobile: 36,
+    tablet: 10
+  },
+  geoPerformance: [
+    { region: 'North America', avgLcp: 1.6, errorRate: 0.2 },
+    { region: 'Europe', avgLcp: 1.9, errorRate: 0.35 },
+    { region: 'Asia-Pacific', avgLcp: 2.4, errorRate: 0.5 },
+    { region: 'South America', avgLcp: 2.7, errorRate: 0.6 },
+    { region: 'Middle East & Africa', avgLcp: 2.9, errorRate: 0.7 }
+  ],
+  resourceUsage: [
+    { type: 'js', size: 1450 },
+    { type: 'css', size: 420 },
+    { type: 'image', size: 2350 },
+    { type: 'font', size: 180 }
+  ]
+};

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HeatmapView } from './HeatmapPage/HeatmapView';
 import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlowView } from './UserFlow/UserFlowView';
-import { PerformanceMetrics } from './PerformanceMetrics';
+import PerformanceMetrics from './Performance/PerformanceMetrics';
 
 export const AnalyticsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState('heatmaps');
