@@ -112,3 +112,12 @@ export interface FunnelStep {
   conversionRate: number;
   dropoffRate: number;
 }
+
+export interface UserFlowNode {
+  page: string;
+  users: number;
+  next: {
+    target: string;
+    percent: number;
+  }[];
+}
