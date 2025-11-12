@@ -116,6 +116,169 @@ const summariseSession = (session) => {
   };
 };
 
+const normalisePageValue = (value) => {
+  if (typeof value !== 'string') return null;
+
+  let raw = value.trim();
+  if (!raw) return null;
+
+  raw = raw.replace(/^(?:route|page|path|screen|view|nav|goto)[:=\-]?/i, '').trim();
+  if (!raw) return null;
+
+  const normaliseOutput = (path) => {
+    if (!path) return '/';
+    const trimmed = path.trim();
+    if (!trimmed) {
+      return '/';
+    }
+    if (trimmed === '/') {
+      return '/';
+    }
+    return trimmed.replace(/\/+$/u, '') || '/';
+  };
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw);
+      if (url.hash && url.hash.startsWith('#/')) {
+        return normaliseOutput(url.hash.slice(1));
+      }
+      return normaliseOutput(url.pathname || '/');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  if (raw.startsWith('//')) {
+    try {
+      const url = new URL(`https:${raw}`);
+      if (url.hash && url.hash.startsWith('#/')) {
+        return normaliseOutput(url.hash.slice(1));
+      }
+      return normaliseOutput(url.pathname || '/');
+    } catch (error) {
+      return null;
+    }
+  }
+
+  const hashRouteIndex = raw.indexOf('#/');
+  if (hashRouteIndex >= 0) {
+    raw = raw.slice(hashRouteIndex + 1);
+  }
+
+  const queryIndex = raw.indexOf('?');
+  if (queryIndex >= 0) {
+    raw = raw.slice(0, queryIndex);
+  }
+
+  const hashIndex = raw.indexOf('#');
+  if (hashIndex >= 0) {
+    raw = raw.slice(0, hashIndex);
+  }
+
+  if (raw.startsWith('/')) {
+    return normaliseOutput(raw);
+  }
+
+  const slashIndex = raw.indexOf('/');
+  if (slashIndex >= 0) {
+    const candidate = raw.slice(slashIndex);
+    return normaliseOutput(candidate.startsWith('/') ? candidate : `/${candidate}`);
+  }
+
+  return null;
+};
+
+const extractPageFromEvent = (event) => {
+  if (!event || typeof event !== 'object') return null;
+
+  const candidates = [event.target, event.url, event.href, event.location];
+  for (const candidate of candidates) {
+    const page = normalisePageValue(candidate);
+    if (page) {
+      return page;
+    }
+  }
+
+  return null;
+};
+
+const buildUserFlow = (sessions) => {
+  const flows = new Map();
+
+  const ensureEntry = (page) => {
+    if (!flows.has(page)) {
+      flows.set(page, {
+        users: 0,
+        transitions: new Map(),
+        totalTransitions: 0,
+      });
+    }
+    return flows.get(page);
+  };
+
+  for (const session of sessions) {
+    const events = Array.isArray(session.events)
+      ? [...session.events].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+      : [];
+
+    const pageSequence = [];
+    const pushPage = (page) => {
+      if (!page) return;
+      if (pageSequence.length && pageSequence[pageSequence.length - 1] === page) {
+        return;
+      }
+      pageSequence.push(page);
+    };
+
+    const initialPage = normalisePageValue(session.metadata?.url);
+    if (initialPage) {
+      pushPage(initialPage);
+    }
+
+    for (const event of events) {
+      const page = extractPageFromEvent(event);
+      if (page) {
+        pushPage(page);
+      }
+    }
+
+    if (!pageSequence.length) {
+      continue;
+    }
+
+    const uniquePages = new Set(pageSequence);
+    for (const page of uniquePages) {
+      const entry = ensureEntry(page);
+      entry.users += 1;
+    }
+
+    for (let index = 0; index < pageSequence.length; index += 1) {
+      const current = pageSequence[index];
+      const next = pageSequence[index + 1] ?? 'exit';
+      const entry = ensureEntry(current);
+      entry.totalTransitions += 1;
+      entry.transitions.set(next, (entry.transitions.get(next) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(flows.entries()).map(([page, entry]) => {
+    const transitions = Array.from(entry.transitions.entries());
+    const next = transitions
+      .map(([target, count]) => ({
+        target,
+        percent: entry.totalTransitions ? Math.round((count / entry.totalTransitions) * 100) : 0,
+      }))
+      .sort((a, b) => b.percent - a.percent);
+
+    return {
+      page,
+      users: entry.users,
+      next,
+    };
+  }).sort((a, b) => b.users - a.users);
+};
+
 app.get('/', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -124,6 +287,15 @@ app.get('/sessions', (_req, res) => {
   const sessions = getSessions().map(summariseSession);
   res.json(sessions);
 });
+
+app.get('/userflow', (_req, res) => {
+  const sessions = getSessions();
+  const flow = buildUserFlow(sessions);
+  // FUTURE: Add Path Conversion Impact (P10: AI Insight Engine)
+  // <DXM_INSERT_ANALYTICS>
+  res.json(flow);
+});
+
 
 app.get('/sessions/:id', (req, res) => {
   const sessions = getSessions();
