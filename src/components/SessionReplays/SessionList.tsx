@@ -27,15 +27,6 @@ const getDeviceIcon = (device?: string) => {
   }
 };
 
-const getHostname = (url?: string) => {
-  if (!url) return 'Unknown page';
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname;
-  } catch (_error) {
-    return url;
-  }
-};
 
 export const SessionList: React.FC<SessionListProps> = ({
   sessions,
@@ -111,6 +102,11 @@ export const SessionList: React.FC<SessionListProps> = ({
           )}
 
           {filteredSessions.map(session => {
+            const extendedMetadata = session.metadata as SessionRecording['metadata'] & {
+              userId?: string;
+            };
+            const displayUrl = extendedMetadata.url ?? 'Unknown URL';
+            const displayUser = extendedMetadata.userId ?? 'Anonymous';
             const deviceIcon = getDeviceIcon(session.metadata.device);
             const isSelected = selectedSession?.id === session.id;
             const statusLabel = session.completed ? 'Completed' : 'Recording';
@@ -127,7 +123,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2 text-sm font-medium text-gray-900">
                     {deviceIcon}
-                    <span>{getHostname(session.metadata.url)}</span>
+                    <span className="truncate max-w-[220px]">{displayUrl}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
@@ -136,6 +132,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <span className="truncate max-w-[200px]">{displayUser}</span>
                   <span>{new Date(session.startedAt).toLocaleString()}</span>
                   {session.endedAt && <span>Duration {formatDuration(session.duration)}</span>}
                 </div>

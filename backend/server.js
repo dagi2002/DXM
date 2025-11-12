@@ -175,13 +175,18 @@ app.post('/sessions', (req, res) => {
   }
 
   if (metadata) {
-    session.metadata = {
-      ...session.metadata,
-      ...metadata,
-      device: metadata.device ?? detectDevice(metadata.userAgent),
-      browser: metadata.browser ?? detectBrowser(metadata.userAgent),
-    };
-  }
+  session.metadata = {
+    ...session.metadata,
+    ...metadata,
+    url: metadata.url ?? session.metadata.url ?? req.headers.origin ?? "Unknown URL",
+    userId: metadata.userId ?? session.metadata.userId ?? null,
+    device: metadata.device ?? detectDevice(metadata.userAgent),
+    browser: metadata.browser ?? detectBrowser(metadata.userAgent),
+    language: metadata.language ?? session.metadata.language ?? req.headers["accept-language"] ?? "Unknown locale",
+    screen: metadata.screen ?? session.metadata.screen ?? { width: 1440, height: 900 },
+  };
+}
+
 
   if (normalisedEvents.length) {
     session.events = [...(session.events ?? []), ...normalisedEvents].sort(

@@ -31,10 +31,11 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
   const hasWindow = typeof window !== 'undefined';
   const sessionIdRef = useRef<string | null>(null);
   const bufferRef = useRef<RecordedEvent[]>([]);
-  const hasSentInitialRef = useRef(false);
+  const hasSentMetadataRef = useRef(false);
   const startRef = useRef<number>(0);
-  const absoluteStartRef = useRef<string>('');
   const metadataRef = useRef<Record<string, unknown>>({});
+  const metadataPromiseRef = useRef<Promise<void> | null>(null);
+
 
   const apiBase = useMemo(() => {
     if (!hasWindow) return '';
@@ -60,20 +61,63 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
 
     sessionIdRef.current = sessionIdRef.current ?? (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2));
     startRef.current = performance.now();
-    absoluteStartRef.current = new Date().toISOString();
 
     metadataRef.current = {
-      startedAt: absoluteStartRef.current,
-      userAgent: navigator.userAgent,
       url: window.location.href,
-      referrer: document.referrer,
+      userId: null,
+      userAgent: navigator.userAgent,
       language: navigator.language,
       screen: {
         width: window.innerWidth,
         height: window.innerHeight,
       },
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      devicePixelRatio: window.devicePixelRatio,
+      };
+
+    const sendMetadata = async () => {
+      if (!sessionIdRef.current || hasSentMetadataRef.current || !endpointUrl) {
+        return;
+      }
+
+      const payload = {
+        sessionId: sessionIdRef.current,
+        metadata: metadataRef.current,
+        events: [],
+        completed: false,
+      };
+
+      const body = JSON.stringify(payload);
+
+      try {
+        const response = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to send metadata: ${response.status}`);
+        }
+
+        hasSentMetadataRef.current = true;
+      } catch (error) {
+        console.error('Failed to send session metadata', error);
+        throw error;
+      }
+    };
+
+    const ensureMetadataSent = async () => {
+      if (hasSentMetadataRef.current) {
+        return;
+      }
+
+      if (!metadataPromiseRef.current) {
+        metadataPromiseRef.current = sendMetadata().catch(error => {
+          metadataPromiseRef.current = null;
+          throw error;
+        });
+      }
+
+      await metadataPromiseRef.current;
     };
 
     const recordEvent = (event: RecordedEvent) => {
@@ -96,11 +140,13 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       });
     };
 
-     const resolveTargetLabel = (element: EventTarget | null) => {
+    const resolveTargetLabel = (element: EventTarget | null) => {
       const target = (element as HTMLElement | null)?.closest('[data-recorder-label], a, button, input, textarea');
-      return target?.getAttribute('data-recorder-label')
-        ?? (target instanceof HTMLElement ? `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}` : undefined);
-        };
+      return (
+        target?.getAttribute('data-recorder-label')
+        ?? (target instanceof HTMLElement ? `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}` : undefined)
+      );
+    };
 
     const handleClick = (event: MouseEvent) => {
       const targetLabel = resolveTargetLabel(event.target);
@@ -152,24 +198,31 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
     };
 
     const flushEvents = async (completed = false) => {
-      if (!sessionIdRef.current || (!bufferRef.current.length && !completed)) {
+      if (!sessionIdRef.current) {
+        return;
+      }
+
+      try {
+        await ensureMetadataSent();
+      } catch (error) {
+        if (!completed) {
+          return;
+        }
+      }
+
+      if (!bufferRef.current.length && !completed) {
         return;
       }
 
       const events = bufferRef.current.splice(0, bufferRef.current.length);
       const payload: Record<string, unknown> = {
         sessionId: sessionIdRef.current,
-        startedAt: absoluteStartRef.current,
         events,
+        completed,
       };
 
-      if (!hasSentInitialRef.current) {
+      if (!hasSentMetadataRef.current) {
         payload.metadata = metadataRef.current;
-      }
-
-      if (completed) {
-        payload.completed = true;
-        payload.endedAt = new Date().toISOString();
       }
 
       const body = JSON.stringify(payload);
@@ -181,7 +234,7 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
             headers: { 'Content-Type': 'application/json' },
             body,
           });
-          hasSentInitialRef.current = true;
+          hasSentMetadataRef.current = true;
         } catch (error) {
           console.error('Failed to send session events', error);
           bufferRef.current.unshift(...events);
@@ -194,7 +247,7 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
         if (!success) {
           await send();
         } else {
-          hasSentInitialRef.current = true;
+          hasSentMetadataRef.current = true;
         }
       } else {
         await send();
@@ -209,11 +262,15 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        void flushEvents();
+        void flushEvents(true);
       }
     };
 
     const handleBeforeUnload = () => {
+      void flushEvents(true);
+    };
+
+    const handleBlur = () => {
       void flushEvents(true);
     };
 
@@ -224,6 +281,9 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
     document.body?.addEventListener('mouseleave', handleMouseLeave, true);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('blur', handleBlur);
+
+    void ensureMetadataSent().catch(() => undefined);
 
     scheduleFlush();
 
@@ -235,6 +295,7 @@ export const useSessionRecorder = (options: UseSessionRecorderOptions = {}) => {
       document.body?.removeEventListener('mouseleave', handleMouseLeave, true);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('blur', handleBlur);
       window.clearInterval(intervalId);
       void flushEvents(true);
     };
