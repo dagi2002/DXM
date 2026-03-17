@@ -37,7 +37,7 @@ export const SignupPage: React.FC = () => {
     <div className="flex min-h-screen bg-gray-50 items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8">
-          <Zap className="h-7 w-7 text-blue-600" />
+          <Zap className="h-7 w-7 text-primary-600" />
           <span className="text-xl font-bold text-gray-900">DXM Pulse</span>
         </div>
 
@@ -55,7 +55,7 @@ export const SignupPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Your name</label>
             <input
               type="text" value={form.name} onChange={set('name')} required
-              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               placeholder="Abebe Kebede"
             />
           </div>
@@ -64,7 +64,7 @@ export const SignupPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Work email</label>
             <input
               type="email" value={form.email} onChange={set('email')} required
-              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               placeholder="abebe@yourcompany.com"
             />
           </div>
@@ -73,7 +73,7 @@ export const SignupPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Workspace name</label>
             <input
               type="text" value={form.workspaceName} onChange={set('workspaceName')} required
-              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               placeholder="Kifiya Financial, Qefira, …"
             />
             <p className="text-xs text-gray-400 mt-1">Usually your company or product name</p>
@@ -85,7 +85,7 @@ export const SignupPage: React.FC = () => {
               <input
                 type={showPassword ? 'text' : 'password'} value={form.password}
                 onChange={set('password')} required minLength={8}
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 pr-11 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 pr-11 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 placeholder="Min. 8 characters"
               />
               <button
@@ -99,7 +99,7 @@ export const SignupPage: React.FC = () => {
 
           <button
             type="submit" disabled={isLoading}
-            className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Creating account…' : 'Create free account'}
           </button>
@@ -107,7 +107,7 @@ export const SignupPage: React.FC = () => {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:underline">Sign in</Link>
+          <Link to="/login" className="font-medium text-primary-600 hover:underline">Sign in</Link>
         </p>
         <p className="mt-3 text-center text-xs text-gray-400">
           By signing up you agree to our Terms of Service and Privacy Policy.

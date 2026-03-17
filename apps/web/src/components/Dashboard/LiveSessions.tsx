@@ -81,7 +81,7 @@ export const LiveSessions: React.FC<LiveSessionsProps> = ({ sessions, isLoading 
               </div>
             </div>
             
-            <button className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 text-blue-600 hover:text-blue-800 transition-all">
+            <button className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 text-primary-600 hover:text-primary-800 transition-all">
               <Eye className="h-4 w-4" />
               <span className="text-sm">Watch</span>
             </button>
@@ -91,7 +91,7 @@ export const LiveSessions: React.FC<LiveSessionsProps> = ({ sessions, isLoading 
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-        <button className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+        <button className="text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors">
           View all sessions →
         </button>
       </div>

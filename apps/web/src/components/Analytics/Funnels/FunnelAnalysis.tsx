@@ -259,7 +259,7 @@ export const FunnelAnalysis: React.FC = () => {
           <p className="mb-6 text-sm text-gray-500">Create your first funnel to track user conversion paths.</p>
           <button
             onClick={() => setShowBuilder(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
           >
             <Plus className="h-4 w-4" />
             Create funnel
@@ -273,7 +273,7 @@ export const FunnelAnalysis: React.FC = () => {
           <select
             value={selectedFunnelId ?? ''}
             onChange={e => setSelectedFunnelId(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500"
           >
             {funnels.map(f => (
               <option key={f.id} value={f.id}>{f.name}</option>
@@ -296,7 +296,7 @@ export const FunnelAnalysis: React.FC = () => {
       {/* Header with Controls */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-blue-600">
+          <div className="flex items-center gap-2 text-sm text-primary-600">
             <Calendar className="h-4 w-4" />
             <span>
               {timeframeLabel} · {segmentLabel}
@@ -344,7 +344,7 @@ export const FunnelAnalysis: React.FC = () => {
             onClick={() => setComparisonMode(!comparisonMode)}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               comparisonMode
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-primary-600 text-white shadow-sm'
                 : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -368,7 +368,7 @@ export const FunnelAnalysis: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 pb-2">
-            <Users className="h-5 w-5 text-blue-600" />
+            <Users className="h-5 w-5 text-primary-600" />
             <span className="text-sm font-medium text-gray-600">Total Entries</span>
           </div>
           <div className="text-2xl font-bold text-gray-900">{totalEntries.toLocaleString()}</div>
@@ -417,7 +417,7 @@ export const FunnelAnalysis: React.FC = () => {
 
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 pb-2">
-            <Target className="h-5 w-5 text-blue-600" />
+            <Target className="h-5 w-5 text-primary-600" />
             <span className="text-sm font-medium text-gray-600">Best Performing Step</span>
           </div>
           {stepWithBestRetention ? (
@@ -450,7 +450,7 @@ export const FunnelAnalysis: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Conversion Funnel</h3>
           <div className="flex items-center space-x-4 text-sm text-gray-600">
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
               <span>Current Period</span>
             </div>
             {comparisonMode && (
@@ -474,7 +474,7 @@ export const FunnelAnalysis: React.FC = () => {
                   {/* Step Number and Info */}
                   <div className="flex-shrink-0 w-64">
                     <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                      <div className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                         {index + 1}
                       </div>
                       <div>
@@ -489,7 +489,7 @@ export const FunnelAnalysis: React.FC = () => {
                     <div className="relative">
                       <div className="h-12 bg-gray-100 rounded-lg overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-500"
                           style={{ width: `${step.conversionRate}%` }}
                         />
                         {comparisonMode && (
@@ -525,7 +525,7 @@ export const FunnelAnalysis: React.FC = () => {
                 </div>
 
                 {/* Detailed Breakdown */}
-                <div className="mt-4 ml-80 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-4 ml-0 md:ml-80 grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Exit Reasons */}
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <h5 className="text-sm font-medium text-red-800 mb-2">Top Exit Reasons</h5>
@@ -540,13 +540,13 @@ export const FunnelAnalysis: React.FC = () => {
                   </div>
 
                   {/* Device Breakdown */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <h5 className="text-sm font-medium text-blue-800 mb-2">Device Performance</h5>
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+                    <h5 className="text-sm font-medium text-primary-800 mb-2">Device Performance</h5>
                     <div className="space-y-1">
                       {deviceKeys.map((device) => (
                         <div key={device} className="flex justify-between text-xs">
-                          <span className="text-blue-700 capitalize">{device}</span>
-                          <span className="text-blue-600 font-medium">{step.deviceBreakdown[device]}%</span>
+                          <span className="text-primary-700 capitalize">{device}</span>
+                          <span className="text-primary-600 font-medium">{step.deviceBreakdown[device]}%</span>
                         </div>
                       ))}
                     </div>
@@ -616,11 +616,11 @@ export const FunnelAnalysis: React.FC = () => {
                   <p className="text-xs text-green-600">Organic traffic converts 30% better. Increase SEO investment.</p>
                 </div>
               </div>
-              <div className="flex items-start space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div className="flex items-start space-x-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
                 <div>
-                  <p className="text-sm font-medium text-blue-800">Desktop Optimization Success</p>
-                  <p className="text-xs text-blue-600">Desktop flow performs well. Apply similar patterns to mobile.</p>
+                  <p className="text-sm font-medium text-primary-800">Desktop Optimization Success</p>
+                  <p className="text-xs text-primary-600">Desktop flow performs well. Apply similar patterns to mobile.</p>
                 </div>
               </div>
             </div>

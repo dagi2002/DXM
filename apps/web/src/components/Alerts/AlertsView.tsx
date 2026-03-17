@@ -58,7 +58,7 @@ export const AlertsView: React.FC = () => {
       case 'medium':
         return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       default:
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary-600 bg-primary-50 border-primary-200';
     }
   };
 
@@ -110,7 +110,7 @@ export const AlertsView: React.FC = () => {
         ].map((stat, index) => (
           <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 text-center">
             <div className={`text-2xl font-bold ${
-              stat.color === 'blue' ? 'text-blue-600' :
+              stat.color === 'blue' ? 'text-primary-600' :
               stat.color === 'orange' ? 'text-orange-600' :
               stat.color === 'red' ? 'text-red-600' : 'text-green-600'
             }`}>
@@ -134,14 +134,14 @@ export const AlertsView: React.FC = () => {
               onClick={() => setFilter(tab.id)}
               className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium transition-colors ${
                 filter === tab.id
-                  ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50'
+                  ? 'text-primary-600 border-b-2 border-primary-500 bg-primary-50'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <span>{tab.label}</span>
               <span className={`px-2 py-1 rounded-full text-xs ${
                 filter === tab.id 
-                  ? 'bg-blue-100 text-blue-800' 
+                  ? 'bg-primary-100 text-primary-800' 
                   : 'bg-gray-100 text-gray-600'
               }`}>
                 {tab.count}

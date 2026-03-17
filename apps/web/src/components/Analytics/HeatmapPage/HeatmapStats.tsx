@@ -74,9 +74,9 @@ export const HeatmapStats: React.FC<HeatmapStatsProps> = ({
           </div>
         </div>
         <dl className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-            <dt className="text-xs font-medium text-blue-600 uppercase tracking-wide">{primaryLabel}</dt>
-            <dd className="text-2xl font-semibold text-blue-700">{primaryValue}</dd>
+          <div className="bg-primary-50 border border-primary-100 rounded-lg p-4">
+            <dt className="text-xs font-medium text-primary-600 uppercase tracking-wide">{primaryLabel}</dt>
+            <dd className="text-2xl font-semibold text-primary-700">{primaryValue}</dd>
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
             <dt className="text-xs font-medium text-orange-600 uppercase tracking-wide">Avg. Scroll Depth</dt>

@@ -49,7 +49,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
       <nav className="hidden md:flex flex-col w-64 h-screen bg-white border-r border-gray-100 shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <Zap className="h-4 w-4 text-white" />
           </div>
           <div>
@@ -68,11 +68,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
                 to={path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-primary-50 text-primary-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-blue-600' : 'text-gray-400'}`} />
+                <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-primary-600' : 'text-gray-400'}`} />
                 {t(label)}
               </Link>
             );
@@ -95,11 +95,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
             to="/settings"
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentView === 'settings'
-                ? 'bg-blue-50 text-blue-700'
+                ? 'bg-primary-50 text-primary-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
-            <Settings className={`h-4 w-4 ${currentView === 'settings' ? 'text-blue-600' : 'text-gray-400'}`} />
+            <Settings className={`h-4 w-4 ${currentView === 'settings' ? 'text-primary-600' : 'text-gray-400'}`} />
             {t('nav.settings')}
           </Link>
 
@@ -110,8 +110,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
                 <img src={user.avatar} alt={user.name}
                   className="h-7 w-7 rounded-full object-cover shrink-0" />
               ) : (
-                <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-semibold text-blue-700">
+                <div className="h-7 w-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-semibold text-primary-700">
                     {user.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -142,7 +142,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
               key={id}
               to={path}
               className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg min-w-[44px] min-h-[44px] justify-center transition-colors ${
-                active ? 'text-blue-600' : 'text-gray-400'
+                active ? 'text-primary-600' : 'text-gray-400'
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -156,7 +156,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user }) => 
         <Link
           to="/settings"
           className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg min-w-[44px] min-h-[44px] justify-center transition-colors ${
-            currentView === 'settings' ? 'text-blue-600' : 'text-gray-400'
+            currentView === 'settings' ? 'text-primary-600' : 'text-gray-400'
           }`}
         >
           <Settings className="h-5 w-5" />

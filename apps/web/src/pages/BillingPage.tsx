@@ -124,8 +124,8 @@ export const BillingPage: React.FC = () => {
       {/* Current plan badge */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
-            <Zap className="h-5 w-5 text-blue-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50">
+            <Zap className="h-5 w-5 text-primary-600" />
           </div>
           <div>
             <p className="text-sm text-gray-500">{t('billing.currentPlan')}</p>
@@ -155,14 +155,14 @@ export const BillingPage: React.FC = () => {
               key={plan.id}
               className={`relative rounded-xl border-2 p-6 flex flex-col ${
                 isHighlighted
-                  ? 'border-blue-500 bg-blue-50/30'
+                  ? 'border-primary-500 bg-primary-50/30'
                   : isCurrent
                   ? 'border-green-400 bg-green-50/20'
                   : 'border-gray-100 bg-white'
               }`}
             >
               {isHighlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                   Most popular
                 </div>
               )}
@@ -206,7 +206,7 @@ export const BillingPage: React.FC = () => {
                     : plan.id === 'free'
                     ? 'bg-gray-100 text-gray-400 cursor-default'
                     : isHighlighted
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
+                    ? 'bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50'
                     : 'bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50'
                 }`}
               >
@@ -241,7 +241,7 @@ export const BillingPage: React.FC = () => {
         </div>
         <p className="text-xs text-gray-400 mt-3">
           Payment integration via Chapa is coming soon. Contact{' '}
-          <a href="https://t.me/dxmpulse" className="text-blue-600 hover:underline">
+          <a href="https://t.me/dxmpulse" className="text-primary-600 hover:underline">
             @dxmpulse on Telegram
           </a>{' '}
           to upgrade your plan manually.

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Zap, X, BarChart2, Activity, AlertTriangle, Users, TrendingUp, MousePointer, Clock, Percent } from 'lucide-react';
+import { Zap, X, BarChart2, Activity, AlertTriangle, Users, TrendingUp, MousePointer, Clock, Percent, ShieldCheck, ShieldAlert } from 'lucide-react';
 import {
   demoMetrics,
   demoSessions,
@@ -28,7 +28,7 @@ const MetricCard: React.FC<{
   value: string;
   sub?: string;
   color?: string;
-}> = ({ icon, label, value, sub, color = 'text-blue-600 bg-blue-50' }) => (
+}> = ({ icon, label, value, sub, color = 'text-primary-600 bg-primary-50' }) => (
   <div className="bg-white rounded-xl border border-gray-100 p-5">
     <div className="flex items-center justify-between mb-3">
       <span className="text-sm text-gray-500">{label}</span>
@@ -57,11 +57,71 @@ const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
 
 // ─── Tab views ─────────────────────────────────────────────────────────────────
 
+const DemoHealthScore: React.FC = () => {
+  const score = 72;
+  const circumference = 2 * Math.PI * 42;
+  const offset = circumference - (score / 100) * circumference;
+  return (
+    <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
+      <div className="flex items-center gap-5">
+        <div className="relative flex-shrink-0">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+            <circle cx="48" cy="48" r="42" fill="none" stroke="#166534" strokeWidth="6" strokeLinecap="round"
+              strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 48 48)" />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-primary-600">{score}</span>
+            <span className="text-[10px] text-gray-400">/100</span>
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="h-5 w-5 text-primary-600" />
+            <span className="font-bold text-primary-700">Site is healthy</span>
+          </div>
+          <p className="text-sm text-primary-600">2 minor issues detected this week. Overall performance is good.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DemoProblems: React.FC = () => {
+  const unresolvedAlerts = demoAlerts.filter(a => !a.resolved);
+  if (unresolvedAlerts.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <ShieldAlert className="h-5 w-5 text-accent-600" />
+        <h3 className="font-semibold text-gray-900">{unresolvedAlerts.length} problems detected</h3>
+      </div>
+      <div className="space-y-2">
+        {unresolvedAlerts.slice(0, 3).map(alert => (
+          <div key={alert.id} className="flex items-start gap-3 p-3 rounded-xl border border-orange-100 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-sm font-medium text-gray-900">{alert.title}</span>
+              <p className="text-xs text-gray-500 mt-0.5">{alert.affectedSessions} sessions affected</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const OverviewTab: React.FC = () => {
   const fmt = (s: number) => `${Math.floor(s / 60)}m ${s % 60}s`;
 
   return (
     <div className="space-y-6">
+      {/* Health Score */}
+      <DemoHealthScore />
+
+      {/* Problems */}
+      <DemoProblems />
+
       {/* Metrics grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
@@ -69,7 +129,7 @@ const OverviewTab: React.FC = () => {
           label="Active Sessions"
           value={demoMetrics.activeSessions.toLocaleString()}
           sub="Right now"
-          color="text-blue-600 bg-blue-50"
+          color="text-primary-600 bg-primary-50"
         />
         <MetricCard
           icon={<Clock className="h-4 w-4" />}
@@ -163,7 +223,7 @@ const FunnelTab: React.FC = () => {
               <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
                 <div
                   className={`h-full rounded-lg transition-all ${
-                    isBottleneck ? 'bg-red-500' : i === 0 ? 'bg-blue-500' : i === demoFunnel.length - 1 ? 'bg-green-500' : 'bg-blue-400'
+                    isBottleneck ? 'bg-red-500' : i === 0 ? 'bg-primary-500' : i === demoFunnel.length - 1 ? 'bg-green-500' : 'bg-primary-400'
                   }`}
                   style={{ width: `${pct}%` }}
                 />
@@ -204,7 +264,7 @@ const HeatmapTab: React.FC = () => {
           <div className="absolute top-[37%] left-[5%] right-[5%] h-[5%] bg-gray-600 rounded" /> {/* title */}
           <div className="absolute top-[43%] left-[5%] w-[25%] h-[4%] bg-gray-600 rounded" /> {/* price */}
           <div className="absolute top-[50%] left-[5%] right-[5%] h-[4%] bg-gray-600 rounded flex gap-2" /> {/* variants */}
-          <div className="absolute top-[59%] left-[5%] right-[5%] h-[6%] bg-blue-800 rounded" /> {/* add to cart */}
+          <div className="absolute top-[59%] left-[5%] right-[5%] h-[6%] bg-primary-800 rounded" /> {/* add to cart */}
           <div className="absolute top-[67%] left-[5%] right-[5%] h-[5%] bg-gray-600 rounded" /> {/* buy now */}
         </div>
 
@@ -371,7 +431,7 @@ export const DemoPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50">
         {/* Demo banner */}
         {bannerVisible && (
-          <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="bg-primary-600 text-white px-4 py-2.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Zap className="h-4 w-4 shrink-0" />
               <span>
@@ -382,7 +442,7 @@ export const DemoPage: React.FC = () => {
             <div className="flex items-center gap-3 shrink-0">
               <Link
                 to="/signup"
-                className="hidden sm:inline-flex items-center gap-1.5 bg-white text-blue-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                className="hidden sm:inline-flex items-center gap-1.5 bg-white text-primary-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary-50 transition-colors"
               >
                 Start Free Trial →
               </Link>
@@ -400,7 +460,7 @@ export const DemoPage: React.FC = () => {
         <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="h-6 w-6 text-blue-600" />
+              <Zap className="h-6 w-6 text-primary-600" />
               <span className="text-lg font-bold text-gray-900">DXM Pulse</span>
               <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Demo</span>
             </div>
@@ -413,7 +473,7 @@ export const DemoPage: React.FC = () => {
               </Link>
               <Link
                 to="/signup"
-                className="text-sm font-semibold bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="text-sm font-semibold bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
               >
                 {t('auth.signup')}
               </Link>
@@ -457,17 +517,17 @@ export const DemoPage: React.FC = () => {
           {activeTab === 'vitals' && <VitalsTab />}
 
           {/* CTA footer */}
-          <div className="mt-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-8 text-center text-white">
+          <div className="mt-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl p-8 text-center text-white">
             <Zap className="h-10 w-10 mx-auto mb-3 opacity-90" />
             <h2 className="text-2xl font-bold mb-2">Ready to track your own site?</h2>
-            <p className="text-blue-100 mb-6 text-sm max-w-md mx-auto">
+            <p className="text-primary-100 mb-6 text-sm max-w-md mx-auto">
               Add one line of code and get real session recording, heatmaps, funnel analysis,
               and Telegram alerts — designed for Ethiopian businesses.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded-xl hover:bg-blue-50 transition-colors"
+                className="inline-flex items-center justify-center gap-2 bg-white text-primary-600 font-semibold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
               >
                 Start Free Trial
               </Link>
@@ -480,7 +540,7 @@ export const DemoPage: React.FC = () => {
                 Contact on Telegram
               </a>
             </div>
-            <p className="text-blue-200 text-xs mt-4">Free plan available · No credit card required</p>
+            <p className="text-primary-200 text-xs mt-4">Free plan available · No credit card required</p>
           </div>
         </div>
       </div>

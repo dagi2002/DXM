@@ -32,7 +32,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-blue-600 p-12 text-white">
+      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-primary-600 p-12 text-white">
         <div className="max-w-md">
           <div className="flex items-center gap-3 mb-8">
             <Zap className="h-10 w-10" />
@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
           <h2 className="text-4xl font-bold mb-4 leading-tight">
             Understand your users.<br />Grow your business.
           </h2>
-          <p className="text-blue-200 text-lg">
+          <p className="text-primary-200 text-lg">
             Session recordings, heatmaps, and real-time alerts — built for Ethiopian businesses.
           </p>
           <div className="mt-10 grid grid-cols-2 gap-6">
@@ -51,9 +51,9 @@ export const LoginPage: React.FC = () => {
               { label: 'Conversion Rate', value: '4.2%' },
               { label: 'Bounce Rate', value: '39%' },
             ].map(stat => (
-              <div key={stat.label} className="bg-blue-700 rounded-xl p-4">
+              <div key={stat.label} className="bg-primary-700 rounded-xl p-4">
                 <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-blue-300 text-sm mt-1">{stat.label}</div>
+                <div className="text-primary-300 text-sm mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -65,7 +65,7 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <Zap className="h-7 w-7 text-blue-600" />
+            <Zap className="h-7 w-7 text-primary-600" />
             <span className="text-xl font-bold text-gray-900">DXM Pulse</span>
           </div>
 
@@ -89,7 +89,7 @@ export const LoginPage: React.FC = () => {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 placeholder="you@yourcompany.com"
               />
             </div>
@@ -105,7 +105,7 @@ export const LoginPage: React.FC = () => {
                   onChange={e => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 pr-11 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 pr-11 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   placeholder="••••••••"
                 />
                 <button
@@ -121,7 +121,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Signing in…' : 'Sign in'}
             </button>
@@ -129,7 +129,7 @@ export const LoginPage: React.FC = () => {
 
           <p className="mt-6 text-center text-sm text-gray-500">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-blue-600 hover:underline">
+            <Link to="/signup" className="font-medium text-primary-600 hover:underline">
               Start free trial
             </Link>
           </p>
@@ -139,7 +139,7 @@ export const LoginPage: React.FC = () => {
             <p className="text-xs text-gray-400 mb-2">Want to explore first?</p>
             <Link
               to="/demo"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
             >
               <Zap className="h-3.5 w-3.5" />
               View live demo
