@@ -247,7 +247,7 @@ const availableSessionOptions = useMemo(() => {
               id="url-filter"
               value={selectedUrl}
               onChange={(event) => setSelectedUrl(event.target.value)}
-              className="mt-1 block w-56 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 block w-56 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All URLs</option>
               {availableUrls.map((url) => (
@@ -265,7 +265,7 @@ const availableSessionOptions = useMemo(() => {
               id="session-filter"
               value={selectedSessionId}
               onChange={(event) => setSelectedSessionId(event.target.value)}
-              className="mt-1 block w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 block w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Sessions</option>
               {availableSessionOptions.map((sessionOption) => (
@@ -292,7 +292,7 @@ const availableSessionOptions = useMemo(() => {
               type="button"
               onClick={() => setActiveType(type)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeType === type ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                activeType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -335,7 +335,7 @@ const availableSessionOptions = useMemo(() => {
                     <div className="h-4 rounded bg-slate-100 w-3/4" />
                     <div className="h-4 rounded bg-slate-100 w-1/2" />
                   </div>
-                  <div className="h-10 w-36 rounded bg-blue-100" />
+                  <div className="h-10 w-36 rounded bg-primary-100" />
                   <div className="grid grid-cols-2 gap-4">
                     <div className="h-32 rounded bg-slate-100" />
                     <div className="h-32 rounded bg-slate-100" />

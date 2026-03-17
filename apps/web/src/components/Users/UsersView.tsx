@@ -64,7 +64,7 @@ export const UsersView: React.FC = () => {
           <button
             disabled
             title="Add User coming soon"
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-300 text-white rounded-lg opacity-60 cursor-not-allowed"
+            className="flex items-center space-x-2 px-4 py-2 bg-primary-300 text-white rounded-lg opacity-60 cursor-not-allowed"
           >
             <UserPlus className="h-4 w-4" />
             <span>Add User</span>
@@ -96,7 +96,7 @@ export const UsersView: React.FC = () => {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             />
           </div>
           <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
@@ -135,7 +135,7 @@ export const UsersView: React.FC = () => {
                     {user.avatar ? (
                       <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-full object-cover" />
                     ) : (
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                         {user.name.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -151,7 +151,7 @@ export const UsersView: React.FC = () => {
                 <td className="py-4 px-6">
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     user.role === 'admin'
-                      ? 'bg-blue-100 text-blue-800'
+                      ? 'bg-primary-100 text-primary-800'
                       : user.role === 'analyst'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'

@@ -130,7 +130,7 @@ export const PerformanceView: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900">Core Web Vitals Distribution</h3>
             <p className="text-sm text-gray-600">Percentile breakdowns help identify long-tail performance issues.</p>
           </div>
-          <span className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full">
+          <span className="inline-flex items-center px-3 py-1 text-xs font-medium text-primary-600 bg-primary-50 rounded-full">
             Percentile charts coming soon
           </span>
         </div>
@@ -235,7 +235,7 @@ export const PerformanceView: React.FC = () => {
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 animate-pulse"
+                    className="h-full bg-gradient-to-r from-primary-400 to-primary-600 animate-pulse"
                     style={{ width: `${Math.min((resource.size / 2500) * 100, 100)}%` }}
                   />
                 </div>

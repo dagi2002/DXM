@@ -99,7 +99,7 @@ export const UserFlowView: React.FC = () => {
               <React.Fragment key={node.page}>
                 <div className="flex flex-col space-y-4 min-w-[240px]">
                   <div className="rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-sm hover:shadow-md transition-all duration-200">
-                    <div className="inline-block text-[10px] font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                    <div className="inline-block text-[10px] font-semibold uppercase tracking-wide text-primary-600 bg-primary-50 px-2 py-1 rounded-md">
                       PAGE
                     </div>
                     <h3 className="mt-1 text-lg font-semibold text-gray-900">{node.page}</h3>

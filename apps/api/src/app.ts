@@ -14,6 +14,8 @@ import settingsRoutes from './routes/settings.js';
 import billingRoutes from './routes/billing.js';
 import onboardingRoutes from './routes/onboarding.js';
 import funnelsRoutes from './routes/funnels.js';
+import auditRoutes from './routes/audit.js';
+import digestRoutes from './routes/digest.js';
 
 const app = express();
 
@@ -45,6 +47,8 @@ app.use('/settings', settingsRoutes);
 app.use('/billing', billingRoutes);
 app.use('/onboarding', onboardingRoutes);
 app.use('/funnels', funnelsRoutes);
+app.use('/audit', auditRoutes);
+app.use('/digest', digestRoutes);
 
 // ── Fallback error handler ───────────────────────────────────────────────────
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

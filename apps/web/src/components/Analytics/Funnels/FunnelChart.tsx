@@ -63,9 +63,9 @@ export const FunnelChart: React.FC<FunnelChartProps> = ({ steps, isLoading }) =>
                 </div>
               </div>
 
-              <div className="h-4 bg-blue-100/70 rounded-full overflow-hidden">
+              <div className="h-4 bg-primary-100/70 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600"
+                  className="h-full bg-gradient-to-r from-primary-500 to-primary-600"
                   style={{ width: `${Math.max(0, Math.min(widthPercent, 100))}%` }}
                 />
               </div>

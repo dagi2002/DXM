@@ -9,7 +9,7 @@ interface ActivityChartProps {
 export const ActivityChart: React.FC<ActivityChartProps> = ({ 
   title, 
   data, 
-  color = '#0066CC' 
+  color = '#166534' 
 }) => {
   const maxValue = Math.max(...data.map(d => d.value));
   
@@ -22,7 +22,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({
           {data.map((point, index) => (
             <div key={index} className="flex-1 flex flex-col items-center group">
               <div
-                className="w-full bg-gradient-to-t from-blue-500 to-blue-300 rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer"
+                className="w-full bg-gradient-to-t from-primary-500 to-primary-300 rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer"
                 style={{
                   height: `${(point.value / maxValue) * 100}%`,
                   backgroundColor: color,

@@ -17,7 +17,7 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({ alerts, isLoading }) => 
       case 'medium':
         return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       default:
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary-600 bg-primary-50 border-primary-200';
     }
   };
 
@@ -76,7 +76,7 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({ alerts, isLoading }) => 
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-        <button className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+        <button className="text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors">
           View all alerts →
         </button>
       </div>

@@ -4,7 +4,7 @@
  * Submits to POST /funnels and calls onCreated with the new funnel ID.
  */
 import React, { useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, ShoppingCart, UserPlus, MessageSquare } from 'lucide-react';
 import { fetchJson } from '../../../lib/api';
 
 interface Step {
@@ -16,6 +16,50 @@ interface Props {
   onClose: () => void;
   onCreated: (funnelId: string) => void;
 }
+
+interface FunnelTemplate {
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  name: string;
+  steps: Step[];
+}
+
+const FUNNEL_TEMPLATES: FunnelTemplate[] = [
+  {
+    label: 'Purchase Flow',
+    icon: ShoppingCart,
+    name: 'Purchase Flow',
+    steps: [
+      { name: 'Home', urlPattern: '/' },
+      { name: 'Products', urlPattern: '/products' },
+      { name: 'Cart', urlPattern: '/cart' },
+      { name: 'Checkout', urlPattern: '/checkout' },
+      { name: 'Thank You', urlPattern: '/thank-you' },
+    ],
+  },
+  {
+    label: 'Registration Flow',
+    icon: UserPlus,
+    name: 'Registration Flow',
+    steps: [
+      { name: 'Home', urlPattern: '/' },
+      { name: 'Register', urlPattern: '/register' },
+      { name: 'Verify', urlPattern: '/verify' },
+      { name: 'Dashboard', urlPattern: '/dashboard' },
+    ],
+  },
+  {
+    label: 'Contact Flow',
+    icon: MessageSquare,
+    name: 'Contact Flow',
+    steps: [
+      { name: 'Home', urlPattern: '/' },
+      { name: 'About', urlPattern: '/about' },
+      { name: 'Contact', urlPattern: '/contact' },
+      { name: 'Thank You', urlPattern: '/thank-you' },
+    ],
+  },
+];
 
 export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
   const [name, setName] = useState('');
@@ -75,6 +119,30 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
           </button>
         </div>
 
+        {/* Template cards */}
+        <div className="mb-5">
+          <label className="mb-2 block text-sm font-medium text-gray-700">Start from a template</label>
+          <div className="grid grid-cols-3 gap-3">
+            {FUNNEL_TEMPLATES.map((tpl) => {
+              const Icon = tpl.icon;
+              return (
+                <button
+                  key={tpl.label}
+                  type="button"
+                  onClick={() => {
+                    setName(tpl.name);
+                    setSteps(tpl.steps.map(s => ({ ...s })));
+                  }}
+                  className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-3 text-center text-sm transition-colors hover:border-primary-400 hover:bg-primary-50 cursor-pointer"
+                >
+                  <Icon className="h-5 w-5 text-primary-600" />
+                  <span className="font-medium text-gray-700">{tpl.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Funnel name */}
           <div>
@@ -84,7 +152,7 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Checkout Flow"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
             />
           </div>
 
@@ -94,7 +162,7 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
             <div className="space-y-2">
               {steps.map((step, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">
                     {i + 1}
                   </span>
                   <input
@@ -102,14 +170,14 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
                     value={step.name}
                     onChange={e => updateStep(i, 'name', e.target.value)}
                     placeholder="Step name"
-                    className="w-32 flex-shrink-0 rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                    className="w-32 flex-shrink-0 rounded-lg border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-500"
                   />
                   <input
                     type="text"
                     value={step.urlPattern}
                     onChange={e => updateStep(i, 'urlPattern', e.target.value)}
                     placeholder="/url or regex"
-                    className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono outline-none focus:border-blue-500"
+                    className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-mono outline-none focus:border-primary-500"
                   />
                   {steps.length > 2 && (
                     <button
@@ -126,7 +194,7 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
             <button
               type="button"
               onClick={addStep}
-              className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
             >
               <Plus className="h-3.5 w-3.5" />
               Add step
@@ -149,7 +217,7 @@ export const FunnelBuilder: React.FC<Props> = ({ onClose, onCreated }) => {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Create funnel'}
             </button>

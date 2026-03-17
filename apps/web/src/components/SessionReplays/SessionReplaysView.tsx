@@ -15,7 +15,7 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecording }> = ({ sess
           <button
             onClick={() => setMode('rrweb')}
             className={`px-4 py-1.5 font-medium transition-colors ${
-              mode === 'rrweb' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              mode === 'rrweb' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
             DOM Replay
@@ -23,7 +23,7 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecording }> = ({ sess
           <button
             onClick={() => setMode('events')}
             className={`px-4 py-1.5 font-medium transition-colors ${
-              mode === 'events' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              mode === 'events' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
             Event Timeline

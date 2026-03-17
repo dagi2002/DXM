@@ -57,7 +57,7 @@ export const FunnelStats: React.FC<FunnelStatsProps> = ({
           {bestStep ? (
             <div className="mt-2">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-600">
                   <Target className="h-5 w-5" />
                 </div>
                 <div>

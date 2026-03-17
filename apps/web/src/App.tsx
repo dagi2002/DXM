@@ -7,12 +7,13 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 
 // Lazy-loaded pages
+const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const DemoPage = lazy(() => import('./pages/DemoPage').then(m => ({ default: m.DemoPage })));
 
 const PageLoader: React.FC = () => (
   <div className="flex h-screen items-center justify-center bg-gray-50">
-    <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
   </div>
 );
 
@@ -23,6 +24,7 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/demo" element={<DemoPage />} />

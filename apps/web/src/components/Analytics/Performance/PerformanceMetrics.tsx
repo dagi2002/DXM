@@ -254,7 +254,7 @@ export const PerformanceMetrics: React.FC = () => {
       case 'medium':
         return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       default:
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary-600 bg-primary-50 border-primary-200';
     }
   };
 
@@ -280,7 +280,7 @@ export const PerformanceMetrics: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <select className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+          <select className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm">
             <option>Last 24 hours</option>
             <option>Last 7 days</option>
             <option>Last 30 days</option>
@@ -291,7 +291,7 @@ export const PerformanceMetrics: React.FC = () => {
             <span>Filter</span>
           </button>
 
-          <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+          <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm">
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
           </button>
@@ -305,7 +305,7 @@ export const PerformanceMetrics: React.FC = () => {
           <div className="text-xs text-green-600">+3 from last week</div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
-          <div className="text-4xl font-bold text-blue-600 mb-2">2.1s</div>
+          <div className="text-4xl font-bold text-primary-600 mb-2">2.1s</div>
           <div className="text-sm text-gray-600 mb-1">Avg. Load Time</div>
           <div className="text-xs text-green-600">-0.3s from last week</div>
         </div>
@@ -324,7 +324,7 @@ export const PerformanceMetrics: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Zap className="h-5 w-5 text-blue-600" />
+            <Zap className="h-5 w-5 text-primary-600" />
             <h3 className="text-lg font-semibold text-gray-900">Core Web Vitals</h3>
           </div>
 
@@ -604,11 +604,11 @@ export const PerformanceMetrics: React.FC = () => {
                   <p className="text-xs text-green-600">Gzip compression can reduce transfer size by 60-80%.</p>
                 </div>
               </div>
-              <div className="flex items-start space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
+              <div className="flex items-start space-x-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="w-2 h-2 bg-primary-500 rounded-full mt-2" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800">Implement CDN</p>
-                  <p className="text-xs text-blue-600">CDN can improve load times by 30-50% globally.</p>
+                  <p className="text-sm font-medium text-primary-800">Implement CDN</p>
+                  <p className="text-xs text-primary-600">CDN can improve load times by 30-50% globally.</p>
                 </div>
               </div>
             </div>

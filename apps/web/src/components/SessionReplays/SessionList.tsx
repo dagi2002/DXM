@@ -65,7 +65,7 @@ export const SessionList: React.FC<SessionListProps> = ({
               placeholder="Search by URL or user agent"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             />
           </div>
           </div>
@@ -77,7 +77,7 @@ export const SessionList: React.FC<SessionListProps> = ({
               onClick={() => setDeviceFilter(filter)}
               className={`px-3 py-1 text-sm rounded-full transition-colors capitalize ${
                 deviceFilter === filter
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                  ? 'bg-primary-100 text-primary-800 border border-primary-200'
                   : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
               }`}
             >
@@ -117,7 +117,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                 key={session.id}
                 onClick={() => onSessionSelect(session)}
                 className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  isSelected ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
+                  isSelected ? 'border-primary-500 bg-primary-50' : 'border-transparent hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">

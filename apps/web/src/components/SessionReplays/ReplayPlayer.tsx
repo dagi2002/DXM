@@ -189,7 +189,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ sessionId, sessionMe
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl border border-gray-200">
-        <Loader2 className="h-8 w-8 text-blue-600 animate-spin mb-3" />
+        <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-3" />
         <p className="text-sm text-gray-500">Loading replay…</p>
       </div>
     );
@@ -266,7 +266,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ sessionId, sessionMe
           </button>
           <button
             onClick={handlePlayPause}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 transition-colors"
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
@@ -287,7 +287,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ sessionId, sessionMe
             <div className="pointer-events-none absolute inset-0 flex items-center">
               <div className="h-1.5 w-full rounded-full bg-slate-200">
                 <div
-                  className="h-full rounded-full bg-blue-500 transition-all"
+                  className="h-full rounded-full bg-primary-500 transition-all"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>

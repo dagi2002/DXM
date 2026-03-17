@@ -73,7 +73,7 @@ export const OnboardingPage: React.FC = () => {
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="flex items-center gap-2 mb-8">
-          <Zap className="h-7 w-7 text-blue-600" />
+          <Zap className="h-7 w-7 text-primary-600" />
           <span className="text-xl font-bold text-gray-900">DXM Pulse</span>
         </div>
 
@@ -83,7 +83,7 @@ export const OnboardingPage: React.FC = () => {
             <React.Fragment key={s}>
               <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
                 step > s ? 'bg-green-500 text-white' :
-                step === s ? 'bg-blue-600 text-white' :
+                step === s ? 'bg-primary-600 text-white' :
                 'bg-gray-200 text-gray-400'
               }`}>
                 {step > s ? <CheckCircle className="h-4 w-4" /> : s}
@@ -106,7 +106,7 @@ export const OnboardingPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Site name</label>
                 <input
                   value={siteName} onChange={e => setSiteName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   placeholder="My Online Store"
                 />
               </div>
@@ -114,14 +114,14 @@ export const OnboardingPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('onboarding.step2.domain')}</label>
                 <input
                   value={domain} onChange={e => setDomain(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   placeholder="mystore.et"
                 />
               </div>
               <button
                 onClick={handleAddSite}
                 disabled={!domain || !siteName}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Generate install snippet <ArrowRight className="h-4 w-4" />
               </button>

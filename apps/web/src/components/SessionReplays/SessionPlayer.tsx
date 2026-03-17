@@ -239,7 +239,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                     return (
                       <div
                         key={`move-${index}`}
-                        className="absolute h-1 w-1 rounded-full bg-blue-400/40"
+                        className="absolute h-1 w-1 rounded-full bg-primary-400/40"
                         style={{
                           left: `${((event.x ?? 0) / screenDimensions.width) * 100}%`,
                           top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
@@ -258,7 +258,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                           top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
                         }}
                       >
-                        <div className="h-6 w-6 rounded-full border-2 border-blue-400/80" />
+                        <div className="h-6 w-6 rounded-full border-2 border-primary-400/80" />
                       </div>
                     );
                   }
@@ -267,7 +267,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                 {/* Pointer Indicator */}
                 <div
                   className={`absolute h-4 w-4 rounded-full border-2 border-white/80 ${
-                    isPlaying ? "bg-blue-500" : "bg-blue-500/70"
+                    isPlaying ? "bg-primary-500" : "bg-primary-500/70"
                   }`}
                   style={{
                     left: `${normalisedPointerPosition.x}%`,
@@ -278,7 +278,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                 {/* Click pulse animation */}
                 {recentClick !== null && currentTime - recentClick < 400 && (
                   <div
-                    className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-500/70 animate-ping"
+                    className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary-500/70 animate-ping"
                     style={{
                       left: `${normalisedPointerPosition.x}%`,
                       top: `${normalisedPointerPosition.y}%`,
@@ -304,7 +304,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
 
             <button
               onClick={handlePlayPause}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600 text-white"
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </button>
@@ -334,7 +334,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             <div className="pointer-events-none absolute inset-0 flex items-center">
               <div className="h-1 w-full rounded-full bg-slate-200">
                 <div
-                  className="h-full rounded-full bg-blue-500"
+                  className="h-full rounded-full bg-primary-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -343,7 +343,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             {timelineMarkers.map((marker, index) => {
               const color =
                 marker.type === "click"
-                  ? "bg-blue-500"
+                  ? "bg-primary-500"
                   : marker.type === "scroll"
                   ? "bg-yellow-400"
                   : "bg-pink-500";
@@ -358,7 +358,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             })}
 
             <div
-              className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-600 shadow ring-2 ring-blue-500/40"
+              className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary-600 shadow ring-2 ring-primary-500/40"
               style={{ left: `${progressPercent}%` }}
             />
 
@@ -400,7 +400,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <span className="h-2 w-2 rounded-full bg-primary-500" />
             Click
           </span>
           <span className="flex items-center gap-2">
