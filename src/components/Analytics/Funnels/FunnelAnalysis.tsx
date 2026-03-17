@@ -48,6 +48,90 @@ type EnhancedFunnelStep = FunnelStep & {
   conversionBySource: Record<(typeof trafficKeys)[number], number>;
 };
 
+// Static per-step enrichment data — keyed by funnel step name.
+// Kept outside the component so it is never recreated and never randomised.
+const STEP_ENRICHMENT: Record<string, Pick<EnhancedFunnelStep, 'avgTimeToNext' | 'exitReasons' | 'deviceBreakdown' | 'conversionBySource'>> = {
+  'Landing Page': {
+    avgTimeToNext: 45,
+    exitReasons: [
+      { reason: 'Slow Page Load', percentage: 30 },
+      { reason: 'Irrelevant Content', percentage: 35 },
+      { reason: 'Poor First Impression', percentage: 20 },
+      { reason: 'Technical Issues', percentage: 15 },
+    ],
+    deviceBreakdown: { desktop: 52, mobile: 34, tablet: 14 },
+    conversionBySource: { organic: 38, paid: 28, social: 19, direct: 15 },
+  },
+  'Product View': {
+    avgTimeToNext: 120,
+    exitReasons: [
+      { reason: 'Price Too High', percentage: 38 },
+      { reason: 'Missing Information', percentage: 28 },
+      { reason: 'Comparison Shopping', percentage: 22 },
+      { reason: 'Technical Issues', percentage: 12 },
+    ],
+    deviceBreakdown: { desktop: 55, mobile: 31, tablet: 14 },
+    conversionBySource: { organic: 42, paid: 25, social: 18, direct: 15 },
+  },
+  'Add to Cart': {
+    avgTimeToNext: 85,
+    exitReasons: [
+      { reason: 'Pricing Concerns', percentage: 40 },
+      { reason: 'Shipping Cost Surprise', percentage: 30 },
+      { reason: 'Account Required', percentage: 18 },
+      { reason: 'Technical Issues', percentage: 12 },
+    ],
+    deviceBreakdown: { desktop: 60, mobile: 28, tablet: 12 },
+    conversionBySource: { organic: 40, paid: 30, social: 15, direct: 15 },
+  },
+  'Checkout': {
+    avgTimeToNext: 210,
+    exitReasons: [
+      { reason: 'Form Errors', percentage: 35 },
+      { reason: 'Unexpected Fees', percentage: 30 },
+      { reason: 'Account Friction', percentage: 20 },
+      { reason: 'Technical Issues', percentage: 15 },
+    ],
+    deviceBreakdown: { desktop: 65, mobile: 24, tablet: 11 },
+    conversionBySource: { organic: 35, paid: 32, social: 18, direct: 15 },
+  },
+  'Payment': {
+    avgTimeToNext: 180,
+    exitReasons: [
+      { reason: 'Payment Declined', percentage: 28 },
+      { reason: 'Security Concerns', percentage: 32 },
+      { reason: 'Missing Payment Option', percentage: 22 },
+      { reason: 'Technical Issues', percentage: 18 },
+    ],
+    deviceBreakdown: { desktop: 68, mobile: 22, tablet: 10 },
+    conversionBySource: { organic: 30, paid: 35, social: 17, direct: 18 },
+  },
+  'Confirmation': {
+    avgTimeToNext: 60,
+    exitReasons: [
+      { reason: 'No Follow-up Action', percentage: 45 },
+      { reason: 'Email Not Received', percentage: 25 },
+      { reason: 'Order Confusion', percentage: 18 },
+      { reason: 'Technical Issues', percentage: 12 },
+    ],
+    deviceBreakdown: { desktop: 70, mobile: 20, tablet: 10 },
+    conversionBySource: { organic: 28, paid: 38, social: 16, direct: 18 },
+  },
+};
+
+// Fallback enrichment for any step name not in the lookup above.
+const DEFAULT_ENRICHMENT: Pick<EnhancedFunnelStep, 'avgTimeToNext' | 'exitReasons' | 'deviceBreakdown' | 'conversionBySource'> = {
+  avgTimeToNext: 90,
+  exitReasons: [
+    { reason: 'Page Load Timeout', percentage: 25 },
+    { reason: 'Form Errors', percentage: 35 },
+    { reason: 'Pricing Concerns', percentage: 20 },
+    { reason: 'Technical Issues', percentage: 20 },
+  ],
+  deviceBreakdown: { desktop: 58, mobile: 30, tablet: 12 },
+  conversionBySource: { organic: 35, paid: 28, social: 17, direct: 20 },
+};
+
 export const FunnelAnalysis: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
   const [selectedSegment, setSelectedSegment] = useState('all');
@@ -57,25 +141,10 @@ export const FunnelAnalysis: React.FC = () => {
     () =>
       mockFunnelData.map<EnhancedFunnelStep>((step) => ({
         ...step,
-        avgTimeToNext: Math.floor(Math.random() * 300) + 30,
-        exitReasons: [
-          { reason: 'Page Load Timeout', percentage: 25 },
-          { reason: 'Form Errors', percentage: 35 },
-          { reason: 'Pricing Concerns', percentage: 20 },
-          { reason: 'Technical Issues', percentage: 20 },
-        ],
-        deviceBreakdown: {
-          desktop: Math.floor(Math.random() * 40) + 40,
-          mobile: Math.floor(Math.random() * 35) + 25,
-          tablet: Math.floor(Math.random() * 20) + 10,
-        },
-        conversionBySource: {
-          organic: Math.floor(Math.random() * 30) + 20,
-          paid: Math.floor(Math.random() * 25) + 15,
-          social: Math.floor(Math.random() * 20) + 10,
-          direct: Math.floor(Math.random() * 25) + 15,
-        },
+        ...(STEP_ENRICHMENT[step.name] ?? DEFAULT_ENRICHMENT),
       })),
+    // selectedTimeframe / selectedSegment / comparisonMode are included so
+    // the memo re-runs when filters change — ready for when real data lands.
     [selectedTimeframe, selectedSegment, comparisonMode]
   );
 

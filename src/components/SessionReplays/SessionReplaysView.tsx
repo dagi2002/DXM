@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import type { SessionRecording } from '../../types';
-
-const DEFAULT_API_BASE = 'http://localhost:4000';
+import { fetchJson } from '../../lib/api';
 
 export const SessionReplaysView: React.FC = () => {
   const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
@@ -11,23 +10,13 @@ export const SessionReplaysView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_API_URL as string | undefined;
-    return configured && configured.trim().length > 0 ? configured : DEFAULT_API_BASE;
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
     let refreshTimer: number | undefined;
 
     const fetchSessions = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/sessions`);
-        if (!response.ok) {
-          throw new Error('Unable to load session recordings');
-        }
-
-        const data = await response.json() as SessionRecording[];
+        const data = await fetchJson<SessionRecording[]>('/sessions');
         if (!isMounted) return;
 
         // ✅ Normalize backend response to expected structure
@@ -59,7 +48,6 @@ export const SessionReplaysView: React.FC = () => {
 
       } catch (err) {
         if (!isMounted) return;
-        console.error('Failed to fetch sessions', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         setIsLoading(false);
       }
@@ -72,7 +60,7 @@ export const SessionReplaysView: React.FC = () => {
       isMounted = false;
       if (refreshTimer) window.clearInterval(refreshTimer);
     };
-  }, [apiBaseUrl]);
+  }, []);
 
   return (
     <div className="p-6 h-full">

@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# SQLite database files
+apps/api/data/*.db
+apps/api/data/*.db-shm
+apps/api/data/*.db-wal

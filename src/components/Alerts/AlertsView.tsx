@@ -1,12 +1,49 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle, Clock, Filter, Bell, BellOff, MoreVertical } from 'lucide-react';
-import { mockAlerts } from '../../data/mockData';
+import type { Alert } from '../../types';
+import { fetchJson } from '../../lib/api';
 
 export const AlertsView: React.FC = () => {
   const [filter, setFilter] = useState('all');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredAlerts = mockAlerts.filter(alert => {
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAlerts = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchJson<Alert[]>('/alerts');
+        if (!isMounted) {
+          return;
+        }
+
+        setAlerts(Array.isArray(data) ? data : []);
+        setError(null);
+      } catch (loadError) {
+        if (!isMounted) {
+          return;
+        }
+
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load alerts');
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadAlerts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredAlerts = alerts.filter(alert => {
     if (filter === 'active') return !alert.resolved;
     if (filter === 'resolved') return alert.resolved;
     return true;
@@ -59,13 +96,19 @@ export const AlertsView: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       {/* Alert Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Alerts', value: mockAlerts.length, color: 'blue' },
-          { label: 'Active', value: mockAlerts.filter(a => !a.resolved).length, color: 'orange' },
-          { label: 'Critical', value: mockAlerts.filter(a => a.severity === 'critical').length, color: 'red' },
-          { label: 'Resolved', value: mockAlerts.filter(a => a.resolved).length, color: 'green' }
+          { label: 'Total Alerts', value: alerts.length, color: 'blue' },
+          { label: 'Active', value: alerts.filter(a => !a.resolved).length, color: 'orange' },
+          { label: 'Critical', value: alerts.filter(a => a.severity === 'critical').length, color: 'red' },
+          { label: 'Resolved', value: alerts.filter(a => a.resolved).length, color: 'green' }
         ].map((stat, index) => (
           <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 text-center">
             <div className={`text-2xl font-bold ${
@@ -84,9 +127,9 @@ export const AlertsView: React.FC = () => {
       <div className="bg-white border border-gray-200 rounded-lg mb-6">
         <div className="flex border-b border-gray-200">
           {[
-            { id: 'all', label: 'All Alerts', count: mockAlerts.length },
-            { id: 'active', label: 'Active', count: mockAlerts.filter(a => !a.resolved).length },
-            { id: 'resolved', label: 'Resolved', count: mockAlerts.filter(a => a.resolved).length }
+            { id: 'all', label: 'All Alerts', count: alerts.length },
+            { id: 'active', label: 'Active', count: alerts.filter(a => !a.resolved).length },
+            { id: 'resolved', label: 'Resolved', count: alerts.filter(a => a.resolved).length }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -112,6 +155,12 @@ export const AlertsView: React.FC = () => {
 
       {/* Alerts List */}
       <div className="space-y-4">
+        {isLoading && (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">
+            Loading alerts…
+          </div>
+        )}
+
         {filteredAlerts.map((alert) => (
           <div
             key={alert.id}
@@ -147,11 +196,7 @@ export const AlertsView: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-2">
-                {!alert.resolved && (
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
-                    Mark Resolved
-                  </button>
-                )}
+                {!alert.resolved && <span className="px-3 py-2 text-xs font-medium text-gray-500">Read-only</span>}
                 <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                   <MoreVertical className="h-5 w-5" />
                 </button>
@@ -161,7 +206,7 @@ export const AlertsView: React.FC = () => {
         ))}
       </div>
 
-      {filteredAlerts.length === 0 && (
+      {!isLoading && filteredAlerts.length === 0 && (
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
           <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts found</h3>

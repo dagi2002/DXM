@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/Dashboard/DashboardView';
 import { SessionReplaysView } from './components/SessionReplays/SessionReplaysView';
@@ -9,11 +9,45 @@ import { AlertsView } from './components/Alerts/AlertsView';
 import { mockUser } from './data/mockData';
 import { useRealTimeData } from './hooks/useRealTimeData';
 import { useSessionRecorder } from './hooks/useSessionRecorder';
+import type { Alert } from './types';
+import { fetchJson } from './lib/api';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const { lastUpdate } = useRealTimeData();
-    useSessionRecorder();
+  const { sessions, metrics, lastUpdate, error, isLoading } = useRealTimeData();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  useSessionRecorder();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAlerts = async () => {
+      try {
+        const data = await fetchJson<Alert[]>('/alerts');
+        if (!isMounted) {
+          return;
+        }
+
+        setAlerts(Array.isArray(data) ? data : []);
+        setAlertsError(null);
+      } catch (loadError) {
+        if (!isMounted) {
+          return;
+        }
+
+        setAlertsError(loadError instanceof Error ? loadError.message : 'Failed to load alerts');
+      }
+    };
+
+    void loadAlerts();
+    const intervalId = window.setInterval(loadAlerts, 5000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
 
   const renderCurrentView = () => {
@@ -29,7 +63,15 @@ function App() {
       case 'alerts':
         return <AlertsView />;
       default:
-        return <DashboardView />;
+        return (
+          <DashboardView
+            sessions={sessions}
+            metrics={metrics}
+            alerts={alerts}
+            isLoading={isLoading}
+            error={error ?? alertsError}
+          />
+        );
     }
   };
 
