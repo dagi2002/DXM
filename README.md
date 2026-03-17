@@ -1,6 +1,6 @@
 # DXM Pulse
 
-A **Digital Experience Management (DEM)** analytics platform that gives product teams real-time visibility into how users interact with their website — session recordings, heatmaps, user flow analysis, funnel tracking, and performance monitoring in one unified dashboard.
+A **Digital Experience Management (DXM)** analytics platform built for Ethiopian SaaS teams. Gives product teams real-time visibility into how users interact with their website — session recordings, heatmaps, user flow analysis, funnel tracking, performance monitoring, and automated alerts in one unified dashboard.
 
 ---
 
@@ -13,58 +13,75 @@ A **Digital Experience Management (DEM)** analytics platform that gives product 
 
 ## Getting Started
 
-The project has two independently-runnable packages: the frontend (Vite/React) and the backend (Express).
+The project is a monorepo with two packages:
 
-### 1. Install dependencies
+| Package | Location | Port |
+|---|---|---|
+| Web (React + Vite) | `apps/web` | 5173 |
+| API (Express + SQLite) | `apps/api` | 4000 |
+
+### 1. Install all dependencies
+
+From the **project root**:
 
 ```bash
-# Frontend (project root)
 npm install
-
-# Backend
-cd backend && npm install
 ```
 
-### 2. Configure environment
+This installs dependencies for the root workspace, `apps/web`, and `apps/api` in one step.
 
-Copy `.env.example` to `.env` and adjust if needed:
+### 2. Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-### 3. Run in development
-
-Open **two terminals**:
+Edit `.env` and set at minimum:
 
 ```bash
-# Terminal 1 — backend (port 4000)
-cd backend
-npm run dev
-
-# Terminal 2 — frontend (port 5173)
-npm run dev
+JWT_SECRET=your_random_32_char_secret_here
+JWT_REFRESH_SECRET=another_random_32_char_secret
 ```
 
-The frontend is available at `http://localhost:5173`.
-The backend API is available at `http://localhost:4000`.
+For Telegram alerts and Chapa payments, fill in the optional fields. See [docs/environment-variables.md](docs/environment-variables.md) for the full reference.
 
-### 4. Build for production
+### 3. Run the database migration
 
 ```bash
-npm run build       # outputs to /dist
-npm run preview     # serve the built output locally
+npm run migrate -w apps/api
 ```
 
----
+This creates `apps/api/data/dxm.db` with all tables and indexes. Safe to re-run at any time.
 
-## Environment Variables
+### 4. (Optional) Seed demo data
 
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_URL` | `http://localhost:4000` | Base URL of the Express backend. Must be set at **build time** (Vite embeds it). |
+```bash
+npm run seed -w apps/api
+```
 
-> **Note:** If you deploy the backend to a different host or port, set `VITE_API_URL` before building the frontend.
+Populates the database with a demo workspace, site, users, sessions, and events so the dashboard has data to display on first launch.
+
+### 5. Start development servers
+
+Open **two terminals** or use your preferred process manager:
+
+```bash
+# Terminal 1 — API server (port 4000)
+npm run dev -w apps/api
+
+# Terminal 2 — Web app (port 5173)
+npm run dev -w apps/web
+```
+
+The web app is available at **http://localhost:5173**
+The API is available at **http://localhost:4000**
+
+### 6. Build for production
+
+```bash
+npm run build -w apps/web     # outputs to apps/web/dist/
+npm run build -w apps/api     # compiles TypeScript to apps/api/dist/
+```
 
 ---
 
@@ -72,71 +89,98 @@ npm run preview     # serve the built output locally
 
 ```
 project/
-├── src/                        # Frontend source (React + TypeScript)
-│   ├── components/
-│   │   ├── Dashboard/          # Main dashboard view
-│   │   ├── SessionReplays/     # Session list + replay player
-│   │   ├── Analytics/
-│   │   │   ├── HeatmapPage/    # Click / scroll / hover heatmaps
-│   │   │   ├── Funnels/        # Conversion funnel analysis
-│   │   │   ├── UserFlow/       # Page-to-page navigation flow
-│   │   │   └── Performance/    # Core Web Vitals + performance metrics
-│   │   ├── Alerts/             # System alerts list
-│   │   └── Users/              # Platform user management
-│   ├── hooks/
-│   │   ├── useRealTimeData.ts  # Polls /sessions + /metrics every 5 s
-│   │   └── useSessionRecorder.ts # Live browser event capture SDK
-│   ├── lib/
-│   │   └── api.ts              # Typed fetch wrapper
-│   ├── data/
-│   │   └── mockData.ts         # Static mock data for offline/demo use
-│   ├── types/
-│   │   └── index.ts            # Shared TypeScript interfaces
-│   └── App.tsx                 # Root — view routing via useState
-├── backend/
-│   ├── server.js               # Express API server
-│   ├── data.json               # Seed data: metrics, alerts, users
-│   ├── sessions.json           # Live session recordings (auto-created)
-│   └── seedUserFlows.js        # One-time script to seed test session data
-├── .env.example
-└── vite.config.ts
+├── apps/
+│   ├── web/                          # React + Vite frontend
+│   │   └── src/
+│   │       ├── components/
+│   │       │   ├── AppShell.tsx      # Main layout + mobile nav
+│   │       │   ├── Navigation.tsx    # Sidebar navigation
+│   │       │   ├── Dashboard/        # Overview metrics + live feed
+│   │       │   ├── SessionReplays/   # Session list + rrweb replay player
+│   │       │   ├── Analytics/
+│   │       │   │   ├── HeatmapPage/  # Click / scroll / hover heatmaps
+│   │       │   │   ├── Funnels/      # Funnel builder + conversion analysis
+│   │       │   │   ├── UserFlow/     # Page-to-page navigation flow
+│   │       │   │   └── Performance/  # Core Web Vitals monitoring
+│   │       │   ├── Alerts/           # Alert feed + severity badges
+│   │       │   └── Users/            # Workspace user management
+│   │       ├── hooks/
+│   │       │   └── useRealTimeData.ts  # Polls sessions + metrics every 5s
+│   │       ├── lib/
+│   │       │   └── api.ts            # Typed fetch wrapper (auto-sends cookies)
+│   │       └── types/
+│   │           └── index.ts          # Shared TypeScript interfaces
+│   │
+│   └── api/                          # Express + SQLite backend
+│       ├── data/
+│       │   └── dxm.db                # SQLite database (auto-created by migrate)
+│       └── src/
+│           ├── app.ts                # Express app setup + routes
+│           ├── index.ts              # Server entry point
+│           ├── db/
+│           │   ├── schema.sql        # Full DB schema (tables + indexes)
+│           │   ├── migrate.ts        # DDL runner (idempotent)
+│           │   └── seed.ts           # Demo data seeder
+│           ├── routes/
+│           │   ├── auth.ts           # Login / signup / refresh / logout
+│           │   ├── collect.ts        # SDK event ingestion (POST /collect)
+│           │   ├── sessions.ts       # Session list + replay data
+│           │   ├── analytics.ts      # Vitals, heatmap, user flow aggregates
+│           │   ├── funnels.ts        # Funnel CRUD + step-by-step analysis
+│           │   ├── alerts.ts         # Alert list + resolve
+│           │   ├── billing.ts        # Chapa payment integration
+│           │   ├── settings.ts       # Workspace + site settings
+│           │   └── onboarding.ts     # First-run workspace setup
+│           ├── services/
+│           │   └── alertEngine.ts    # Background alert detection
+│           └── middleware/
+│               └── auth.ts           # JWT verification middleware
+│
+├── docs/                             # Detailed project documentation
+│   ├── architecture.md
+│   ├── api-reference.md
+│   ├── database-schema.md
+│   ├── sdk-integration.md
+│   ├── alert-engine.md
+│   └── environment-variables.md
+│
+├── .env.example                      # Environment variable template
+└── package.json                      # Workspace root
 ```
 
 ---
 
-## Module Overview
+## Module Status
 
 | Module | Data Source | Status |
 |---|---|---|
-| Dashboard | Live — backend API (`/sessions`, `/metrics`, `/alerts`) | Working |
-| Session Replays | Live — backend API (`/sessions`) | Working |
-| Heatmaps | Live — backend API (`/sessions`) | Working |
-| User Flow | Live — backend API (`/userflow`, computed from sessions) | Working |
-| Funnel Analysis | Mock — static data in `mockData.ts` | UI complete, real data pending |
-| Performance Monitoring | Mock — static data in `mockData.ts` | UI complete, real data pending |
-| Users | Backend — `data.json` (static seed) | Working |
-| Alerts | Backend — `data.json` (static seed) | Read-only; create/resolve not yet implemented |
+| Dashboard | Live — API (`/sessions`, `/metrics`) | ✅ Working |
+| Session Replays | Live — API (`/sessions`, `/sessions/:id/replay`) | ✅ Working |
+| Heatmaps | Live — API (`/analytics/heatmap`) | ✅ Working |
+| User Flow | Live — API (`/analytics/userflow`) | ✅ Working |
+| Funnel Analysis | Live — API (`/funnels`, `/funnels/:id/analysis`) | ✅ Working |
+| Performance / Vitals | Live — API (`/analytics/vitals`) | ✅ Working |
+| Alerts | Live — API (`/alerts`), auto-detected by alert engine | ✅ Working |
+| Users | Live — API (`/settings/users`) | ✅ Working |
+| Billing (Chapa) | Live — API (`/billing`) | ✅ Working |
+| Telegram Notifications | Background service in alert engine | ✅ Working (optional) |
 
 ---
 
-## Session Recording SDK
+## Environment Variables
 
-`useSessionRecorder` (in `src/hooks/useSessionRecorder.ts`) is embedded in this app itself, so DXM Pulse records its own usage sessions as a built-in demo. It captures mouse moves, clicks, scrolls, and SPA navigation events, batching them to `POST /sessions` every 3 seconds.
+See [docs/environment-variables.md](docs/environment-variables.md) for the full reference.
 
-To instrument an **external** website in the future, the hook's logic will be extracted into a standalone `<script>` snippet or npm package.
+Quick summary:
 
----
-
-## Seeding Test Data
-
-To populate `sessions.json` with synthetic session data for testing heatmaps and user flow:
-
-```bash
-cd backend
-node seedUserFlows.js
-```
-
-This script is safe to re-run — it appends new sessions rather than overwriting existing ones.
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | ✅ Yes | Access token signing key (32+ chars) |
+| `JWT_REFRESH_SECRET` | ✅ Yes | Refresh token signing key (32+ chars) |
+| `DB_PATH` | No | SQLite file path (default: `./data/dxm.db`) |
+| `PORT` | No | API port (default: `4000`) |
+| `TELEGRAM_DEFAULT_BOT_TOKEN` | No | Enables Telegram alert notifications |
+| `CHAPA_SECRET_KEY` | No | Enables Chapa payment processing |
 
 ---
 
@@ -148,6 +192,22 @@ This script is safe to re-run — it appends new sessions rather than overwritin
 | Build tool | Vite 5 |
 | Styling | Tailwind CSS 3 |
 | Icons | Lucide React |
-| Backend | Express.js 4 (ES Modules) |
-| Storage | JSON files (sessions.json, data.json) |
-| Linting | ESLint 9 + TypeScript ESLint |
+| i18n | i18next (Amharic + English) |
+| API server | Express 5 + TypeScript |
+| Runtime | tsx (ESM-native TS runner) |
+| Database | SQLite via better-sqlite3 |
+| Auth | JWT (httpOnly cookies, refresh token rotation) |
+| Payments | Chapa (Ethiopian payment gateway) |
+| Alerts | Telegram Bot API |
+| Session replay | rrweb |
+
+---
+
+## Documentation
+
+- [Architecture Overview](docs/architecture.md)
+- [API Reference](docs/api-reference.md)
+- [Database Schema](docs/database-schema.md)
+- [SDK Integration Guide](docs/sdk-integration.md)
+- [Alert Engine](docs/alert-engine.md)
+- [Environment Variables](docs/environment-variables.md)
