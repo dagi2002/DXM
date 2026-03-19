@@ -1,59 +1,59 @@
 import React, { useState } from 'react';
 import { Navigation } from './components/Navigation';
+import { TopBar } from './components/TopBar';
 import { DashboardView } from './components/Dashboard/DashboardView';
 import { SessionReplaysView } from './components/SessionReplays/SessionReplaysView';
-import { AnalyticsView } from './components/Analytics/AnalyticsView';
 import { HeatmapView } from './components/Analytics/HeatmapPage/HeatmapView';
-import { UsersView } from './components/Users/UsersView';
+import UserFlowView from './components/UserFlows/UserFlowView';
 import { AlertsView } from './components/Alerts/AlertsView';
+import InsightsView from './components/Insights/InsightsView';
+import ReportsView from './components/Reports/ReportsView';
+import SettingsView from './components/Settings/SettingsView';
 import { mockUser } from './data/mockData';
-import { useRealTimeData } from './hooks/useRealTimeData';
-import { useSessionRecorder } from './hooks/useSessionRecorder';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const { lastUpdate } = useRealTimeData();
-    useSessionRecorder();
-
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'sessions':
         return <SessionReplaysView />;
-      case 'analytics':
-        return <AnalyticsView />;
-      case 'heatmap':
+      case 'heatmaps':
         return <HeatmapView />;
-      case 'users':
-        return <UsersView />;
+      case 'userflows':
+        return <UserFlowView />;
       case 'alerts':
         return <AlertsView />;
+      case 'insights':
+        return <InsightsView />;
+      case 'reports':
+        return <ReportsView />;
+      case 'settings':
+        return <SettingsView />;
       default:
         return <DashboardView />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Navigation 
+    <div className="min-h-screen bg-[#fafafa] flex">
+      <Navigation
         currentView={currentView}
         onViewChange={setCurrentView}
-        user={mockUser}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
-      
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto">
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopBar
+          currentView={currentView}
+          user={{ name: mockUser.name, avatar: mockUser.avatar, role: mockUser.role }}
+        />
+        <main className="flex-1 overflow-y-auto">
           {renderCurrentView()}
-        </div>
-        
-        {/* Status Bar */}
-        <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

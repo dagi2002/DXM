@@ -182,15 +182,15 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
   const progressPercent = durationMs ? (Math.min(currentTime, durationMs) / durationMs) * 100 : 0;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="space-y-4 border-b border-slate-200 bg-white px-6 py-6">
+      <div className="space-y-4 border-b border-gray-200 bg-white px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-[180px]">
-            <h3 className="text-lg font-semibold text-slate-900">Session Replay</h3>
-            <p className="truncate text-sm text-slate-500">{metadataDetails.url}</p>
+            <h3 className="text-lg font-semibold text-gray-900">Session Replay</h3>
+            <p className="truncate text-sm text-gray-500">{metadataDetails.url}</p>
           </div>
-          <div className="text-right text-xs text-slate-500">
+          <div className="text-right text-xs text-gray-500">
             <div>{new Date(session.startedAt).toLocaleString()}</div>
             {session.endedAt && (
               <div>Ended {new Date(session.endedAt).toLocaleTimeString()}</div>
@@ -198,37 +198,36 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span className="rounded-full bg-slate-100 px-3 py-1 capitalize">{metadataDetails.device}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1">{metadataDetails.browser}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1">{metadataDetails.language}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1">{metadataDetails.userId}</span>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+          <span className="rounded-full bg-gray-100 px-3 py-1 capitalize">{metadataDetails.device}</span>
+          <span className="rounded-full bg-gray-100 px-3 py-1">{metadataDetails.browser}</span>
+          <span className="rounded-full bg-gray-100 px-3 py-1">{metadataDetails.language}</span>
+          <span className="rounded-full bg-gray-100 px-3 py-1">{metadataDetails.userId}</span>
         </div>
       </div>
 
       {/* Playback Window */}
-      <div className="flex flex-col bg-slate-950">
-        <div className="border-b border-slate-800 bg-slate-900 px-6 py-4">
+      <div className="flex flex-col bg-gray-50">
+        <div className="border-b border-gray-200 bg-gray-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-red-500" />
+              <span className="h-3 w-3 rounded-full bg-red-400" />
               <span className="h-3 w-3 rounded-full bg-yellow-400" />
-              <span className="h-3 w-3 rounded-full bg-green-500" />
+              <span className="h-3 w-3 rounded-full bg-green-400" />
             </div>
-            <div className="flex-1 truncate rounded-md bg-slate-800/70 px-4 py-1 text-xs text-slate-300">
+            <div className="flex-1 truncate rounded-md bg-white border border-gray-200 px-4 py-1 text-xs text-gray-500">
               {metadataDetails.url}
             </div>
-             <div className="hidden items-center gap-3 text-xs text-slate-400 sm:flex">
+             <div className="hidden items-center gap-3 text-xs text-gray-500 sm:flex">
               <span className="capitalize">{metadataDetails.device}</span>
               <span>{metadataDetails.browser}</span>
             </div>
           </div>
         </div>
-          
+
         <div ref={playbackContainerRef} className="px-6 py-6">
-          <div className="relative mx-auto flex h-[460px] max-h-[460px] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-[0_40px_120px_-40px_rgba(15,23,42,0.8)]">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/70 to-slate-900/90" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]" />
+          <div className="relative mx-auto flex h-[460px] max-h-[460px] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-gray-50/70 to-gray-100/90" />
 
             <div className="relative h-full w-full">
               <div className="absolute inset-0">
@@ -239,7 +238,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                     return (
                       <div
                         key={`move-${index}`}
-                        className="absolute h-1 w-1 rounded-full bg-blue-400/40"
+                        className="absolute h-1 w-1 rounded-full bg-indigo-400/40"
                         style={{
                           left: `${((event.x ?? 0) / screenDimensions.width) * 100}%`,
                           top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
@@ -258,7 +257,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                           top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
                         }}
                       >
-                        <div className="h-6 w-6 rounded-full border-2 border-blue-400/80" />
+                        <div className="h-6 w-6 rounded-full border-2 border-indigo-500/80" />
                       </div>
                     );
                   }
@@ -266,8 +265,8 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
 
                 {/* Pointer Indicator */}
                 <div
-                  className={`absolute h-4 w-4 rounded-full border-2 border-white/80 ${
-                    isPlaying ? "bg-blue-500" : "bg-blue-500/70"
+                  className={`absolute h-4 w-4 rounded-full border-2 border-gray-600/80 ${
+                    isPlaying ? "bg-indigo-600" : "bg-indigo-500/70"
                   }`}
                   style={{
                     left: `${normalisedPointerPosition.x}%`,
@@ -278,7 +277,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                 {/* Click pulse animation */}
                 {recentClick !== null && currentTime - recentClick < 400 && (
                   <div
-                    className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-500/70 animate-ping"
+                    className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500/70 animate-ping"
                     style={{
                       left: `${normalisedPointerPosition.x}%`,
                       top: `${normalisedPointerPosition.y}%`,
@@ -292,19 +291,19 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
       </div>
 
       {/* Controls */}
-      <div className="space-y-5 border-t border-slate-800 bg-white px-6 py-6 text-slate-900">
+      <div className="space-y-5 border-t border-gray-200 bg-white px-6 py-6 text-gray-900">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={handleReset}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:text-slate-700"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-500 transition hover:text-gray-900 hover:bg-gray-50"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
 
             <button
               onClick={handlePlayPause}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </button>
@@ -313,13 +312,13 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleSkip(-10000)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-50"
             >
               <SkipBack className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleSkip(10000)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-50"
             >
               <SkipForward className="h-4 w-4" />
             </button>
@@ -328,13 +327,13 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
 
         {/* Timeline */}
         <div className="flex min-w-[200px] flex-1 items-center gap-3">
-          <span className="text-sm font-medium text-slate-600">{formatTime(currentTime)}</span>
+          <span className="text-sm font-medium text-gray-500">{formatTime(currentTime)}</span>
 
           <div className="relative flex-1">
             <div className="pointer-events-none absolute inset-0 flex items-center">
-              <div className="h-1 w-full rounded-full bg-slate-200">
+              <div className="h-1 w-full rounded-full bg-gray-200">
                 <div
-                  className="h-full rounded-full bg-blue-500"
+                  className="h-full rounded-full bg-indigo-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -343,7 +342,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             {timelineMarkers.map((marker, index) => {
               const color =
                 marker.type === "click"
-                  ? "bg-blue-500"
+                  ? "bg-indigo-400"
                   : marker.type === "scroll"
                   ? "bg-yellow-400"
                   : "bg-pink-500";
@@ -358,7 +357,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             })}
 
             <div
-              className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-600 shadow ring-2 ring-blue-500/40"
+              className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-indigo-600 shadow ring-2 ring-indigo-500/40"
               style={{ left: `${progressPercent}%` }}
             />
 
@@ -373,7 +372,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             />
           </div>
 
-          <span className="text-sm font-medium text-slate-600">{formatTime(durationMs)}</span>
+          <span className="text-sm font-medium text-gray-500">{formatTime(durationMs)}</span>
         </div>
 
         {/* Speed + fullscreen */}
@@ -381,7 +380,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
           <select
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm"
+            className="rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
@@ -391,16 +390,16 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
 
           <button
             onClick={handleFullscreen}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-50"
           >
             <Maximize2 className="h-4 w-4" />
           </button>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <span className="h-2 w-2 rounded-full bg-indigo-400" />
             Click
           </span>
           <span className="flex items-center gap-2">
@@ -414,26 +413,26 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
         </div>
 
         {/* Stats footer */}
-        <div className="grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 text-sm text-slate-700 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 border-t border-gray-200 pt-4 text-sm text-gray-700 md:grid-cols-3">
           <div className="flex items-center gap-2">
-            <Timer className="h-4 w-4 text-slate-500" />
+            <Timer className="h-4 w-4 text-gray-400" />
             <span>
               Duration
-              <span className="ml-2 font-medium text-slate-900">{formatTime(durationMs)}</span>
+              <span className="ml-2 font-medium text-gray-900">{formatTime(durationMs)}</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <MousePointerClick className="h-4 w-4 text-slate-500" />
+            <MousePointerClick className="h-4 w-4 text-gray-400" />
             <span>
               Clicks
-              <span className="ml-2 font-medium text-slate-900">{session.stats.clicks}</span>
+              <span className="ml-2 font-medium text-gray-900">{session.stats.clicks}</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-slate-500" />
+            <Activity className="h-4 w-4 text-gray-400" />
             <span>
               Total Events
-              <span className="ml-2 font-medium text-slate-900">{session.stats.totalEvents}</span>
+              <span className="ml-2 font-medium text-gray-900">{session.stats.totalEvents}</span>
             </span>
           </div>
         </div>

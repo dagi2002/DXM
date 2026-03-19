@@ -30,7 +30,7 @@ export const SessionReplaysView: React.FC = () => {
         const data = await response.json() as SessionRecording[];
         if (!isMounted) return;
 
-        // ✅ Normalize backend response to expected structure
+        // Normalize backend response to expected structure
         const normalizedSessions: SessionRecording[] = data.map(session => ({
           ...session,
           metadata: {
@@ -44,7 +44,7 @@ export const SessionReplaysView: React.FC = () => {
             devicePixelRatio: session.metadata?.devicePixelRatio,
             timezone: session.metadata?.timezone
           },
-          // ✅ Ensure events always exist and have correct type
+          // Ensure events always exist and have correct type
           events: Array.isArray(session.events) ? session.events : [],
         }));
 
@@ -52,7 +52,7 @@ export const SessionReplaysView: React.FC = () => {
         setIsLoading(false);
         setError(null);
 
-        // ✅ Preserve session selection after refresh
+        // Preserve session selection after refresh
         setSelectedSession(prev =>
           prev ? normalizedSessions.find(s => s.id === prev.id) ?? null : null
         );
@@ -78,9 +78,10 @@ export const SessionReplaysView: React.FC = () => {
     <div className="p-6 h-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Session Replays</h1>
-          <p className="text-gray-600">Watch real user sessions to understand behavior patterns</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Session Replay</h1>
+          <p className="text-gray-500">Watch how real users interact with your site</p>
         </div>
+        <span className="text-gray-500 text-sm">{sessions.length} recordings</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -98,15 +99,15 @@ export const SessionReplaysView: React.FC = () => {
           {selectedSession ? (
             <SessionPlayer session={selectedSession} />
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <span className="text-2xl">🎬</span>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Select a session to replay
               </h3>
-              <p className="text-gray-600 max-w-md">
-                Choose a session from the list to watch how users interacted with your website. 
+              <p className="text-gray-500 max-w-md">
+                Choose a session from the list to watch how users interacted with your website.
                 See their clicks, scrolls, and journey through your pages.
               </p>
             </div>

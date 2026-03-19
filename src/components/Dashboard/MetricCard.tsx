@@ -1,51 +1,47 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { Metric } from '../../types';
+import { TrendingUp, TrendingDown, Users, Clock, MousePointer2, Eye } from 'lucide-react';
 
 interface MetricCardProps {
-  metric: Metric;
+  name: string;
+  value: string;
+  change: number;
+  trend: 'up' | 'down' | 'stable';
+  icon: string;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ metric }) => {
-  const getTrendIcon = () => {
-    switch (metric.trend) {
-      case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-500" />;
-      case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
-      default:
-        return <Minus className="h-4 w-4 text-gray-400" />;
-    }
-  };
+const iconMap: Record<string, React.FC<{ className?: string }>> = {
+  Users,
+  Clock,
+  MousePointer: MousePointer2,
+  Eye,
+};
 
-  const getTrendColor = () => {
-    switch (metric.trend) {
-      case 'up':
-        return 'text-green-600';
-      case 'down':
-        return 'text-red-600';
-      default:
-        return 'text-gray-500';
-    }
-  };
+export const MetricCard: React.FC<MetricCardProps> = ({ name, value, change, trend, icon }) => {
+  const IconComponent = iconMap[icon] || Users;
+  const isPositive = change >= 0;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-gray-600">{metric.name}</h3>
-        {getTrendIcon()}
-      </div>
-      
-      <div className="flex items-end space-x-2">
-        <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
-        <div className={`flex items-center text-sm ${getTrendColor()}`}>
-          <span>{Math.abs(metric.change)}%</span>
+    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+      <div className="flex items-start justify-between mb-3">
+        <div className="bg-orange-50 p-2 rounded-full">
+          <IconComponent className="w-5 h-5 text-orange-500" />
+        </div>
+        <div className={`flex items-center gap-1 text-sm ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+          {isPositive ? (
+            <TrendingUp className="w-4 h-4" />
+          ) : (
+            <TrendingDown className="w-4 h-4" />
+          )}
         </div>
       </div>
-      
-      <p className="text-xs text-gray-500 mt-1">
-        {metric.trend === 'up' ? 'Increase' : metric.trend === 'down' ? 'Decrease' : 'No change'} from last period
-      </p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className={`text-sm font-medium ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+          {isPositive ? '+' : ''}{change}%
+        </span>
+        <span className="text-sm text-gray-400">vs last week</span>
+      </div>
+      <p className="text-sm text-gray-500 mt-1">{name}</p>
     </div>
   );
 };

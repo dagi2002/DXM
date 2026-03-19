@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "DXM Pulse Web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5299"],
+      "port": 5299
+    }
+  ]
+}

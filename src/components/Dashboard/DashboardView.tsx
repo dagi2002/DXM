@@ -1,61 +1,56 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 import { MetricCard } from './MetricCard';
 import { ActivityChart } from './ActivityChart';
-import { AlertPanel } from './AlertPanel';
-import { LiveSessions } from './LiveSessions';
-import { mockMetrics } from '../../data/mockData';
+import { DevicesChart } from './DevicesChart';
+import { TopPagesTable } from './TopPagesTable';
+import { mockDashboardMetrics, mockSessionsOverTime } from '../../data/mockData';
 
 export const DashboardView: React.FC = () => {
-  const activityData = Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
-    value: Math.floor(Math.random() * 500) + 100
-  }));
-
-  const conversionData = Array.from({ length: 7 }, (_, i) => ({
-    time: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-    value: Math.floor(Math.random() * 50) + 20
-  }));
-
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Real-time insights into your digital experience</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Behavior insights at a glance</p>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-sm text-gray-600">Live</span>
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 text-sm text-gray-600">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            47 active now
+          </span>
+          <button className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+            Last 7 days
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          </button>
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockMetrics.map((metric, index) => (
-          <MetricCard key={index} metric={metric} />
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {mockDashboardMetrics.map((m) => (
+          <MetricCard
+            key={m.name}
+            name={m.name}
+            value={m.value}
+            change={m.change}
+            trend={m.trend}
+            icon={m.icon}
+          />
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ActivityChart 
-          title="Session Activity (24h)"
-          data={activityData}
-          color="#0066CC"
-        />
-        <ActivityChart 
-          title="Daily Conversions"
-          data={conversionData}
-          color="#00A896"
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ActivityChart title="Sessions Over Time" data={mockSessionsOverTime} />
+        </div>
+        <DevicesChart />
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LiveSessions />
-        <AlertPanel />
-      </div>
+      {/* Top Pages */}
+      <TopPagesTable />
     </div>
   );
 };

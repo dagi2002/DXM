@@ -37,35 +37,35 @@ export const HeatmapStats: React.FC<HeatmapStatsProps> = ({
 
   return (
     <aside className="space-y-4">
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Intensity Legend</h3>
         <div className="space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-gray-600">High</span>
+            <span className="text-gray-500">High</span>
             <div className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full bg-orange-500" />
-              <span className="text-xs text-gray-400">80%+</span>
+              <span className="text-xs text-gray-500">80%+</span>
 
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-600">Medium</span>
+            <span className="text-gray-500">Medium</span>
             <div className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full bg-orange-300" />
-              <span className="text-xs text-gray-400">40-80%</span>
+              <span className="text-xs text-gray-500">40-80%</span>
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-600">Low</span>
+            <span className="text-gray-500">Low</span>
             <div className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full bg-orange-200" />
-              <span className="text-xs text-gray-400">0-40%</span>
+              <span className="text-xs text-gray-500">0-40%</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Summary</h3>
@@ -76,33 +76,33 @@ export const HeatmapStats: React.FC<HeatmapStatsProps> = ({
             <p className="text-sm font-medium text-gray-900 truncate max-w-[160px]">{selectedUrlLabel}</p>
             <p className="mt-1 text-xs text-gray-500">Session Filter</p>
             <p className="text-sm font-medium text-gray-900 truncate max-w-[160px]">{selectedSessionLabel}</p>
-          
+
           </div>
         </div>
         <dl className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-            <dt className="text-xs font-medium text-blue-600 uppercase tracking-wide">{primaryLabel}</dt>
-            <dd className="text-2xl font-semibold text-blue-700">{primaryValue}</dd>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <dt className="text-xs font-medium text-indigo-600 uppercase tracking-wide">{primaryLabel}</dt>
+            <dd className="text-2xl font-bold text-gray-900">{primaryValue}</dd>
           </div>
-          <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
-            <dt className="text-xs font-medium text-orange-600 uppercase tracking-wide">Avg. Scroll Depth</dt>
-            <dd className="text-2xl font-semibold text-orange-700">{isLoading ? '—' : `${Math.round(averageScrollDepth)}px`}</dd>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <dt className="text-xs font-medium text-amber-600 uppercase tracking-wide">Avg. Scroll Depth</dt>
+            <dd className="text-2xl font-bold text-gray-900">{isLoading ? '—' : `${Math.round(averageScrollDepth)}px`}</dd>
           </div>
         </dl>
 
         {activeType === 'hover' && (
-          <div className="mt-4 rounded-lg bg-slate-50 border border-dashed border-slate-200 px-4 py-3 text-sm text-gray-600">
+          <div className="mt-4 rounded-lg bg-gray-50 border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500">
             Hover hotspots highlight areas where visitors linger their cursor. Combine with click data to understand intent and friction.
           </div>
         )}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-1">Most Clicked Elements</h3>
         <p className="text-xs text-gray-500 mb-3">Top selectors ranked by interaction volume</p>
         {isLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
-          
+
         ) : mostClickedElements.length ? (
           <ul className="space-y-3">
             {mostClickedElements.map((item) => (

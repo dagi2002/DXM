@@ -93,11 +93,63 @@ export interface Alert {
   id: string;
   type: 'error' | 'performance' | 'frustration' | 'conversion';
   severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'new' | 'acknowledged' | 'resolved';
   title: string;
   description: string;
   timestamp: Date;
   resolved: boolean;
+  page?: string;
   affectedSessions: number;
+}
+
+export interface Report {
+  id: string;
+  title: string;
+  description: string;
+  type: 'weekly' | 'behavior' | 'custom';
+  createdAt: Date;
+  status: 'published' | 'draft';
+}
+
+export interface WebsiteConfig {
+  name: string;
+  url: string;
+  trackingId: string;
+  status: 'active' | 'inactive';
+  totalSessions: number;
+  totalPageviews: number;
+}
+
+export interface InsightCard {
+  id: string;
+  title: string;
+  description: string;
+  change: number;
+  trend: 'up' | 'down' | 'stable';
+  icon: string;
+}
+
+export interface TopPage {
+  name: string;
+  path: string;
+  views: number;
+  avgTime: string;
+  scrollDepth: number;
+  bounceRate: number;
+}
+
+export interface UserFlowStep {
+  id: string;
+  page: string;
+  sessions: number;
+  column: number;
+  targets: { page: string; percent: number }[];
+}
+
+export interface DropOffPoint {
+  page: string;
+  dropOffRate: number;
+  usersLeft: number;
 }
 
 export interface HeatmapData {

@@ -234,12 +234,12 @@ const availableSessionOptions = useMemo(() => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Heatmap Analysis</h2>
-          <p className="text-gray-600">Explore how visitors click, scroll, and hover across your experiences.</p>
+          <h2 className="text-2xl font-semibold text-gray-900">Heatmap Analysis</h2>
+          <p className="text-gray-500">Explore how visitors click, scroll, and hover across your experiences.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-white border border-gray-200 rounded-lg px-3 py-2">
+          <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
             <label htmlFor="url-filter" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Page URL
             </label>
@@ -247,7 +247,7 @@ const availableSessionOptions = useMemo(() => {
               id="url-filter"
               value={selectedUrl}
               onChange={(event) => setSelectedUrl(event.target.value)}
-              className="mt-1 block w-56 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 block w-56 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="all">All URLs</option>
               {availableUrls.map((url) => (
@@ -257,7 +257,7 @@ const availableSessionOptions = useMemo(() => {
               ))}
             </select>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg px-3 py-2">
+          <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
             <label htmlFor="session-filter" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Session
             </label>
@@ -265,7 +265,7 @@ const availableSessionOptions = useMemo(() => {
               id="session-filter"
               value={selectedSessionId}
               onChange={(event) => setSelectedSessionId(event.target.value)}
-              className="mt-1 block w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 block w-48 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="all">All Sessions</option>
               {availableSessionOptions.map((sessionOption) => (
@@ -279,7 +279,7 @@ const availableSessionOptions = useMemo(() => {
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex bg-gray-100 rounded-lg p-1 w-full lg:w-auto">
+        <div className="flex border-b border-gray-200 w-full lg:w-auto">
           {(
             [
               { type: 'click' as const, label: 'Clicks', icon: MousePointer },
@@ -291,8 +291,8 @@ const availableSessionOptions = useMemo(() => {
               key={type}
               type="button"
               onClick={() => setActiveType(type)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeType === type ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                activeType === type ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-gray-900'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -311,38 +311,38 @@ const availableSessionOptions = useMemo(() => {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{selectedUrlLabel}</h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-500">
                 Showing {activeType === 'click' ? 'click' : activeType === 'scroll' ? 'scroll' : 'hover'} interactions
                 {selectedSessionId !== 'all' ? ` for session ${selectedSessionLabel}` : ''}
               </p>
             </div>
-            <div className="relative rounded-lg bg-slate-50 overflow-hidden border border-dashed border-slate-200" style={{ minHeight: '520px' }}>
+            <div className="relative rounded-xl bg-white overflow-hidden border border-dashed border-gray-300" style={{ minHeight: '520px' }}>
               <div className="absolute inset-0 opacity-80">
-                <div className="absolute inset-6 rounded-lg bg-white shadow-sm p-6 space-y-6 overflow-y-auto pointer-events-none">
-                  <div className="h-6 w-1/3 rounded bg-slate-100" />
+                <div className="absolute inset-6 rounded-lg bg-gray-50 shadow-sm p-6 space-y-6 overflow-y-auto pointer-events-none">
+                  <div className="h-6 w-1/3 rounded bg-gray-200" />
                   <div className="space-y-3">
-                    <div className="h-4 rounded bg-slate-100" />
-                    <div className="h-4 rounded bg-slate-100 w-3/4" />
-                    <div className="h-4 rounded bg-slate-100 w-1/2" />
+                    <div className="h-4 rounded bg-gray-200" />
+                    <div className="h-4 rounded bg-gray-200 w-3/4" />
+                    <div className="h-4 rounded bg-gray-200 w-1/2" />
                   </div>
-                  <div className="h-10 w-36 rounded bg-blue-100" />
+                  <div className="h-10 w-36 rounded bg-indigo-100" />
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="h-32 rounded bg-slate-100" />
-                    <div className="h-32 rounded bg-slate-100" />
-                    <div className="h-32 rounded bg-slate-100" />
-                    <div className="h-32 rounded bg-slate-100" />
+                    <div className="h-32 rounded bg-gray-200" />
+                    <div className="h-32 rounded bg-gray-200" />
+                    <div className="h-32 rounded bg-gray-200" />
+                    <div className="h-32 rounded bg-gray-200" />
                   </div>
-                  <div className="h-24 rounded bg-slate-100" />
+                  <div className="h-24 rounded bg-gray-200" />
                 </div>
               </div>
               <HeatmapCanvas

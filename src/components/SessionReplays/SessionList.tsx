@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Monitor, Smartphone, Tablet, Timer, MousePointer, Activity } from 'lucide-react';
+import { Search, Monitor, Smartphone, Tablet, Timer, MousePointer, Activity, Play } from 'lucide-react';
 import type { SessionRecording } from '../../types';
 
 interface SessionListProps {
@@ -55,7 +55,7 @@ export const SessionList: React.FC<SessionListProps> = ({
   }, [sortedSessions, searchTerm, deviceFilter]);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center space-x-4 mb-4">
           <div className="flex-1 relative">
@@ -65,7 +65,7 @@ export const SessionList: React.FC<SessionListProps> = ({
               placeholder="Search by URL or user agent"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
             />
           </div>
           </div>
@@ -77,8 +77,8 @@ export const SessionList: React.FC<SessionListProps> = ({
               onClick={() => setDeviceFilter(filter)}
               className={`px-3 py-1 text-sm rounded-full transition-colors capitalize ${
                 deviceFilter === filter
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               {filter}
@@ -94,7 +94,7 @@ export const SessionList: React.FC<SessionListProps> = ({
           )}
 
           {!isLoading && error && (
-            <div className="px-3 py-4 text-sm text-red-500">{error}</div>
+            <div className="px-3 py-4 text-sm text-red-600">{error}</div>
           )}
 
           {!isLoading && !error && filteredSessions.length === 0 && (
@@ -110,34 +110,52 @@ export const SessionList: React.FC<SessionListProps> = ({
             const deviceIcon = getDeviceIcon(session.metadata.device);
             const isSelected = selectedSession?.id === session.id;
             const statusLabel = session.completed ? 'Completed' : 'Recording';
-            const statusColor = session.completed ? 'bg-gray-500' : 'bg-green-500';
+            const frustrationEvents = session.stats.clicks > 10 ? session.stats.clicks - 10 : 0;
+            const progressPercent = session.duration > 0 ? Math.min((session.stats.totalEvents / Math.max(session.duration, 1)) * 100, 100) : 0;
 
             return (
-              <button
+              <div
                 key={session.id}
                 onClick={() => onSessionSelect(session)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  isSelected ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
+                className={`w-full text-left p-4 rounded-lg border transition-colors cursor-pointer ${
+                  isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-indigo-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2 text-sm font-medium text-gray-900">
-                    {deviceIcon}
-                    <span className="truncate max-w-[220px]">{displayUrl}</span>
+                    <span className="text-gray-400">{deviceIcon}</span>
+                    <span className="truncate max-w-[180px]">{displayUrl}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
-                    <span className="text-xs text-gray-500">{statusLabel}</span>
+                    <span className={`text-xs rounded-full px-2 py-0.5 ${
+                      session.completed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>{statusLabel}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSessionSelect(session); }}
+                      className="bg-indigo-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-indigo-700 transition-colors"
+                    >
+                      <Play className="h-3.5 w-3.5 ml-0.5" />
+                    </button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                  <span className="truncate max-w-[200px]">{displayUser}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="truncate max-w-[120px] font-medium text-gray-900">{displayUser}</span>
+                    <span className="bg-indigo-100 text-indigo-700 text-xs rounded-full px-2 py-0.5">Returning</span>
+                    {frustrationEvents > 0 && (
+                      <span className="bg-red-100 text-red-700 text-xs rounded-full px-2 py-0.5">Rage clicks</span>
+                    )}
+                  </div>
                   <span>{new Date(session.startedAt).toLocaleString()}</span>
-                  {session.endedAt && <span>Duration {formatDuration(session.duration)}</span>}
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-600">
+                {/* Progress bar */}
+                <div className="w-full bg-gray-100 rounded-full h-1 mb-2">
+                  <div className="bg-indigo-500 h-1 rounded-full" style={{ width: `${progressPercent}%` }} />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-gray-500">
                   <span className="flex items-center space-x-1">
                     <Timer className="h-3 w-3" />
                     <span>{formatDuration(session.duration)}</span>
@@ -151,7 +169,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                     <span>{session.stats.totalEvents} events</span>
                   </span>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
