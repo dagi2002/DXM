@@ -13,6 +13,7 @@ import {
   Radar,
   Save,
   ShieldAlert,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -39,6 +40,12 @@ interface DeleteBlockers {
   alerts: number;
   funnels: number;
 }
+
+const evidenceToneClasses = {
+  positive: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  neutral: 'border-surface-200 bg-surface-50 text-surface-700',
+  warning: 'border-amber-200 bg-amber-50 text-amber-700',
+} as const;
 
 export const ClientDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -151,9 +158,10 @@ export const ClientDetailPage: React.FC = () => {
         throw new Error(payload.error || 'Failed to update client site');
       }
 
-      const updatedClient = (await response.json()) as ClientSiteDetail;
-      setClient(updatedClient);
-      setEditForm({ name: updatedClient.name, domain: updatedClient.domain });
+      await response.json();
+      const refreshedClient = await fetchJson<ClientSiteDetail>(`/sites/${id}`);
+      setClient(refreshedClient);
+      setEditForm({ name: refreshedClient.name, domain: refreshedClient.domain });
       setIsEditing(false);
       setEditSuccess('Client site updated.');
     } catch (saveError) {
@@ -268,6 +276,48 @@ export const ClientDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {client.ai && (
+        <section className="mt-6 rounded-[28px] border border-primary-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                <Sparkles className="h-3.5 w-3.5" />
+                Site AI brief
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold text-surface-900">{client.ai.headline}</h2>
+              <p className="mt-3 text-sm leading-6 text-surface-600">{client.ai.summary}</p>
+            </div>
+            <p className="shrink-0 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+              {new Date(client.ai.generatedAt).toLocaleString()}
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Top risk</p>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                {client.ai.topRisk || 'No major site risk signal surfaced right now.'}
+              </p>
+            </div>
+            <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Top opportunity</p>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                {client.ai.topOpportunity || 'No immediate site opportunity surfaced right now.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {client.ai.evidence.slice(0, 3).map((item) => (
+              <div key={item.id} className={`rounded-3xl border p-5 ${evidenceToneClasses[item.tone]}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em]">{item.label}</p>
+                <p className="mt-3 text-lg font-semibold text-surface-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-6 rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

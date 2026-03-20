@@ -16,10 +16,12 @@ Primary contract surfaces:
 - `SessionReplay`
 - `HeatmapReadModel`
 - `OverviewAiBrief`
+- `SiteAiBrief`
 
 Public endpoints are centralized in `API_ENDPOINTS` so SDK and docs stay aligned with the API surface.
 
 The phase-1 AI surface is intentionally small:
 
 - `GET /overview` may include an optional deterministic `ai` block using `OverviewAiBrief`
+- `GET /sites/:id` may include an optional deterministic `ai` block using `SiteAiBrief`
 - the AI contract is shared so API and web stay aligned even while AI remains an internal, cached interpretation layer

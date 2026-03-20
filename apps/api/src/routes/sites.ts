@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { getSiteAiBriefOrNull } from '../services/ai/index.js';
 import { getSiteDetail, getSiteVerification, listWorkspaceSites } from '../services/siteAnalytics.js';
 
 const router = Router();
@@ -148,7 +149,8 @@ router.get('/:id/overview', (req, res) => {
 router.get('/:id', (req, res) => {
   const detail = getSiteDetail(req.user!.workspaceId, req.params.id);
   if (!detail) return res.status(404).json({ error: 'Client site not found' });
-  return res.json(detail);
+  const ai = getSiteAiBriefOrNull(req.user!.workspaceId, detail);
+  return res.json(ai ? { ...detail, ai } : detail);
 });
 
 export default router;

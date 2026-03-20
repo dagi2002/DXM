@@ -120,10 +120,10 @@ Still intentionally lightweight:
 
 Phase-1 AI lives inside `apps/api/src/services/ai` as an internal interpretation layer, not a separate service:
 
-- it reads the existing overview rollups instead of bypassing product-truth services
-- it generates a deterministic overview brief only
+- it reads the existing overview and site-detail rollups instead of bypassing product-truth services
+- it generates deterministic overview and site briefs only
 - it caches results in `ai_artifacts`
-- it fails open, so `/overview` still works when AI is disabled or the AI cache table is unavailable
+- it fails open, so `/overview` and the primary client detail route still work when AI is disabled or the AI cache table is unavailable
 
 This keeps AI additive to the current DXM product rather than turning it into a separate analytics surface.
 

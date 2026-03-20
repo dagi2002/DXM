@@ -238,7 +238,7 @@ The `urlPattern` is matched against `events.url` using SQL `LIKE '%pattern%'`.
 
 ### `ai_artifacts`
 
-Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1 uses this for the overview AI brief only, but the table is intentionally generic.
+Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1 uses this for overview and site AI briefs, but the table is intentionally generic.
 
 | Column | Type | Description |
 |---|---|---|
@@ -247,7 +247,7 @@ Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1
 | `site_id` | TEXT FK | Optional reference to `sites.id` |
 | `entity_type` | TEXT | `workspace` \| `site` \| `alert` \| `funnel` \| `session` \| `report` |
 | `entity_id` | TEXT | ID of the entity the artifact belongs to |
-| `artifact_kind` | TEXT | Phase 1 uses `overview_brief` |
+| `artifact_kind` | TEXT | Phase 1 uses `overview_brief` and `site_brief` |
 | `period_key` | TEXT | Phase 1 uses `7d` |
 | `status` | TEXT | `ready` \| `error` \| `building` |
 | `generator_type` | TEXT | `deterministic` \| `llm` |
@@ -261,7 +261,7 @@ Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1
 
 Important notes:
 
-- the phase-1 overview brief is deterministic and lazy-generated on `GET /overview`
+- the phase-1 overview and site briefs are deterministic and lazy-generated on the primary read routes
 - cache invalidation is driven primarily by `input_hash`, not just TTL
 - `building` is reserved for a later async refresh path, but phase 1 still writes `ready` artifacts synchronously
 - if this table is missing or AI is disabled, the overview route still returns the non-AI response

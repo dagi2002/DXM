@@ -1,4 +1,7 @@
-import type { OverviewAiBrief as OverviewAiBriefContract } from '../../../../packages/contracts/index.js';
+import type {
+  OverviewAiBrief as OverviewAiBriefContract,
+  SiteAiBrief as SiteAiBriefContract,
+} from '../../../../packages/contracts/index.js';
 
 export type {
   CollectReplayRequest,
@@ -6,6 +9,7 @@ export type {
   HeatmapPoint as SessionHeatmapPoint,
   HeatmapReadModel,
   OverviewAiBrief,
+  SiteAiBrief,
   SessionDetail as SessionRecordingDetail,
   SessionRecordingEvent,
   SessionRecordingMetadata,
@@ -137,6 +141,7 @@ export interface ClientSiteDetail extends ClientSiteSummary {
     stepCount: number;
     createdAt: string;
   }>;
+  ai?: SiteAiBriefContract;
 }
 
 export interface AgencyReportSummary {

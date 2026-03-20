@@ -178,3 +178,15 @@ export interface OverviewAiBrief {
   recommendations: AiRecommendation[];
   evidence: AiEvidenceItem[];
 }
+
+export interface SiteAiBrief {
+  period: '7d';
+  mode: 'deterministic';
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  topRisk: string | null;
+  topOpportunity: string | null;
+  recommendations: AiRecommendation[];
+  evidence: AiEvidenceItem[];
+}

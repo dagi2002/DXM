@@ -259,6 +259,14 @@ Returns the full client-site detail payload:
 - `openAlertsList`
 - `vitals`
 - `funnels`
+- optional `ai`
+
+When AI is enabled, `GET /sites/:id` may include an additional deterministic `ai` block:
+
+- contract source of truth: `packages/contracts/index.d.ts`
+- DTO: `SiteAiBrief`
+- generated from the existing client detail payload, not a separate analytics pipeline
+- omitted entirely when `DXM_AI_ENABLED` is disabled or AI fails open
 
 ### `GET /sites/:id/verify`
 
@@ -266,7 +274,7 @@ Checks whether the client site has started sending traffic.
 
 ### `GET /sites/:id/overview`
 
-Alias for the client detail overview payload.
+Compatibility alias for the client detail overview payload. In this phase it remains unchanged and does not add the optional site AI brief.
 
 ## Funnels
 

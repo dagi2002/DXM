@@ -1,4 +1,4 @@
-import type { OverviewAiBrief } from '../../../../packages/contracts/index.js';
+import type { OverviewAiBrief, SiteAiBrief } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
 
 const DEFAULT_SDK_CDN_URL = 'https://cdn.dxmpulse.com/dxm.js';
@@ -106,6 +106,7 @@ export interface ClientSiteDetail extends ClientSiteSummary {
     stepCount: number;
     createdAt: string;
   }>;
+  ai?: SiteAiBrief;
 }
 
 export interface PortfolioOverview {
