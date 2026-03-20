@@ -38,7 +38,7 @@ npm run seed -w apps/api
 |---|---|
 | Health | `GET /health` |
 | Auth | `/auth/signup`, `/auth/login`, `/auth/logout`, `/auth/me` |
-| Sites | `GET /sites`, `POST /sites`, `PATCH /sites/:id`, `GET /sites/:id`, `GET /sites/:id/verify`, `GET /sites/:id/overview` |
+| Sites | `GET /sites`, `POST /sites`, `PATCH /sites/:id`, `DELETE /sites/:id`, `GET /sites/:id`, `GET /sites/:id/verify`, `GET /sites/:id/overview` |
 | Collection | `POST /collect`, `POST /collect-replay/replay` |
 | Sessions | `GET /sessions`, `GET /sessions/:id`, `GET /sessions/:id/replay` |
 | Analytics | `GET /analytics/metrics`, `GET /analytics/vitals`, `GET /analytics/userflow`, `GET /analytics/heatmap` |
@@ -77,18 +77,20 @@ See [../../docs/environment-variables.md](../../docs/environment-variables.md) f
 
 Fully live:
 - Auth and workspace isolation
-- `/sites` as the primary client-site contract
+- `/sites` as the primary client-site contract, including conservative clean-site deletion
 - Session/event ingestion
 - Replay storage
 - Shared session DTO/read-model contract
 - Alerts and Telegram delivery
 - Metrics, funnels, user flow, users endpoint
 - Site audit and weekly digest plumbing
+- `/onboarding/sites*` as a thin compatibility alias for create/list/verify only
 
 Still partial:
 - Billing webhook is a stub for future Chapa automation
 - Digest triggering is protected by `x-digest-key` and intended for a scheduler or cron job
 - The API is SQLite-first and optimized for MVP/self-hosted simplicity, not multi-region scale
+- Site deletion is intentionally conservative: no cascade delete and no archive flow yet
 
 ## Related Docs
 

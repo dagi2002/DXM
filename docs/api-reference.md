@@ -211,6 +211,36 @@ Updates client-site name and/or domain.
 }
 ```
 
+### `DELETE /sites/:id`
+
+Deletes a client site only when it has no dependent data or linked configuration.
+
+Success response:
+
+- `204 No Content`
+
+Blocked response:
+
+- `409 Conflict`
+
+```json
+{
+  "error": "Client site cannot be deleted because dependent data exists.",
+  "blockers": {
+    "sessions": 1,
+    "replays": 1,
+    "alerts": 1,
+    "funnels": 1
+  }
+}
+```
+
+Notes:
+
+- this is intentionally conservative
+- there is no cascade delete in the current implementation
+- there is no archive flow yet
+
 ### `GET /sites/:id`
 
 Returns the full client-site detail payload:
@@ -343,6 +373,8 @@ Sends a test Telegram message using stored workspace credentials.
 ## Compatibility Aliases
 
 The primary client-site contract is `/sites`. The onboarding UI uses `/sites`, and new integrations should also use `/sites`.
+
+`/onboarding/sites*` still exists only as a thin compatibility alias for older create/list/verify callers. It now delegates to the same `/sites` handlers so the compatibility surface does not drift from the primary contract. Do not build new product code against the compatibility routes.
 
 ### `POST /onboarding/sites`
 

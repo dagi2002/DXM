@@ -25,7 +25,7 @@ DXM Pulse API (apps/api)
   ├─ auth + cookies
   ├─ analytics + funnels
   ├─ alerts + Telegram
-  ├─ onboarding + sites
+  ├─ site management + onboarding compatibility alias
   ├─ public site audit
   ├─ weekly digest trigger
   ├─ session write model (collect + replay ingestion)
@@ -110,6 +110,8 @@ Still intentionally lightweight:
 - no job queue yet for digest or heavy background work
 - no separate analytics warehouse
 - billing automation and AI features are not complete in this branch
+- no archive flow or cascade delete for client sites yet
+- `/onboarding/sites*` still exists only as a thin compatibility alias over `/sites`
 
 ## Session Boundary
 

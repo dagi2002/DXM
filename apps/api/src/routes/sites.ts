@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
@@ -9,7 +9,7 @@ import { getSiteDetail, getSiteVerification, listWorkspaceSites } from '../servi
 const router = Router();
 router.use(requireAuth);
 
-const createSiteSchema = z.object({
+export const createSiteSchema = z.object({
   name: z.string().trim().min(1).max(80),
   domain: z.string().trim().min(3).max(255),
 });
@@ -25,11 +25,11 @@ const updateSiteSchema = z
 
 const normalizeDomain = (domain: string) => domain.replace(/^https?:\/\//i, '').replace(/\/$/, '');
 
-router.get('/', (req, res) => {
+export const listSitesHandler: RequestHandler = (req, res) => {
   return res.json(listWorkspaceSites(req.user!.workspaceId));
-});
+};
 
-router.post('/', validate(createSiteSchema), (req, res) => {
+export const createSiteHandler: RequestHandler = (req, res) => {
   const workspaceId = req.user!.workspaceId;
   const siteId = 'site_' + nanoid(16);
   const siteKey = nanoid(12);
@@ -45,7 +45,7 @@ router.post('/', validate(createSiteSchema), (req, res) => {
 
   const detail = getSiteDetail(workspaceId, siteId);
   return res.status(201).json(detail);
-});
+};
 
 router.patch('/:id', validate(updateSiteSchema), (req, res) => {
   const workspaceId = req.user!.workspaceId;
@@ -129,11 +129,15 @@ router.delete('/:id', (req, res) => {
   return res.status(204).send();
 });
 
-router.get('/:id/verify', (req, res) => {
+export const verifySiteHandler: RequestHandler = (req, res) => {
   const verification = getSiteVerification(req.user!.workspaceId, req.params.id);
   if (!verification) return res.status(404).json({ error: 'Client site not found' });
   return res.json(verification);
-});
+};
+
+router.get('/', listSitesHandler);
+router.post('/', validate(createSiteSchema), createSiteHandler);
+router.get('/:id/verify', verifySiteHandler);
 
 router.get('/:id/overview', (req, res) => {
   const detail = getSiteDetail(req.user!.workspaceId, req.params.id);

@@ -7,6 +7,8 @@ This guide is the practical starting point for the current DXM Pulse monorepo. I
 DXM Pulse is an agency-first digital experience monitoring product. It helps agencies:
 
 - add and verify client websites
+- edit client-site name and domain
+- safely delete clean client sites without recorded dependent data
 - install a tracking snippet on each site
 - collect session, navigation, click, scroll, replay, custom-event, and Web Vitals data
 - review portfolio health across all tracked client sites
@@ -99,6 +101,10 @@ SQLite
 
 The web app uses authenticated, workspace-scoped read models instead of reconstructing analytics from raw session rows:
 
+- `GET /sites`
+- `GET /sites/:id`
+- `PATCH /sites/:id`
+- `DELETE /sites/:id`
 - `GET /sessions`
 - `GET /sessions/:id`
 - `GET /sessions/:id/replay`
@@ -113,6 +119,8 @@ The web app uses authenticated, workspace-scoped read models instead of reconstr
 3. The API returns site details, including the tracking snippet and `siteKey`.
 4. The user installs the snippet on the client site.
 5. The onboarding UI polls `GET /sites/:id/verify` until live traffic appears.
+
+`/onboarding/sites*` still exists for compatibility, but it is no longer a separate implementation. The compatibility routes delegate to the same `/sites` handlers so new product work should continue to treat `/sites` as the source of truth.
 
 ### 2. Telemetry ingestion
 
@@ -132,7 +140,7 @@ The web app uses authenticated, workspace-scoped read models instead of reconstr
 ### 4. Operator workflow
 
 1. The overview screen fetches `GET /overview`.
-2. Client management uses `GET /sites` and `GET /sites/:id`.
+2. Client management uses `GET /sites`, `GET /sites/:id`, `PATCH /sites/:id`, and conservative `DELETE /sites/:id`.
 3. Analytics tabs fetch:
    - `GET /analytics/heatmap`
    - `GET /funnels`
@@ -191,6 +199,16 @@ Notes:
 - `/audit`
 - `/digest/send-all`
 
+Compatibility-only API surface:
+
+- `/onboarding/sites`
+- `/onboarding/sites/:id/verify`
+
+Notes:
+
+- `/sites/*` is the primary client-site management contract
+- `/onboarding/sites*` remains only to avoid breaking older onboarding callers and should not grow new product logic
+
 ## How To Run It Locally
 
 ### Prerequisites
@@ -239,6 +257,8 @@ This starts:
 - open `http://localhost:5173/demo`
 - call `http://localhost:4000/health`
 - sign up and create a client site
+- edit a client site from the client detail page
+- delete a clean client site from the client detail page danger zone
 
 ### Useful commands
 
@@ -290,6 +310,8 @@ Setup assumptions:
 - the API still runs on SQLite and does not yet use a job queue for heavier background work
 - weekly digest sending exists, but is intended to be triggered by a scheduler with `x-digest-key`
 - funnel analysis is live, but still intentionally lightweight compared with a mature analytics product
+- site deletion is intentionally conservative: there is no cascade delete or archive flow yet
+- `/onboarding/sites*` remains as compatibility-only routing and should be removed later once no callers depend on it
 
 ## Related Docs
 

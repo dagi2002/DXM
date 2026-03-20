@@ -10,7 +10,7 @@ This document is the truthful snapshot of DXM Pulse on the stabilized agency-fir
 - Public site audit that measures response time, page size, and mobile-readiness
 - Login, signup, and workspace onboarding
 - Agency overview with portfolio health, alert hotspots, recent activity, and next actions
-- Client-sites surface with detail views, install snippets, verification, vitals, funnels, and recent sessions
+- Client-sites surface with detail views, install snippets, verification, edit flow, conservative delete flow, vitals, funnels, and recent sessions
 - Reports surface with share-ready summaries generated from live portfolio data
 - Demo mode that sells the agency portfolio story instead of a single-site dashboard
 - Settings hub with profile, team, client-site setup, Telegram, digest, billing, and integrations sections
@@ -32,7 +32,8 @@ This document is the truthful snapshot of DXM Pulse on the stabilized agency-fir
 
 - `GET /overview` is live and powers the agency overview screen
 - `GET /sites`, `GET /sites/:id`, `GET /sites/:id/verify`, and `GET /sites/:id/overview` are live
-- `POST /sites` and `PATCH /sites/:id` are available as the primary client-site contract
+- `POST /sites`, `PATCH /sites/:id`, and `DELETE /sites/:id` are available as the primary client-site contract
+- `/onboarding/sites`, `/onboarding/sites/:id/verify`, and `GET /onboarding/sites` remain as thin compatibility aliases over the primary `/sites` handlers
 - `GET /users` is live and workspace-scoped, but no longer a primary product surface
 - Sessions, alerts, funnels, vitals, and user flow are backed by the database
 - Session summary/detail/replay responses now use a shared DTO contract instead of ad hoc route shapes
@@ -47,6 +48,8 @@ This document is the truthful snapshot of DXM Pulse on the stabilized agency-fir
 - Chapa webhook remains a stub until production credentials and flow details are ready
 - DXM Pulse AI is not implemented here yet
 - Some higher-order business features are still roadmap items rather than shipped workflows
+- Site deletion is intentionally conservative: clean sites can be deleted, but there is still no cascade delete or archive flow
+- The onboarding compatibility alias should remain thin and can be removed later once no callers depend on `/onboarding/sites*`
 
 ## Claude Branch Review
 
