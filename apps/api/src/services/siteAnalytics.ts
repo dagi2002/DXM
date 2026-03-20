@@ -1,3 +1,4 @@
+import type { OverviewAiBrief } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
 
 const DEFAULT_SDK_CDN_URL = 'https://cdn.dxmpulse.com/dxm.js';
@@ -150,6 +151,7 @@ export interface PortfolioOverview {
     audience: string;
     highlights: string[];
   }>;
+  ai?: OverviewAiBrief;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));

@@ -116,6 +116,25 @@ CREATE TABLE IF NOT EXISTS funnels (
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS ai_artifacts (
+  id             TEXT PRIMARY KEY,
+  workspace_id   TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  site_id        TEXT REFERENCES sites(id) ON DELETE CASCADE,
+  entity_type    TEXT NOT NULL,    -- workspace | site | alert | funnel | session | report
+  entity_id      TEXT NOT NULL,
+  artifact_kind  TEXT NOT NULL,    -- overview_brief
+  period_key     TEXT NOT NULL,    -- 7d
+  status         TEXT NOT NULL DEFAULT 'ready', -- ready | error | building
+  generator_type TEXT NOT NULL DEFAULT 'deterministic', -- deterministic | llm
+  input_hash     TEXT NOT NULL,
+  evidence_json  TEXT NOT NULL,
+  output_json    TEXT NOT NULL,
+  last_error     TEXT,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at     DATETIME NOT NULL
+);
+
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_sessions_workspace ON sessions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_site      ON sessions(site_id);
@@ -134,3 +153,7 @@ CREATE INDEX IF NOT EXISTS idx_alerts_workspace_site_resolved_created ON alerts(
 CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email);
 CREATE INDEX IF NOT EXISTS idx_sites_key          ON sites(site_key);
 CREATE INDEX IF NOT EXISTS idx_sites_workspace_created ON sites(workspace_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_ai_artifacts_scope
+  ON ai_artifacts(workspace_id, entity_type, entity_id, artifact_kind, period_key);
+CREATE INDEX IF NOT EXISTS idx_ai_artifacts_workspace_kind_expiry
+  ON ai_artifacts(workspace_id, artifact_kind, expires_at);

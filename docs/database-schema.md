@@ -26,7 +26,8 @@ workspaces
     │       │
     │       └── funnels (N)
     │
-    └── alerts (N)
+    ├── alerts (N)
+    └── ai_artifacts (N)
 ```
 
 ---
@@ -235,6 +236,38 @@ The `urlPattern` is matched against `events.url` using SQL `LIKE '%pattern%'`.
 
 ---
 
+### `ai_artifacts`
+
+Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1 uses this for the overview AI brief only, but the table is intentionally generic.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | TEXT PK | Artifact row ID |
+| `workspace_id` | TEXT FK | References `workspaces.id` (CASCADE DELETE) |
+| `site_id` | TEXT FK | Optional reference to `sites.id` |
+| `entity_type` | TEXT | `workspace` \| `site` \| `alert` \| `funnel` \| `session` \| `report` |
+| `entity_id` | TEXT | ID of the entity the artifact belongs to |
+| `artifact_kind` | TEXT | Phase 1 uses `overview_brief` |
+| `period_key` | TEXT | Phase 1 uses `7d` |
+| `status` | TEXT | `ready` \| `error` \| `building` |
+| `generator_type` | TEXT | `deterministic` \| `llm` |
+| `input_hash` | TEXT | Hash of the structured input used to detect staleness |
+| `evidence_json` | TEXT | Structured evidence payload used to generate the artifact |
+| `output_json` | TEXT | Generated artifact payload |
+| `last_error` | TEXT | Optional generation error detail |
+| `created_at` | DATETIME | Initial creation timestamp |
+| `updated_at` | DATETIME | Last refresh timestamp |
+| `expires_at` | DATETIME | Cache TTL boundary |
+
+Important notes:
+
+- the phase-1 overview brief is deterministic and lazy-generated on `GET /overview`
+- cache invalidation is driven primarily by `input_hash`, not just TTL
+- `building` is reserved for a later async refresh path, but phase 1 still writes `ready` artifacts synchronously
+- if this table is missing or AI is disabled, the overview route still returns the non-AI response
+
+---
+
 ## Indexes Summary
 
 | Index | Table | Columns | Purpose |
@@ -248,3 +281,5 @@ The `urlPattern` is matched against `events.url` using SQL `LIKE '%pattern%'`.
 | `idx_alerts_resolved` | alerts | resolved | Filter open vs closed alerts |
 | `idx_users_email` | users | email | Login lookup |
 | `idx_sites_key` | sites | site_key | SDK event validation |
+| `ux_ai_artifacts_scope` | ai_artifacts | workspace_id, entity_type, entity_id, artifact_kind, period_key | Prevent duplicate AI artifacts for the same scope |
+| `idx_ai_artifacts_workspace_kind_expiry` | ai_artifacts | workspace_id, artifact_kind, expires_at | Fast AI cache lookup and expiry checks |

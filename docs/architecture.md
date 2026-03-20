@@ -25,11 +25,13 @@ DXM Pulse API (apps/api)
   ├─ auth + cookies
   ├─ analytics + funnels
   ├─ alerts + Telegram
+  ├─ deterministic AI interpretation layer
   ├─ site management + onboarding compatibility alias
   ├─ public site audit
   ├─ weekly digest trigger
   ├─ session write model (collect + replay ingestion)
   ├─ session read models (summary, detail, replay, heatmap)
+  ├─ AI artifact cache
   └─ SQLite data layer
 
 SQLite
@@ -41,7 +43,8 @@ SQLite
   ├─ session_replays
   ├─ session_replay_chunks
   ├─ alerts
-  └─ funnels
+  ├─ funnels
+  └─ ai_artifacts
 ```
 
 ## Core Flows
@@ -109,9 +112,20 @@ Intentionally strong already:
 Still intentionally lightweight:
 - no job queue yet for digest or heavy background work
 - no separate analytics warehouse
-- billing automation and AI features are not complete in this branch
+- billing automation and AI features are still intentionally thin in this branch
 - no archive flow or cascade delete for client sites yet
 - `/onboarding/sites*` still exists only as a thin compatibility alias over `/sites`
+
+## AI Boundary
+
+Phase-1 AI lives inside `apps/api/src/services/ai` as an internal interpretation layer, not a separate service:
+
+- it reads the existing overview rollups instead of bypassing product-truth services
+- it generates a deterministic overview brief only
+- it caches results in `ai_artifacts`
+- it fails open, so `/overview` still works when AI is disabled or the AI cache table is unavailable
+
+This keeps AI additive to the current DXM product rather than turning it into a separate analytics surface.
 
 ## Session Boundary
 

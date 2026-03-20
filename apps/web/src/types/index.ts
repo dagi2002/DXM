@@ -1,8 +1,11 @@
+import type { OverviewAiBrief as OverviewAiBriefContract } from '../../../../packages/contracts/index.js';
+
 export type {
   CollectReplayRequest,
   CollectRequest,
   HeatmapPoint as SessionHeatmapPoint,
   HeatmapReadModel,
+  OverviewAiBrief,
   SessionDetail as SessionRecordingDetail,
   SessionRecordingEvent,
   SessionRecordingMetadata,
@@ -181,4 +184,5 @@ export interface PortfolioOverview {
     priority: 'high' | 'medium' | 'low';
   }>;
   reports: AgencyReportSummary[];
+  ai?: OverviewAiBriefContract;
 }

@@ -175,6 +175,14 @@ Response includes:
 - `recentActivity`
 - `recommendedActions`
 - `reports`
+- optional `ai`
+
+When AI is enabled, `GET /overview` may include an additional deterministic `ai` block:
+
+- contract source of truth: `packages/contracts/index.d.ts`
+- DTO: `OverviewAiBrief`
+- generated from the existing overview rollups, not a separate analytics pipeline
+- omitted entirely when `DXM_AI_ENABLED` is disabled or AI fails open
 
 ## Client Sites
 

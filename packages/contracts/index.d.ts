@@ -150,3 +150,31 @@ export interface HeatmapReadModel {
   sessions: SessionSummary[];
   points: HeatmapPoint[];
 }
+
+export interface AiEvidenceItem {
+  id: string;
+  label: string;
+  value: string;
+  tone: 'neutral' | 'positive' | 'warning';
+}
+
+export interface AiRecommendation {
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+  priority: 'high' | 'medium' | 'low';
+  rationale: string;
+}
+
+export interface OverviewAiBrief {
+  period: '7d';
+  mode: 'deterministic';
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  topRisk: string | null;
+  topOpportunity: string | null;
+  recommendations: AiRecommendation[];
+  evidence: AiEvidenceItem[];
+}

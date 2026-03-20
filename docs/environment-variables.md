@@ -90,6 +90,27 @@ WEB_ORIGIN=https://app.dxmpulse.et
 
 ---
 
+### `DXM_AI_ENABLED`
+**Optional** | Default: enabled
+
+Controls the phase-1 deterministic overview AI brief.
+
+- AI is enabled by default when the variable is missing
+- set to `0`, `false`, or `off` to disable it
+- when disabled, `GET /overview` returns the existing non-AI payload and the API skips `ai_artifacts` reads and writes
+
+```bash
+DXM_AI_ENABLED=true
+```
+
+To disable:
+
+```bash
+DXM_AI_ENABLED=false
+```
+
+---
+
 ## Frontend Variables
 
 These are read by Vite at **build time** and embedded in the frontend bundle. They must start with `VITE_`.

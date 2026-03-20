@@ -22,6 +22,12 @@ const priorityClasses = {
   low: 'border-primary-200 bg-primary-50 text-primary-700',
 } as const;
 
+const evidenceToneClasses = {
+  positive: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  neutral: 'border-surface-200 bg-surface-50 text-surface-700',
+  warning: 'border-amber-200 bg-amber-50 text-amber-700',
+} as const;
+
 export const OverviewPage: React.FC = () => {
   const { workspace } = useAuth();
   const [overview, setOverview] = useState<PortfolioOverview | null>(null);
@@ -171,6 +177,48 @@ export const OverviewPage: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {overview.ai && (
+        <section className="mt-6 rounded-[28px] border border-primary-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                <Sparkles className="h-3.5 w-3.5" />
+                Overview AI brief
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold text-surface-900">{overview.ai.headline}</h2>
+              <p className="mt-3 text-sm leading-6 text-surface-600">{overview.ai.summary}</p>
+            </div>
+            <p className="shrink-0 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+              {new Date(overview.ai.generatedAt).toLocaleString()}
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Top risk</p>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                {overview.ai.topRisk || 'No major portfolio risk signal surfaced right now.'}
+              </p>
+            </div>
+            <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Top opportunity</p>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                {overview.ai.topOpportunity || 'No portfolio opportunity signal surfaced right now.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {overview.ai.evidence.slice(0, 3).map((item) => (
+              <div key={item.id} className={`rounded-3xl border p-5 ${evidenceToneClasses[item.tone]}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em]">{item.label}</p>
+                <p className="mt-3 text-lg font-semibold text-surface-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">

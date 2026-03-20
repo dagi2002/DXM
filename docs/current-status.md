@@ -41,12 +41,13 @@ This document is the truthful snapshot of DXM Pulse on the stabilized agency-fir
 - Landing page, demo page, and site audit are not just mock screens
 - Settings can now manage live client-site setup and weekly digest behavior
 - Build, lint, and root `check` are passing targets for this branch
+- The phase-1 AI foundation is live with a deterministic overview brief layered onto `GET /overview`
 
 ### Partial or intentionally deferred
 
 - Billing is still honest/read-only in the UI and manual operationally
 - Chapa webhook remains a stub until production credentials and flow details are ready
-- DXM Pulse AI is not implemented here yet
+- DXM Pulse AI is only partially implemented here: overview AI is live, but site, alert, funnel, report, digest, and provider-backed AI layers are still deferred
 - Some higher-order business features are still roadmap items rather than shipped workflows
 - Site deletion is intentionally conservative: clean sites can be deleted, but there is still no cascade delete or archive flow
 - The onboarding compatibility alias should remain thin and can be removed later once no callers depend on `/onboarding/sites*`
@@ -70,10 +71,11 @@ What we intentionally did not pull over:
 
 ## DXM Pulse AI
 
-DXM Pulse AI is planned, but not part of this branch. The short version:
+DXM Pulse AI has started in a deliberately small shape:
 
-- The current branch is focused on making the core DXM product trustworthy and usable
-- AI should layer on top of live alerts, funnels, sessions, and digest infrastructure
-- The right first AI surface is plain-language summaries and recommended fixes, not a separate empty AI shell
+- `GET /overview` can now include an optional deterministic AI brief
+- the AI layer reads the existing overview rollups instead of replacing them
+- outputs are cached in `ai_artifacts`
+- AI remains additive and fail-open, so the core product still works unchanged when AI is disabled
 
-For the staged plan, see [product-roadmap.md](product-roadmap.md).
+Later AI phases for sites, alerts, funnels, reports, digests, and provider-backed generation remain roadmap work.
