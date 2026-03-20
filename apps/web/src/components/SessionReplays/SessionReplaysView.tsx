@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import { ReplayPlayer } from './ReplayPlayer';
-import type { SessionRecording } from '../../types';
+import type { SessionRecording, SessionRecordingDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
 
 // Toggle between rrweb DOM replay and the legacy event-dot view
-const SessionPlayerWithToggle: React.FC<{ session: SessionRecording }> = ({ session }) => {
+const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = ({ session }) => {
   const [mode, setMode] = useState<'rrweb' | 'events'>('rrweb');
   return (
     <div>
@@ -51,10 +51,15 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecording }> = ({ sess
 };
 
 export const SessionReplaysView: React.FC = () => {
-  const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
   const [sessions, setSessions] = useState<SessionRecording[]>([]);
+  const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
+  const [selectedSessionDetail, setSelectedSessionDetail] = useState<SessionRecordingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const selectedSessionId = selectedSession?.id ?? null;
+  const selectedSessionUpdatedAt = selectedSession?.updatedAt ?? null;
 
   useEffect(() => {
     let isMounted = true;
@@ -65,33 +70,14 @@ export const SessionReplaysView: React.FC = () => {
         const data = await fetchJson<SessionRecording[]>('/sessions');
         if (!isMounted) return;
 
-        // ✅ Normalize backend response to expected structure
-        const normalizedSessions: SessionRecording[] = data.map(session => ({
-          ...session,
-          metadata: {
-            url: session.metadata?.url ?? "Unknown URL",
-            device: session.metadata?.device ?? "desktop",
-            browser: session.metadata?.browser ?? "Unknown browser",
-            language: session.metadata?.language ?? "Unknown locale",
-            screen: session.metadata?.screen ?? { width: 1440, height: 900 },
-            startedAt: session.metadata?.startedAt,
-            referrer: session.metadata?.referrer,
-            devicePixelRatio: session.metadata?.devicePixelRatio,
-            timezone: session.metadata?.timezone
-          },
-          // ✅ Ensure events always exist and have correct type
-          events: Array.isArray(session.events) ? session.events : [],
-        }));
-
-        setSessions(normalizedSessions);
+        setSessions(data);
         setIsLoading(false);
         setError(null);
 
-        // ✅ Preserve session selection after refresh
+        // Preserve selection after refresh
         setSelectedSession(prev =>
-          prev ? normalizedSessions.find(s => s.id === prev.id) ?? null : null
+          prev ? data.find(session => session.id === prev.id) ?? null : null
         );
-
       } catch (err) {
         if (!isMounted) return;
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -108,12 +94,53 @@ export const SessionReplaysView: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedSessionId) {
+      setSelectedSessionDetail(null);
+      setDetailError(null);
+      setIsDetailLoading(false);
+      return;
+    }
+
+    setSelectedSessionDetail(null);
+    setDetailError(null);
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (!selectedSessionId) {
+      return;
+    }
+
+    let isMounted = true;
+    setIsDetailLoading(true);
+    setDetailError(null);
+
+    fetchJson<SessionRecordingDetail>(`/sessions/${selectedSessionId}`)
+      .then((detail) => {
+        if (!isMounted) return;
+        setSelectedSessionDetail(detail);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setDetailError(err instanceof Error ? err.message : 'Failed to load session detail');
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsDetailLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSessionId, selectedSessionUpdatedAt]);
+
   return (
     <div className="p-6 h-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Session Replays</h1>
-          <p className="text-gray-600">Watch real user sessions to understand behavior patterns</p>
+          <p className="text-gray-600">Use replay to explain what happened on client sites, not just what the metrics say.</p>
         </div>
       </div>
 
@@ -129,8 +156,20 @@ export const SessionReplaysView: React.FC = () => {
         </div>
 
         <div className="lg:col-span-2">
-          {selectedSession ? (
-            <SessionPlayerWithToggle session={selectedSession} />
+          {selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
+            <SessionPlayerWithToggle session={selectedSessionDetail} />
+          ) : selectedSession && isDetailLoading ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading session detail</h3>
+              <p className="text-gray-600 max-w-md">
+                Pulling the full event timeline for this session so replay and event playback stay in sync.
+              </p>
+            </div>
+          ) : selectedSession && detailError ? (
+            <div className="bg-white rounded-lg border border-red-200 p-12 flex flex-col items-center justify-center text-center">
+              <h3 className="text-lg font-semibold text-red-700 mb-2">Session detail unavailable</h3>
+              <p className="text-red-600 max-w-md">{detailError}</p>
+            </div>
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">

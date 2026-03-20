@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { listWorkspaceSites } from '../services/siteAnalytics.js';
 import { sendTelegramTest } from '../services/telegram.js';
 
 const router = Router();
@@ -13,22 +14,90 @@ const telegramSchema = z.object({
   chatId: z.string().min(1, 'Chat ID is required'),
 });
 
+const workspaceSettingsSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    digestEnabled: z.boolean().optional(),
+    digestLanguage: z.enum(['en', 'am']).optional(),
+  })
+  .refine(
+    (value) =>
+      typeof value.name !== 'undefined' ||
+      typeof value.digestEnabled !== 'undefined' ||
+      typeof value.digestLanguage !== 'undefined',
+    {
+      message: 'At least one setting is required',
+    }
+  );
+
 // GET /settings
 router.get('/', (req, res) => {
-  const ws = db.prepare(`
-    SELECT id, name, plan, billing_status, telegram_chat_id,
+  const workspace = db.prepare(`
+    SELECT id, name, plan, billing_status, telegram_chat_id, digest_enabled, digest_language, created_at,
            CASE WHEN telegram_bot_token IS NOT NULL THEN true ELSE false END as telegram_configured
     FROM workspaces WHERE id = ?
   `).get(req.user!.workspaceId) as any;
-  if (!ws) return res.status(404).json({ error: 'Workspace not found' });
-  return res.json(ws);
+
+  if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+  const profile = db.prepare(`
+    SELECT id, name, email, role, avatar, last_login
+    FROM users
+    WHERE id = ?
+  `).get(req.user!.id) as any;
+
+  const team = db.prepare(`
+    SELECT id, name, email, role, avatar, last_login
+    FROM users
+    WHERE workspace_id = ?
+    ORDER BY
+      CASE role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
+      name ASC
+  `).all(req.user!.workspaceId) as any[];
+
+  return res.json({
+    profile,
+    workspace: {
+      id: workspace.id,
+      name: workspace.name,
+      plan: workspace.plan,
+      billingStatus: workspace.billing_status,
+      telegramChatId: workspace.telegram_chat_id,
+      telegramConfigured: Boolean(workspace.telegram_configured),
+      digestEnabled: Boolean(workspace.digest_enabled),
+      digestLanguage: workspace.digest_language,
+      createdAt: workspace.created_at,
+    },
+    team: team.map((member) => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      role: member.role,
+      avatar: member.avatar,
+      lastLogin: member.last_login,
+    })),
+    sites: listWorkspaceSites(req.user!.workspaceId),
+  });
 });
 
 // PATCH /settings — update workspace name
-router.patch('/', (req, res) => {
-  const { name } = req.body;
-  if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name is required' });
-  db.prepare('UPDATE workspaces SET name = ? WHERE id = ?').run(name.slice(0, 80), req.user!.workspaceId);
+router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
+  const { name, digestEnabled, digestLanguage } = req.body;
+
+  db.prepare(`
+    UPDATE workspaces
+    SET
+      name = COALESCE(?, name),
+      digest_enabled = COALESCE(?, digest_enabled),
+      digest_language = COALESCE(?, digest_language)
+    WHERE id = ?
+  `).run(
+    typeof name === 'string' ? name.slice(0, 80) : null,
+    typeof digestEnabled === 'boolean' ? Number(digestEnabled) : null,
+    typeof digestLanguage === 'string' ? digestLanguage : null,
+    req.user!.workspaceId
+  );
+
   return res.json({ ok: true });
 });
 

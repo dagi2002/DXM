@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getHeatmapReadModel } from '../services/sessionReadModels.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -91,6 +92,11 @@ router.get('/userflow', (req, res) => {
   }).sort((a, b) => b.users - a.users).slice(0, 10);
 
   return res.json(result);
+});
+
+// GET /analytics/heatmap
+router.get('/heatmap', (req, res) => {
+  return res.json(getHeatmapReadModel(req.user!.workspaceId));
 });
 
 // GET /analytics/metrics

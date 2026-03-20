@@ -1,10 +1,23 @@
+export type {
+  CollectReplayRequest,
+  CollectRequest,
+  HeatmapPoint as SessionHeatmapPoint,
+  HeatmapReadModel,
+  SessionDetail as SessionRecordingDetail,
+  SessionRecordingEvent,
+  SessionRecordingMetadata,
+  SessionRecordingStats,
+  SessionReplay as SessionReplayData,
+  SessionSummary as SessionRecording,
+} from '../../../../packages/contracts/index.js';
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'analyst' | 'viewer';
+  role: 'owner' | 'admin' | 'viewer';
   avatar?: string;
-  lastLogin: string | Date;
+  lastLogin: string | null;
 }
 
 export interface Session {
@@ -34,52 +47,6 @@ export interface SessionEvent {
   value?: string;
   url: string;
 }
-
-export interface SessionRecordingEvent {
-  type: 'mousemove' | 'click' | 'scroll' | 'navigation';
-  timestamp: number;
-  x?: number;
-  y?: number;
-  scrollX?: number;
-  scrollY?: number;
-  button?: number;
-  target?: string;
-}
-
-export interface SessionRecordingMetadata {
-  startedAt?: string;
-  userAgent?: string;
-  url?: string;
-  referrer?: string;
-  language?: string;
-  screen?: {
-    width: number;
-    height: number;
-  };
-  timezone?: string;
-  devicePixelRatio?: number;
-  device?: string;
-  browser?: string;
-}
-
-export interface SessionRecordingStats {
-  clicks: number;
-  scrollDepth: number;
-  totalEvents: number;
-}
-
-export interface SessionRecording {
-  id: string;
-  startedAt: string;
-  endedAt?: string;
-  duration: number;
-  metadata: SessionRecordingMetadata;
-  stats: SessionRecordingStats;
-  events: SessionRecordingEvent[];
-  updatedAt: string;
-  completed: boolean;
-}
-
 
 export interface Metric {
   name: string;
@@ -120,4 +87,98 @@ export interface UserFlowNode {
     target: string;
     percent: number;
   }[];
+}
+
+export interface ClientSiteSummary {
+  id: string;
+  name: string;
+  domain: string;
+  siteKey: string;
+  createdAt: string;
+  verified: boolean;
+  trackingStatus: 'live' | 'attention' | 'install';
+  lastActivityAt: string | null;
+  sessionCount7d: number;
+  openAlerts: number;
+  criticalAlerts: number;
+  avgDurationSeconds: number;
+  bounceRate: number;
+  conversionRate: number;
+  healthScore: number;
+}
+
+export interface ClientSiteDetail extends ClientSiteSummary {
+  snippet: string;
+  recentSessions: Array<{
+    id: string;
+    startedAt: string | null;
+    duration: number;
+    device: string;
+    browser: string;
+    entryUrl: string;
+    createdAt: string;
+  }>;
+  openAlertsList: Array<{
+    id: string;
+    type: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description: string | null;
+    affectedSessions: number;
+    createdAt: string;
+  }>;
+  vitals: Record<string, { value: number; p50: number; p75: number; p95: number }>;
+  funnels: Array<{
+    id: string;
+    name: string;
+    stepCount: number;
+    createdAt: string;
+  }>;
+}
+
+export interface AgencyReportSummary {
+  id: string;
+  title: string;
+  period: string;
+  summary: string;
+  audience: string;
+  highlights: string[];
+}
+
+export interface PortfolioOverview {
+  summary: {
+    totalClients: number;
+    liveClients: number;
+    atRiskClients: number;
+    unresolvedAlerts: number;
+    sessions7d: number;
+    averageHealthScore: number;
+  };
+  siteRollups: ClientSiteSummary[];
+  alertHotspots: Array<{
+    id: string;
+    siteId: string | null;
+    siteName: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description: string | null;
+    createdAt: string;
+  }>;
+  recentActivity: Array<{
+    id: string;
+    siteId: string | null;
+    siteName: string;
+    startedAt: string | null;
+    duration: number;
+    device: string;
+    entryUrl: string;
+  }>;
+  recommendedActions: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    href: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
+  reports: AgencyReportSummary[];
 }

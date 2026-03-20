@@ -21,15 +21,37 @@ function makeTokens(payload: object) {
   return { access, refresh };
 }
 
-function setTokenCookies(res: any, access: string, refresh: string) {
-  const cookieBase = {
+function getCookieBase() {
+  const normalizedDomain = COOKIE_DOMAIN.trim().toLowerCase();
+  const shouldSetDomain =
+    normalizedDomain.length > 0 &&
+    normalizedDomain !== 'localhost' &&
+    normalizedDomain !== '127.0.0.1';
+
+  return {
     httpOnly: true,
     secure: IS_PROD,
     sameSite: IS_PROD ? 'strict' : 'lax',
-    domain: COOKIE_DOMAIN,
+    path: '/',
+    ...(shouldSetDomain ? { domain: COOKIE_DOMAIN } : {}),
   } as const;
+}
+
+function setTokenCookies(res: any, access: string, refresh: string) {
+  const cookieBase = getCookieBase();
   res.cookie('dxm_access', access, { ...cookieBase, maxAge: 15 * 60 * 1000 });
   res.cookie('dxm_refresh', refresh, { ...cookieBase, maxAge: 7 * 24 * 60 * 60 * 1000 });
+}
+
+function clearTokenCookies(res: any) {
+  const cookieBase = getCookieBase();
+
+  res.clearCookie('dxm_access', cookieBase);
+  res.clearCookie('dxm_refresh', cookieBase);
+
+  // Clear legacy localhost cookies if they were previously written with a domain.
+  res.clearCookie('dxm_access', { ...cookieBase, domain: COOKIE_DOMAIN, path: '/' });
+  res.clearCookie('dxm_refresh', { ...cookieBase, domain: COOKIE_DOMAIN, path: '/' });
 }
 
 // POST /auth/signup
@@ -104,8 +126,7 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
 
 // POST /auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('dxm_access');
-  res.clearCookie('dxm_refresh');
+  clearTokenCookies(res);
   return res.json({ ok: true });
 });
 

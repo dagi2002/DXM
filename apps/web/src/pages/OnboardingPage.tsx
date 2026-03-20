@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { CheckCircle, Copy, ArrowRight, Zap, Loader2 } from 'lucide-react';
 import { getApiUrl } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 type Step = 1 | 2 | 3;
 
@@ -13,8 +13,8 @@ interface SiteInfo {
 }
 
 export const OnboardingPage: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
+  const { workspace, user } = useAuth();
   const [step, setStep] = useState<Step>(1);
   const [domain, setDomain] = useState('');
   const [siteName, setSiteName] = useState('');
@@ -30,7 +30,7 @@ export const OnboardingPage: React.FC = () => {
     setVerifying(true);
     const poll = async () => {
       try {
-        const res = await fetch(getApiUrl(`/onboarding/sites/${site.siteId}/verify`), { credentials: 'include' });
+        const res = await fetch(getApiUrl(`/sites/${site.siteId}/verify`), { credentials: 'include' });
         const data = await res.json();
         if (data.verified) { setVerified(true); setVerifying(false); }
       } catch {}
@@ -45,7 +45,7 @@ export const OnboardingPage: React.FC = () => {
     if (!domain || !siteName) return;
     setError(null);
     try {
-      const res = await fetch(getApiUrl('/onboarding/sites'), {
+      const res = await fetch(getApiUrl('/sites'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -93,11 +93,63 @@ export const OnboardingPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Step 1: Welcome / workspace review */}
+        {step === 1 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-1">
+              Your workspace is ready
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Connect your first client site so the portfolio overview can start working with real traffic instead of blank cards.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2 mb-6">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Workspace
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {workspace?.name || 'Your workspace'}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Account
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {user?.email || 'Signed in'}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900 mb-6">
+              DXM Pulse becomes useful the moment you install tracking on one live client site. We will generate the snippet, then verify the install.
+            </div>
+
+            <button
+              onClick={() => setStep(2)}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700"
+            >
+              Continue setup <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => navigate('/overview')}
+              className="mt-3 w-full text-center text-sm text-gray-400 hover:text-gray-600"
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+
         {/* Step 2: Add site */}
         {step === 2 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('onboarding.step2.title')}</h2>
-            <p className="text-gray-500 text-sm mb-6">{t('onboarding.step2.subtitle')}</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Add your first client site</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Start with the client site you care about most this week. You can add the rest from the Clients page.
+            </p>
             {error && (
               <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
             )}
@@ -107,15 +159,15 @@ export const OnboardingPage: React.FC = () => {
                 <input
                   value={siteName} onChange={e => setSiteName(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                  placeholder="My Online Store"
+                  placeholder="Abebe Furniture"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('onboarding.step2.domain')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Client domain</label>
                 <input
                   value={domain} onChange={e => setDomain(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                  placeholder="mystore.et"
+                  placeholder="abebefurniture.et"
                 />
               </div>
               <button
@@ -132,10 +184,12 @@ export const OnboardingPage: React.FC = () => {
         {/* Step 3: Install + verify */}
         {step === 3 && site && (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('onboarding.step3.title')}</h2>
-            <p className="text-gray-500 text-sm mb-6">{t('onboarding.step3.subtitle')}</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Install the snippet and verify tracking</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Drop this snippet into the client site, publish it, and we will confirm when traffic starts coming through.
+            </p>
 
-            <p className="text-sm font-medium text-gray-700 mb-2">{t('onboarding.step2.snippet')}</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Tracking snippet</p>
             <div className="relative mb-4">
               <pre className="rounded-lg bg-gray-900 p-4 text-xs text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
                 {site.snippet}
@@ -145,7 +199,7 @@ export const OnboardingPage: React.FC = () => {
                 className="absolute top-2 right-2 flex items-center gap-1.5 rounded-md bg-gray-700 px-3 py-1.5 text-xs text-white hover:bg-gray-600"
               >
                 <Copy className="h-3 w-3" />
-                {copied ? t('onboarding.step2.copied') : t('onboarding.step2.copy')}
+                {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
 
@@ -155,26 +209,28 @@ export const OnboardingPage: React.FC = () => {
               {verified ? (
                 <>
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-green-700">{t('onboarding.step3.success')}</p>
+                  <p className="text-sm font-semibold text-green-700">Tracking is live for this client site.</p>
                   <button
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/overview')}
                     className="mt-4 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
                   >
-                    {t('onboarding.step3.goToDashboard')}
+                    Go to overview
                   </button>
                 </>
               ) : (
                 <>
                   <Loader2 className="h-6 w-6 text-gray-400 mx-auto mb-2 animate-spin" />
-                  <p className="text-sm text-gray-500">{t('onboarding.step3.waiting')}…</p>
-                  <p className="text-xs text-gray-400 mt-1">Checking every 3 seconds</p>
+                  <p className="text-sm text-gray-500">Waiting for the first tracked session…</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {verifying ? 'Checking every 3 seconds' : 'Waiting to start verification'}
+                  </p>
                 </>
               )}
             </div>
 
             {!verified && (
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/overview')}
                 className="mt-4 w-full text-center text-sm text-gray-400 hover:text-gray-600"
               >
                 Skip for now — I'll verify later

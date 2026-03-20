@@ -3,7 +3,7 @@
  * Requires dxm.js to be loaded first (provides window.dxm and the event queue/flush)
  *
  * Uses rrweb to capture full DOM snapshots + mutation events.
- * Events are chunked (max 50 per batch) and sent separately to POST /collect-replay
+ * Events are chunked (max 50 per batch) and sent separately to POST /collect-replay/replay
  * to keep the base /collect endpoint lean.
  *
  * Target bundle: ~30kb gzipped (rrweb-record is ~25kb gzipped)
@@ -12,6 +12,7 @@
  *   <script src="https://cdn.dxmpulse.com/dxm-replay.js" data-site-id="YOUR_SITE_KEY" async></script>
  */
 import { record } from 'rrweb';
+import { API_ENDPOINTS } from '../../contracts/index.js';
 
 (function () {
   'use strict';
@@ -45,7 +46,7 @@ import { record } from 'rrweb';
       chunkIndex: Math.floor(totalEventCount / CHUNK_SIZE)
     });
 
-    var endpoint = API_URL + '/collect-replay';
+    var endpoint = API_URL + API_ENDPOINTS.collectReplay;
 
     if (navigator.sendBeacon) {
       try {

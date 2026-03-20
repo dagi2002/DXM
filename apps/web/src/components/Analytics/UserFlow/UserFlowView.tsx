@@ -44,7 +44,7 @@ export const UserFlowView: React.FC = () => {
 
     const loadFlow = async () => {
       try {
-        const data = await fetchJson<UserFlowNode[]>('/userflow');
+        const data = await fetchJson<UserFlowNode[]>('/analytics/userflow');
         if (!isMounted) return;
 
         setFlowData(Array.isArray(data) ? data : []);

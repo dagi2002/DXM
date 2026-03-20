@@ -9,19 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, SkipBack, SkipForward, Maximize2, Loader2, AlertCircle } from 'lucide-react';
 import { fetchJson } from '../../lib/api';
-
-interface ReplayEvent {
-  type: number;
-  data: unknown;
-  timestamp: number;
-}
-
-interface ReplayData {
-  sessionId: string;
-  events: ReplayEvent[];
-  duration: number;
-  startedAt: string;
-}
+import type { SessionReplayData } from '../../types';
 
 interface ReplayPlayerProps {
   sessionId: string;
@@ -42,7 +30,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ sessionId, sessionMe
   const containerRef = useRef<HTMLDivElement>(null);
   const replayerRef = useRef<any>(null);
 
-  const [replayData, setReplayData] = useState<ReplayData | null>(null);
+  const [replayData, setReplayData] = useState<SessionReplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -58,7 +46,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({ sessionId, sessionMe
     setCurrentTime(0);
     replayerRef.current = null;
 
-    fetchJson<ReplayData>(`/sessions/${sessionId}/replay`, { credentials: 'include' })
+    fetchJson<SessionReplayData>(`/sessions/${sessionId}/replay`)
       .then(data => {
         if (!data.events?.length) {
           setError('No replay data available for this session.');

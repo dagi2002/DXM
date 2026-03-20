@@ -41,8 +41,8 @@ export const SignupPage: React.FC = () => {
           <span className="text-xl font-bold text-gray-900">DXM Pulse</span>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-        <p className="text-gray-500 mb-8">Free forever — no credit card required</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your agency workspace</h1>
+        <p className="text-gray-500 mb-8">Start with one client site and grow into a full reporting portfolio.</p>
 
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -74,9 +74,9 @@ export const SignupPage: React.FC = () => {
             <input
               type="text" value={form.workspaceName} onChange={set('workspaceName')} required
               className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-              placeholder="Kifiya Financial, Qefira, …"
+              placeholder="Addis Growth Studio"
             />
-            <p className="text-xs text-gray-400 mt-1">Usually your company or product name</p>
+            <p className="text-xs text-gray-400 mt-1">Usually your agency or studio name</p>
           </div>
 
           <div>

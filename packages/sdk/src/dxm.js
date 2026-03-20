@@ -10,6 +10,8 @@
  * Install:
  *   <script src="https://cdn.dxmpulse.com/dxm.js" data-site-id="YOUR_SITE_KEY" async></script>
  */
+import { API_ENDPOINTS } from '../../contracts/index.js';
+
 (function () {
   'use strict';
 
@@ -65,25 +67,28 @@
     if (q.length > MAX_QUEUE) q.splice(0, q.length - MAX_QUEUE);
     saveQueue(q);
     // If queue grows large quickly (error storm), flush immediately
-    if (q.length > 50) flush(false);
+    if (q.length > 50) flush('interval');
   }
 
   // ── Flush ───────────────────────────────────────────────────────────────────
   var lastFlush = 0;
   var flushTimer = null;
 
-  function flush(force) {
+  function flush(reason) {
     var now = Date.now();
+    var force = reason === 'online' || reason === 'pagehide' || reason === 'hidden';
+    var completed = reason === 'pagehide' || reason === 'hidden';
     if (!force && (now - lastFlush) < 10000) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
     var q = loadQueue();
-    if (!q.length) return;
+    if (!q.length && !completed) return;
 
     var payload = JSON.stringify({
       sessionId: sessionId,
       siteId: SITE_ID,
       events: q,
+      completed: completed,
       metadata: {
         url: location.href,
         userAgent: navigator.userAgent,
@@ -93,7 +98,7 @@
       }
     });
 
-    var endpoint = API_URL + '/collect';
+    var endpoint = API_URL + API_ENDPOINTS.collect;
     var sent = false;
 
     // sendBeacon: fire-and-forget, works on page unload
@@ -213,18 +218,18 @@
   });
 
   // ── Offline / Online ────────────────────────────────────────────────────────
-  window.addEventListener('online', function () { flush(true); });
+  window.addEventListener('online', function () { flush('online'); });
   window.addEventListener('offline', function () {
     if (flushTimer) clearInterval(flushTimer);
     flushTimer = null;
   });
 
   // ── Periodic + Unload Flush ─────────────────────────────────────────────────
-  flushTimer = setInterval(function () { flush(false); }, 10000);
+  flushTimer = setInterval(function () { flush('interval'); }, 10000);
 
-  window.addEventListener('pagehide', function () { flush(true); });
+  window.addEventListener('pagehide', function () { flush('pagehide'); });
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') flush(true);
+    if (document.visibilityState === 'hidden') flush('hidden');
   });
 
   // Expose minimal public API (optional: manual event tracking)

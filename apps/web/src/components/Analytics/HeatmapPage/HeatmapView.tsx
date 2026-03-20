@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, MousePointer, Move } from 'lucide-react';
-import type { SessionRecording } from '../../../types';
+import type { HeatmapReadModel, SessionHeatmapPoint, SessionRecording } from '../../../types';
+import { fetchJson } from '../../../lib/api';
 import { HeatmapCanvas } from './HeatmapCanvas';
 import { HeatmapStats } from './HeatmapStats';
 
-const DEFAULT_API_BASE = 'http://localhost:4000';
 const FALLBACK_SCREEN_WIDTH = 1280;
 const FALLBACK_SCREEN_HEIGHT = 720;
 
@@ -25,68 +25,69 @@ interface NormalisedHoverEvent {
   weight?: number;
 }
 
-const normaliseClick = (event: { x?: number; y?: number }, width: number, height: number): NormalisedClickEvent | null => {
-  if (typeof event.x !== 'number' || typeof event.y !== 'number' || width === 0 || height === 0) {
+const EMPTY_HEATMAP: HeatmapReadModel = {
+  sessions: [],
+  points: [],
+};
+
+const normaliseClick = (
+  point: Pick<SessionHeatmapPoint, 'x' | 'y' | 'weight'>,
+  width: number,
+  height: number,
+): NormalisedClickEvent | null => {
+  if (typeof point.x !== 'number' || typeof point.y !== 'number' || width === 0 || height === 0) {
     return null;
   }
 
   return {
-    x: event.x / width,
-    y: event.y / height,
-    weight: 1,
+    x: point.x / width,
+    y: point.y / height,
+    weight: point.weight,
   };
 };
 
 const normaliseHover = (
-  event: { x?: number; y?: number; phase?: 'enter' | 'leave' },
+  point: Pick<SessionHeatmapPoint, 'x' | 'y' | 'weight' | 'phase'>,
   width: number,
   height: number,
 ): NormalisedHoverEvent | null => {
-  if (typeof event.x !== 'number' || typeof event.y !== 'number' || width === 0 || height === 0) {
+  if (typeof point.x !== 'number' || typeof point.y !== 'number' || width === 0 || height === 0) {
     return null;
   }
 
   return {
-    x: event.x / width,
-    y: event.y / height,
-    weight: event.phase === 'leave' ? 0.6 : 1,
+    x: point.x / width,
+    y: point.y / height,
+    weight: point.phase === 'leave' ? 0.6 : point.weight,
   };
 };
 
 export const HeatmapView: React.FC = () => {
-  const [sessions, setSessions] = useState<SessionRecording[]>([]);
+  const [heatmapData, setHeatmapData] = useState<HeatmapReadModel>(EMPTY_HEATMAP);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<'click' | 'scroll' | 'hover'>('click');
   const [selectedUrl, setSelectedUrl] = useState<string>('all');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('all');
 
+  const sessions = heatmapData.sessions;
+  const points = heatmapData.points;
+
   const selectedSessionLabel = useMemo(() => {
     if (selectedSessionId === 'all' || !sessions.length) return '';
-    const session = sessions.find(s => s.id === selectedSessionId);
+    const session = sessions.find((item) => item.id === selectedSessionId);
     return session ? `"${session.id}"` : 'Selected Session';
   }, [selectedSessionId, sessions]);
-
-  const apiBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_API_URL as string | undefined;
-    return configured && configured.trim().length > 0 ? configured : DEFAULT_API_BASE;
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
     let refreshTimer: number | undefined;
 
-    const loadSessions = async () => {
+    const loadHeatmap = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/sessions`);
-        if (!response.ok) {
-          throw new Error('Failed to load session recordings');
-        }
-
-        const data = await response.json() as SessionRecording[];
+        const data = await fetchJson<HeatmapReadModel>('/analytics/heatmap');
         if (!isMounted) return;
-
-        setSessions(data);
+        setHeatmapData(data);
         setIsLoading(false);
         setError(null);
       } catch (err) {
@@ -96,8 +97,8 @@ export const HeatmapView: React.FC = () => {
       }
     };
 
-    void loadSessions();
-    refreshTimer = window.setInterval(loadSessions, 15000);
+    void loadHeatmap();
+    refreshTimer = window.setInterval(loadHeatmap, 15000);
 
     return () => {
       isMounted = false;
@@ -105,39 +106,34 @@ export const HeatmapView: React.FC = () => {
         window.clearInterval(refreshTimer);
       }
     };
-  }, [apiBaseUrl]);
+  }, []);
 
   const availableUrls = useMemo(() => {
     const unique = new Set<string>();
     sessions.forEach((session) => {
-      const url = session.metadata?.url;
-      if (url) {
-        unique.add(url);
-      }
+      const url = session.metadata.url;
+      if (url) unique.add(url);
     });
     return Array.from(unique).sort();
   }, [sessions]);
-  const urlFilteredSessions = useMemo(() => {
-    const filtered = selectedUrl === 'all'
-      ? sessions
-      : sessions.filter((session) => session.metadata?.url === selectedUrl);
 
-    return filtered.filter((session) => session.events && session.events.length > 0);
-  }, [sessions, selectedUrl]);
-const availableSessionOptions = useMemo(() => {
+  const urlFilteredSessions = useMemo(() => {
+    return selectedUrl === 'all'
+      ? sessions
+      : sessions.filter((session) => session.metadata.url === selectedUrl);
+  }, [selectedUrl, sessions]);
+
+  const availableSessionOptions = useMemo(() => {
     return urlFilteredSessions.map((session) => ({
       id: session.id,
-      label: session.metadata?.url
+      label: session.metadata.url
         ? `${session.id.slice(0, 8)} • ${session.metadata.url}`
         : session.id,
     }));
   }, [urlFilteredSessions]);
 
   useEffect(() => {
-    if (selectedSessionId === 'all') {
-      return;
-    }
-
+    if (selectedSessionId === 'all') return;
     const stillExists = availableSessionOptions.some((option) => option.id === selectedSessionId);
     if (!stillExists) {
       setSelectedSessionId('all');
@@ -152,81 +148,90 @@ const availableSessionOptions = useMemo(() => {
     return urlFilteredSessions.filter((session) => session.id === selectedSessionId);
   }, [selectedSessionId, urlFilteredSessions]);
 
-  const { clickEvents, hoverEvents, scrollEvents, totalClicks, totalHovers, averageScrollDepth, mostClickedElements } = useMemo(() => {
-    const clickPoints: NormalisedClickEvent[] = [];
-    const hoverPoints: NormalisedHoverEvent[] = [];
-    const scrollValues: number[] = [];
-    const clickTargetMap = new Map<string, number>();
-    let clicks = 0;
-    let hovers = 0;
-    let scrollDepthTotal = 0;
-    let scrollSessionCount = 0;
-    let maximumScrollY = 0;
+  const filteredSessionIds = useMemo(() => new Set(filteredSessions.map((session) => session.id)), [filteredSessions]);
 
-    filteredSessions.forEach((session) => {
-      const screenWidth = session.metadata?.screen?.width ?? FALLBACK_SCREEN_WIDTH;
-      const screenHeight = session.metadata?.screen?.height ?? FALLBACK_SCREEN_HEIGHT;
-      const sessionMaxScroll = session.stats?.scrollDepth ?? 0;
-      maximumScrollY = Math.max(maximumScrollY, sessionMaxScroll);
+  const filteredPoints = useMemo(() => {
+    return points.filter((point) => {
+      const matchesUrl = selectedUrl === 'all' || point.url === selectedUrl;
+      const matchesSession = selectedSessionId === 'all' || filteredSessionIds.has(point.sessionId);
+      return matchesUrl && matchesSession;
+    });
+  }, [filteredSessionIds, points, selectedSessionId, selectedUrl]);
 
-      session.events.forEach((event) => {
-        if (event.type === 'click') {
-          const point = normaliseClick(event, screenWidth, screenHeight);
-          if (point) {
-            clickPoints.push(point);
-            clicks += 1;
+  const sessionMap = useMemo(() => {
+    return new Map(sessions.map((session) => [session.id, session] satisfies [string, SessionRecording]));
+  }, [sessions]);
+
+  const { clickEvents, hoverEvents, scrollEvents, totalClicks, totalHovers, averageScrollDepth, mostClickedElements } =
+    useMemo(() => {
+      const clickPoints: NormalisedClickEvent[] = [];
+      const hoverPoints: NormalisedHoverEvent[] = [];
+      const scrollValues: number[] = [];
+      const clickTargetMap = new Map<string, number>();
+      let scrollDepthTotal = 0;
+      let scrollSessionCount = 0;
+      let maximumScrollDepth = 0;
+
+      filteredSessions.forEach((session) => {
+        const sessionScrollDepth = session.stats.scrollDepth ?? 0;
+        maximumScrollDepth = Math.max(maximumScrollDepth, sessionScrollDepth);
+        scrollDepthTotal += sessionScrollDepth;
+        scrollSessionCount += 1;
+      });
+
+      filteredPoints.forEach((point) => {
+        const session = sessionMap.get(point.sessionId);
+        const screenWidth = session?.metadata.screen?.width ?? FALLBACK_SCREEN_WIDTH;
+        const screenHeight = session?.metadata.screen?.height ?? FALLBACK_SCREEN_HEIGHT;
+
+        if (point.type === 'click') {
+          const normalisedPoint = normaliseClick(point, screenWidth, screenHeight);
+          if (normalisedPoint) {
+            clickPoints.push(normalisedPoint);
           }
-
-          const target = event.target?.trim();
-          if (target) {
-            clickTargetMap.set(target, (clickTargetMap.get(target) ?? 0) + 1);
+          if (point.target?.trim()) {
+            clickTargetMap.set(point.target, (clickTargetMap.get(point.target) ?? 0) + 1);
           }
+          return;
         }
 
-        if (event.type === 'hover') {
-          const point = normaliseHover(event, screenWidth, screenHeight);
-          if (point) {
-            hoverPoints.push(point);
-            hovers += 1;
+        if (point.type === 'hover') {
+          const normalisedPoint = normaliseHover(point, screenWidth, screenHeight);
+          if (normalisedPoint) {
+            hoverPoints.push(normalisedPoint);
           }
+          return;
         }
 
-        if (event.type === 'scroll' && typeof event.scrollY === 'number') {
-          const scrollAmount = Math.max(0, event.scrollY);
+        if (point.type === 'scroll' && typeof point.depth === 'number') {
+          const scrollAmount = Math.max(0, point.depth);
           scrollValues.push(scrollAmount);
-          maximumScrollY = Math.max(maximumScrollY, scrollAmount);
+          maximumScrollDepth = Math.max(maximumScrollDepth, scrollAmount);
         }
       });
 
-      if (typeof session.stats?.scrollDepth === 'number') {
-        scrollDepthTotal += session.stats.scrollDepth;
-        scrollSessionCount += 1;
-      }
-    });
+      const topTargets = Array.from(clickTargetMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([selector, count]) => ({ selector, count }));
 
-    const topTargets = Array.from(clickTargetMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([selector, count]) => ({ selector, count }));
+      const averageDepth = scrollSessionCount ? scrollDepthTotal / scrollSessionCount : 0;
+      const maxScroll = maximumScrollDepth || FALLBACK_SCREEN_HEIGHT * 3;
+      const scrollPoints: NormalisedScrollEvent[] = scrollValues.map((value) => ({
+        depth: maxScroll > 0 ? Math.min(value / maxScroll, 1) : 0,
+        weight: 1,
+      }));
 
-    const averageDepth = scrollSessionCount ? scrollDepthTotal / scrollSessionCount : 0;
-
-    const maxScroll = maximumScrollY || FALLBACK_SCREEN_HEIGHT * 3;
-    const scrollPoints: NormalisedScrollEvent[] = scrollValues.map((value) => ({
-      depth: maxScroll > 0 ? Math.min(value / maxScroll, 1) : 0,
-      weight: 1,
-    }));
-
-    return {
-      clickEvents: clickPoints,
-      hoverEvents: hoverPoints,
-      scrollEvents: scrollPoints,
-      totalClicks: clicks,
-      totalHovers: hovers,
-      averageScrollDepth: averageDepth,
-      mostClickedElements: topTargets,
-    };
-  }, [filteredSessions]);
+      return {
+        clickEvents: clickPoints,
+        hoverEvents: hoverPoints,
+        scrollEvents: scrollPoints,
+        totalClicks: clickPoints.length,
+        totalHovers: hoverPoints.length,
+        averageScrollDepth: averageDepth,
+        mostClickedElements: topTargets,
+      };
+    }, [filteredPoints, filteredSessions, sessionMap]);
 
   const selectedUrlLabel = selectedUrl === 'all' ? 'All URLs' : selectedUrl;
 
@@ -305,8 +310,8 @@ const availableSessionOptions = useMemo(() => {
           {isLoading
             ? 'Loading recent session recordings…'
             : filteredSessions.length
-              ? `${filteredSessions.length} session${filteredSessions.length === 1 ? '' : 's'} loaded`
-              : 'No sessions available for this filter'}
+            ? `${filteredSessions.length} session${filteredSessions.length === 1 ? '' : 's'} loaded`
+            : 'No sessions available for this filter'}
         </div>
       </div>
 
@@ -351,7 +356,7 @@ const availableSessionOptions = useMemo(() => {
                 hoverEvents={hoverEvents}
                 activeType={activeType}
               />
-               </div>
+            </div>
           </div>
         </div>
         <HeatmapStats

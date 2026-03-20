@@ -50,7 +50,7 @@ function App() {
             />
 
             {/* Fallback */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </Suspense>
       </AuthProvider>

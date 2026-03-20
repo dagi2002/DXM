@@ -1,309 +1,342 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
-  Zap,
-  Eye,
-  TrendingDown,
-  Clock,
-  Play,
-  Bell,
-  Gauge,
-  Code,
+  AlertTriangle,
+  ArrowRight,
   BarChart3,
+  Bot,
+  Building2,
   CheckCircle2,
-  Globe,
-  Wifi,
-  Shield,
-  Check,
+  Clock3,
+  Eye,
+  FileText,
+  Gauge,
+  Globe2,
+  PlayCircle,
+  ShieldCheck,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { SiteAudit } from '../components/Landing/SiteAudit';
 
-/* ─── Language Toggle ──────────────────────────────────────────────────────── */
-const LanguageToggle: React.FC = () => {
-  const { i18n } = useTranslation();
-  const current = i18n.language;
-
-  const toggle = () => {
-    i18n.changeLanguage(current === 'am' ? 'en' : 'am');
-  };
-
-  return (
-    <button
-      onClick={toggle}
-      className="rounded-lg border border-white/30 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-white/10"
-    >
-      {current === 'am' ? 'EN' : '\u12A0\u121B'}
-    </button>
-  );
-};
-
-/* ─── Pricing Data ─────────────────────────────────────────────────────────── */
-interface PricingTier {
-  nameKey: string;
-  price: string;
-  period?: string;
-  popular?: boolean;
-  featuresKeys: string[];
-  ctaKey: string;
-  ctaTo: string;
-}
-
-const pricingTiers: PricingTier[] = [
+const pains = [
   {
-    nameKey: 'landing.pricingFreeName',
-    price: '0 ETB',
-    featuresKeys: [
-      'landing.pricingFreeF1',
-      'landing.pricingFreeF2',
-      'landing.pricingFreeF3',
-      'landing.pricingFreeF4',
-    ],
-    ctaKey: 'landing.pricingFreeCta',
-    ctaTo: '/signup',
+    title: 'Clients discover broken experiences before you do',
+    body: 'A slow landing page, dead CTA, or broken checkout becomes your agency problem the moment the client notices it first.',
+    icon: AlertTriangle,
   },
   {
-    nameKey: 'landing.pricingStarterName',
-    price: '499 ETB',
-    period: '/mo',
-    popular: true,
-    featuresKeys: [
-      'landing.pricingStarterF1',
-      'landing.pricingStarterF2',
-      'landing.pricingStarterF3',
-      'landing.pricingStarterF4',
-      'landing.pricingStarterF5',
-    ],
-    ctaKey: 'landing.pricingStarterCta',
-    ctaTo: '/signup',
+    title: 'Reporting is too reactive',
+    body: 'Most agencies scramble at the end of the week to explain traffic and conversions instead of monitoring the story as it unfolds.',
+    icon: Clock3,
   },
   {
-    nameKey: 'landing.pricingProName',
-    price: '1,499 ETB',
-    period: '/mo',
-    featuresKeys: [
-      'landing.pricingProF1',
-      'landing.pricingProF2',
-      'landing.pricingProF3',
-      'landing.pricingProF4',
-      'landing.pricingProF5',
-      'landing.pricingProF6',
-    ],
-    ctaKey: 'landing.pricingProCta',
-    ctaTo: '/signup',
+    title: 'Too many tools, not enough operational clarity',
+    body: 'Analytics, replay, and alerts live in different places, so your team loses time switching contexts instead of solving issues.',
+    icon: Eye,
   },
 ];
 
-/* ─── Landing Page ─────────────────────────────────────────────────────────── */
-export const LandingPage: React.FC = () => {
-  const { t } = useTranslation();
+const features = [
+  {
+    title: 'Portfolio overview',
+    body: 'See every client site, its health score, recent activity, and at-risk accounts in one agency dashboard.',
+    icon: Building2,
+  },
+  {
+    title: 'Session replay and behavioral insight',
+    body: 'Show clients how real visitors moved, hesitated, clicked, and dropped out instead of guessing from numbers alone.',
+    icon: PlayCircle,
+  },
+  {
+    title: 'Alert-led account management',
+    body: 'Catch issues before clients do, send Telegram digests, and turn raw issues into proactive status updates.',
+    icon: Bot,
+  },
+];
 
+const workflow = [
+  {
+    step: '01',
+    title: 'Add client sites in minutes',
+    body: 'Create a client record, copy the lightweight snippet, and verify installation without leaving the product.',
+  },
+  {
+    step: '02',
+    title: 'Monitor the portfolio like an operator',
+    body: 'Watch health, alerts, replay, funnels, and performance from one coherent agency command center.',
+  },
+  {
+    step: '03',
+    title: 'Turn insight into client-facing proof',
+    body: 'Use ready-to-share summaries and weekly narratives that make your work visible and measurable.',
+  },
+];
+
+const pricing = [
+  {
+    name: 'Small agency',
+    price: '1,490 ETB',
+    period: '/month',
+    description: 'For teams handling a small portfolio of active client sites.',
+    features: ['Up to 10 client sites', 'Replay, vitals, and alerts', 'Weekly digest'],
+  },
+  {
+    name: 'Growth agency',
+    price: '3,490 ETB',
+    period: '/month',
+    description: 'For agencies running ongoing optimization across multiple accounts.',
+    features: ['Up to 30 client sites', 'Priority alerting', 'Client-ready report cards'],
+    highlight: true,
+  },
+  {
+    name: 'Portfolio agency',
+    price: 'Custom',
+    period: '',
+    description: 'For larger studios managing a portfolio and multi-person delivery team.',
+    features: ['Higher site limits', 'Custom onboarding', 'Roadmap input and rollout support'],
+  },
+];
+
+export const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface-50 text-surface-900">
-      {/* ── Navbar ──────────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-primary-700/20 bg-primary-600/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2 text-white">
-            <Zap className="h-7 w-7" />
-            <span className="text-xl font-bold tracking-tight">DXM Pulse</span>
+      <nav className="sticky top-0 z-50 border-b border-primary-900/10 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 shadow-lg">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-surface-900">DXM Pulse</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-surface-500">Agency Suite</p>
+            </div>
           </Link>
 
           <div className="flex items-center gap-3">
-            <LanguageToggle />
+            <Link to="/login" className="hidden text-sm font-medium text-surface-600 transition hover:text-surface-900 sm:inline">
+              Sign in
+            </Link>
             <Link
               to="/demo"
-              className="hidden rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 sm:inline-block"
+              className="rounded-2xl bg-surface-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-surface-950"
             >
-              {t('landing.viewDemo')}
+              View demo
             </Link>
             <Link
               to="/signup"
-              className="rounded-lg bg-accent-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-accent-700"
+              className="rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
             >
-              {t('landing.startFree')}
+              Start free
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary-600 to-primary-700">
-        {/* Subtle dot pattern */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, #fff 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(22,101,52,0.16),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(217,119,6,0.14),_transparent_32%)]" />
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              Premium analytics for Ethiopian agencies
+            </div>
+            <h1 className="mt-6 text-4xl font-bold leading-tight text-surface-900 md:text-6xl">
+              Monitor all your client websites from one operational command center.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-surface-600">
+              Catch issues before clients do, prove the value of your work with replay and performance insight, and run a cleaner reporting operation across the whole portfolio.
+            </p>
 
-        <div className="relative mx-auto max-w-4xl px-4 py-24 text-center sm:py-32 lg:py-40">
-          <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
-            {t('landing.heroTitle')}
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-white/80 sm:text-xl">
-            {t('landing.heroSubtitle')}
-          </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/demo"
+                className="inline-flex items-center gap-2 rounded-2xl bg-surface-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-surface-950"
+              >
+                View demo <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/signup"
+                className="inline-flex items-center gap-2 rounded-2xl border border-surface-300 bg-white px-6 py-3.5 text-sm font-semibold text-surface-900 transition hover:border-primary-300 hover:text-primary-700"
+              >
+                Start free
+              </Link>
+            </div>
 
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              to="/signup"
-              className="rounded-xl bg-accent-600 px-8 py-3.5 text-lg font-bold text-white shadow-xl transition hover:bg-accent-700 hover:shadow-2xl"
-            >
-              {t('landing.startFree')}
-            </Link>
-            <Link
-              to="/demo"
-              className="rounded-xl border-2 border-white/40 px-8 py-3.5 text-lg font-bold text-white transition hover:bg-white/10"
-            >
-              {t('landing.viewDemo')}
-            </Link>
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {[
+                { label: 'Portfolio health', value: '81/100', note: 'live agency benchmark' },
+                { label: 'Client sites monitored', value: '30+', note: 'starter growth tier' },
+                { label: 'Weekly report prep', value: '< 10 min', note: 'from live portfolio data' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-3xl border border-surface-200 bg-white/90 p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{item.label}</p>
+                  <p className="mt-3 text-2xl font-bold text-surface-900">{item.value}</p>
+                  <p className="mt-2 text-sm text-surface-500">{item.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:pl-8">
+            <div className="rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 text-white shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-100">Live demo portfolio</p>
+                  <h2 className="mt-2 text-2xl font-semibold">Addis Growth Studio</h2>
+                </div>
+                <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-100">
+                  18 client sites
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {[
+                  { title: 'Average health score', value: '81/100', icon: Gauge },
+                  { title: 'Sites needing attention', value: '3', icon: AlertTriangle },
+                  { title: 'Replay-ready sessions', value: '428', icon: Eye },
+                  { title: 'Reports this week', value: '12', icon: FileText },
+                ].map(({ title, value, icon: Icon }) => (
+                  <div key={title} className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-primary-100">{title}</p>
+                      <Icon className="h-4 w-4 text-primary-100" />
+                    </div>
+                    <p className="mt-4 text-3xl font-semibold">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100">This week’s narrative</p>
+                <p className="mt-3 text-sm leading-7 text-primary-50">
+                  Three client sites need follow-up before the next round of check-ins. One checkout flow is slowing down on mobile, while your strongest retail client improved conversion again after the last landing page fix.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Site Audit ──────────────────────────────────────────────────────── */}
-      <section className="relative -mt-12 z-10 mx-auto max-w-2xl px-4">
-        <SiteAudit />
+      <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+        <div className="rounded-[32px] border border-surface-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Proof before signup</p>
+            <h2 className="mt-3 text-3xl font-bold text-surface-900">Run a 60-second site audit while you are still deciding.</h2>
+            <p className="mt-3 text-sm leading-6 text-surface-600">
+              Get an immediate read on response time, mobile readiness, and page weight before you even install the snippet.
+            </p>
+          </div>
+          <div className="mt-8">
+            <SiteAudit />
+          </div>
+        </div>
       </section>
 
-      {/* ── Problem Statement ──────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
-        <h2 className="text-center text-3xl font-bold text-surface-900 sm:text-4xl">
-          {t('landing.problemTitle')}
-        </h2>
-
-        <div className="mt-14 grid gap-8 sm:grid-cols-3">
-          {[
-            { Icon: Eye, titleKey: 'landing.problem1Title', descKey: 'landing.problem1Desc' },
-            { Icon: TrendingDown, titleKey: 'landing.problem2Title', descKey: 'landing.problem2Desc' },
-            { Icon: Clock, titleKey: 'landing.problem3Title', descKey: 'landing.problem3Desc' },
-          ].map(({ Icon, titleKey, descKey }) => (
-            <div
-              key={titleKey}
-              className="rounded-2xl border border-surface-200 bg-white p-8 text-center shadow-sm transition hover:shadow-md"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-red-50 text-red-500">
-                <Icon className="h-7 w-7" />
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Agency pain</p>
+          <h2 className="mt-3 text-3xl font-bold text-surface-900">This is built for agencies carrying the operational risk of client websites.</h2>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {pains.map(({ title, body, icon: Icon }) => (
+            <div key={title} className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-50 text-accent-600">
+                <Icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-5 text-lg font-semibold">{t(titleKey)}</h3>
-              <p className="mt-2 text-surface-600">{t(descKey)}</p>
+              <h3 className="mt-5 text-xl font-semibold text-surface-900">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-surface-600">{body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section className="bg-surface-100 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold sm:text-4xl">
-            {t('landing.featuresTitle')}
-          </h2>
-
-          <div className="mt-14 grid gap-8 sm:grid-cols-3">
-            {[
-              { Icon: Play, titleKey: 'landing.feature1Title', descKey: 'landing.feature1Desc' },
-              { Icon: Bell, titleKey: 'landing.feature2Title', descKey: 'landing.feature2Desc' },
-              { Icon: Gauge, titleKey: 'landing.feature3Title', descKey: 'landing.feature3Desc' },
-            ].map(({ Icon, titleKey, descKey }) => (
-              <div
-                key={titleKey}
-                className="rounded-2xl bg-white p-8 shadow-sm transition hover:shadow-md"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
-                  <Icon className="h-6 w-6" />
+      <section className="bg-white py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Workflow</p>
+            <h2 className="mt-3 text-3xl font-bold text-surface-900">From setup to client proof in three tight moves.</h2>
+          </div>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {workflow.map((item) => (
+              <div key={item.step} className="rounded-[28px] border border-surface-200 bg-surface-50 p-6">
+                <div className="inline-flex rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                  {item.step}
                 </div>
-                <h3 className="mt-5 text-xl font-semibold">{t(titleKey)}</h3>
-                <p className="mt-2 leading-relaxed text-surface-600">
-                  {t(descKey)}
-                </p>
+                <h3 className="mt-5 text-xl font-semibold text-surface-900">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-surface-600">{item.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── How It Works ───────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-5xl px-4 py-20 sm:py-28">
-        <h2 className="text-center text-3xl font-bold sm:text-4xl">
-          {t('landing.howTitle')}
-        </h2>
-
-        <div className="mt-14 grid gap-10 sm:grid-cols-3">
-          {[
-            { Icon: Code, stepKey: 'landing.step1Title', descKey: 'landing.step1Desc', num: 1 },
-            { Icon: BarChart3, stepKey: 'landing.step2Title', descKey: 'landing.step2Desc', num: 2 },
-            { Icon: CheckCircle2, stepKey: 'landing.step3Title', descKey: 'landing.step3Desc', num: 3 },
-          ].map(({ Icon, stepKey, descKey, num }) => (
-            <div key={stepKey} className="text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-600 text-white text-xl font-bold shadow-lg">
-                {num}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Feature set</p>
+          <h2 className="mt-3 text-3xl font-bold text-surface-900">One premium suite, organized around agency delivery.</h2>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {features.map(({ title, body, icon: Icon }) => (
+            <div key={title} className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                <Icon className="h-5 w-5" />
               </div>
-              <div className="mx-auto mt-4 flex h-10 w-10 items-center justify-center text-primary-600">
-                <Icon className="h-6 w-6" />
-              </div>
-              <h3 className="mt-3 text-lg font-semibold">{t(stepKey)}</h3>
-              <p className="mt-2 text-surface-600">{t(descKey)}</p>
+              <h3 className="mt-5 text-xl font-semibold text-surface-900">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-surface-600">{body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
-      <section className="bg-surface-100 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold sm:text-4xl">
-            {t('landing.pricingTitle')}
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-surface-600">
-            {t('landing.pricingSubtitle')}
-          </p>
-
-          <div className="mt-14 grid gap-8 sm:grid-cols-3">
-            {pricingTiers.map((tier) => (
+      <section className="bg-surface-100 py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Pricing</p>
+            <h2 className="mt-3 text-3xl font-bold text-surface-900">Per-agency pricing with client-site limits built in.</h2>
+          </div>
+          <div className="mt-10 grid gap-5 xl:grid-cols-3">
+            {pricing.map((tier) => (
               <div
-                key={tier.nameKey}
-                className={`relative rounded-2xl bg-white p-8 shadow-sm transition hover:shadow-md ${
-                  tier.popular ? 'ring-2 ring-accent-600' : ''
+                key={tier.name}
+                className={`rounded-[28px] border p-6 shadow-sm ${
+                  tier.highlight
+                    ? 'border-primary-300 bg-white ring-2 ring-primary-300'
+                    : 'border-surface-200 bg-white'
                 }`}
               >
-                {tier.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent-600 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white">
-                    {t('landing.popular')}
-                  </span>
-                )}
-
-                <h3 className="text-lg font-semibold text-surface-900">
-                  {t(tier.nameKey)}
-                </h3>
-                <div className="mt-4">
-                  <span className="text-4xl font-extrabold text-surface-900">
-                    {tier.price}
-                  </span>
-                  {tier.period && (
-                    <span className="text-surface-500">{tier.period}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl font-semibold text-surface-900">{tier.name}</h3>
+                    <p className="mt-3 text-sm leading-6 text-surface-600">{tier.description}</p>
+                  </div>
+                  {tier.highlight && (
+                    <div className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                      Best fit
+                    </div>
                   )}
                 </div>
-
-                <ul className="mt-6 space-y-3">
-                  {tier.featuresKeys.map((fk) => (
-                    <li key={fk} className="flex items-start gap-2 text-surface-700">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
-                      <span>{t(fk)}</span>
-                    </li>
+                <div className="mt-6 flex items-end gap-2">
+                  <span className="text-4xl font-bold text-surface-900">{tier.price}</span>
+                  {tier.period && <span className="pb-1 text-sm text-surface-500">{tier.period}</span>}
+                </div>
+                <div className="mt-6 space-y-3">
+                  {tier.features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-2 text-sm text-surface-700">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+                      <span>{feature}</span>
+                    </div>
                   ))}
-                </ul>
-
+                </div>
                 <Link
-                  to={tier.ctaTo}
-                  className={`mt-8 block w-full rounded-xl py-3 text-center font-bold transition ${
-                    tier.popular
-                      ? 'bg-accent-600 text-white hover:bg-accent-700'
-                      : 'bg-surface-100 text-surface-900 hover:bg-surface-200'
+                  to="/signup"
+                  className={`mt-8 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                    tier.highlight
+                      ? 'bg-primary-600 text-white hover:bg-primary-700'
+                      : 'bg-surface-900 text-white hover:bg-surface-950'
                   }`}
                 >
-                  {t(tier.ctaKey)}
+                  Start free
                 </Link>
               </div>
             ))}
@@ -311,73 +344,53 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Trust Section ──────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:py-28">
-        <h2 className="text-center text-3xl font-bold sm:text-4xl">
-          {t('landing.trustTitle')}
-        </h2>
-
-        <div className="mt-14 grid gap-8 sm:grid-cols-3">
-          {[
-            { Icon: Globe, titleKey: 'landing.trust1Title', descKey: 'landing.trust1Desc' },
-            { Icon: Wifi, titleKey: 'landing.trust2Title', descKey: 'landing.trust2Desc' },
-            { Icon: Shield, titleKey: 'landing.trust3Title', descKey: 'landing.trust3Desc' },
-          ].map(({ Icon, titleKey, descKey }) => (
-            <div key={titleKey} className="flex flex-col items-center text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
-                <Icon className="h-7 w-7" />
-              </div>
-              <h3 className="mt-5 text-lg font-semibold">{t(titleKey)}</h3>
-              <p className="mt-2 text-surface-600">{t(descKey)}</p>
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[32px] border border-surface-200 bg-white p-8 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Built for this market
             </div>
-          ))}
+            <h2 className="mt-4 text-3xl font-bold text-surface-900">Local operating assumptions matter.</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {[
+                { icon: Globe2, title: 'Ethiopian traffic realities', body: 'Bandwidth-aware tracking and practical reporting for mobile-first traffic patterns.' },
+                { icon: BarChart3, title: 'Agency-first reporting', body: 'The product is organized around portfolio management and account delivery, not isolated single-site dashboards.' },
+                { icon: Bot, title: 'Telegram-native alerts', body: 'Push issues into the channel your team actually uses instead of hiding them in an inbox.' },
+                { icon: Sparkles, title: 'DXM Pulse AI next', body: 'The AI layer is documented as the next upgrade on top of overview, alerts, funnels, and reports.' },
+              ].map(({ icon: Icon, title, body }) => (
+                <div key={title} className="rounded-3xl bg-surface-50 p-5">
+                  <Icon className="h-5 w-5 text-primary-600" />
+                  <h3 className="mt-4 text-lg font-semibold text-surface-900">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-surface-600">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-8 text-white shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-100">Call to action</p>
+            <h2 className="mt-4 text-3xl font-bold">See how DXM Pulse feels when it is actually organized around agency work.</h2>
+            <p className="mt-4 text-sm leading-7 text-primary-100">
+              Start with the demo. If the experience feels right, create a workspace and connect your first client site.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/demo"
+                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-primary-900 transition hover:bg-primary-50"
+              >
+                View demo <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/signup"
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Start free
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
-
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-surface-200 bg-surface-900 py-14 text-surface-300">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:grid-cols-4">
-          {/* Brand */}
-          <div>
-            <div className="flex items-center gap-2 text-white">
-              <Zap className="h-6 w-6" />
-              <span className="text-lg font-bold">DXM Pulse</span>
-            </div>
-            <p className="mt-3 text-sm text-surface-400">
-              {t('landing.footerTagline')}
-            </p>
-          </div>
-
-          {/* Product */}
-          <div>
-            <h4 className="font-semibold text-white">{t('landing.footerProduct')}</h4>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li><Link to="/demo" className="transition hover:text-white">{t('landing.footerDemo')}</Link></li>
-              <li><Link to="/signup" className="transition hover:text-white">{t('landing.footerPricing')}</Link></li>
-              <li><Link to="/demo" className="transition hover:text-white">{t('landing.footerFeatures')}</Link></li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="font-semibold text-white">{t('landing.footerSupport')}</h4>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li><Link to="/demo" className="transition hover:text-white">{t('landing.footerDocs')}</Link></li>
-              <li><Link to="/demo" className="transition hover:text-white">{t('landing.footerContact')}</Link></li>
-              <li><Link to="/demo" className="transition hover:text-white">{t('landing.footerStatus')}</Link></li>
-            </ul>
-          </div>
-
-          {/* Made in Ethiopia */}
-          <div className="flex flex-col justify-between">
-            <p className="text-sm text-surface-400">
-              {t('landing.madeInEthiopia')}
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
-
-export default LandingPage;

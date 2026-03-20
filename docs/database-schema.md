@@ -45,6 +45,8 @@ The top-level tenant. Every piece of data belongs to a workspace.
 | `billing_status` | TEXT | `active` \| `past_due` \| `cancelled` |
 | `telegram_chat_id` | TEXT | Optional — Telegram chat for alerts |
 | `telegram_bot_token` | TEXT | Optional — workspace-specific bot token |
+| `digest_enabled` | INTEGER | `0` or `1` — enables weekly digest delivery |
+| `digest_language` | TEXT | `en` \| `am` |
 | `chapa_customer_id` | TEXT | Optional — Chapa customer reference |
 | `created_at` | DATETIME | Auto-set on insert |
 

@@ -20,7 +20,7 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     id: 'free',
-    name: 'Free',
+    name: 'Foundations',
     price: 0,
     currency: 'ETB',
     sessions: '1,000',
@@ -28,15 +28,15 @@ const PLANS: Plan[] = [
     retention: '7 days',
     features: [
       '1,000 sessions / month',
-      '1 site',
+      '1 client site',
       '7-day data retention',
-      'Basic heatmaps',
+      'Basic portfolio monitoring',
       'Basic analytics',
     ],
   },
   {
     id: 'starter',
-    name: 'Starter',
+    name: 'Growth Agency',
     price: 499,
     currency: 'ETB',
     sessions: '10,000',
@@ -45,7 +45,7 @@ const PLANS: Plan[] = [
     highlight: true,
     features: [
       '10,000 sessions / month',
-      '3 sites',
+      '3 client sites',
       '90-day data retention',
       'Session replays',
       'Funnel analysis',
@@ -55,7 +55,7 @@ const PLANS: Plan[] = [
   },
   {
     id: 'pro',
-    name: 'Pro',
+    name: 'Portfolio Agency',
     price: 1499,
     currency: 'ETB',
     sessions: '50,000',
@@ -63,7 +63,7 @@ const PLANS: Plan[] = [
     retention: '1 year',
     features: [
       '50,000 sessions / month',
-      '10 sites',
+      '10 client sites',
       '1-year data retention',
       'Everything in Starter',
       'User flow analysis',
@@ -79,8 +79,6 @@ export const BillingPage: React.FC = () => {
   const { workspace } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<string>(workspace?.plan || 'free');
   const [billingStatus, setBillingStatus] = useState<string>('active');
-  const [upgrading, setUpgrading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchJson<any>('/billing/current', { credentials: 'include' })
@@ -90,21 +88,6 @@ export const BillingPage: React.FC = () => {
       })
       .catch(() => {});
   }, []);
-
-  const handleUpgrade = async (planId: string) => {
-    if (planId === 'free' || planId === currentPlan) return;
-    setError(null);
-    setUpgrading(planId);
-    try {
-      // Stub: wire to Chapa when keys are available
-      await new Promise(r => setTimeout(r, 1000));
-      setError('Chapa payment integration coming soon. Contact us on Telegram: @dxmpulse to upgrade manually.');
-    } catch {
-      setError('Failed to initiate payment. Please try again.');
-    } finally {
-      setUpgrading(null);
-    }
-  };
 
   const statusColor = billingStatus === 'active' ? 'text-green-600 bg-green-50' :
     billingStatus === 'past_due' ? 'text-orange-600 bg-orange-50' :
@@ -119,7 +102,7 @@ export const BillingPage: React.FC = () => {
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">{t('billing.title')}</h1>
       </div>
-      <p className="text-gray-500 text-sm mb-8 ml-8">{t('billing.subtitle')}</p>
+          <p className="text-gray-500 text-sm mb-8 ml-8">{t('billing.subtitle')}</p>
 
       {/* Current plan badge */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 mb-8 flex items-center justify-between">
@@ -137,12 +120,12 @@ export const BillingPage: React.FC = () => {
         </span>
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2 text-sm text-amber-700">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
+      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2 text-sm text-amber-700">
+        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+        <span>
+          Billing is intentionally honest in this milestone. Agency upgrades are handled manually via Telegram until Chapa is wired end-to-end.
+        </span>
+      </div>
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -197,27 +180,23 @@ export const BillingPage: React.FC = () => {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleUpgrade(plan.id)}
-                disabled={isCurrent || plan.id === 'free' || upgrading !== null}
-                className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+              <div
+                className={`w-full rounded-lg py-2.5 text-center text-sm font-semibold ${
                   isCurrent
-                    ? 'bg-green-100 text-green-700 cursor-default'
+                    ? 'bg-green-100 text-green-700'
                     : plan.id === 'free'
-                    ? 'bg-gray-100 text-gray-400 cursor-default'
+                    ? 'bg-gray-100 text-gray-500'
                     : isHighlighted
-                    ? 'bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50'
-                    : 'bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50'
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'bg-gray-100 text-gray-700'
                 }`}
               >
-                {upgrading === plan.id
-                  ? 'Processing…'
-                  : isCurrent
+                {isCurrent
                   ? 'Current plan'
                   : plan.id === 'free'
-                  ? 'Downgrade'
-                  : `Upgrade to ${plan.name}`}
-              </button>
+                  ? 'Available by default'
+                  : 'Manual upgrade via Telegram'}
+              </div>
             </div>
           );
         })}

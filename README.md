@@ -1,34 +1,53 @@
 # DXM Pulse
 
-A **Digital Experience Management (DXM)** analytics platform built for Ethiopian SaaS teams. Gives product teams real-time visibility into how users interact with their website — session recordings, heatmaps, user flow analysis, funnel tracking, performance monitoring, and automated alerts in one unified dashboard.
+DXM Pulse is a lightweight Digital Experience Management platform repositioned as a premium agency operating tool for Ethiopia. It combines portfolio overview, client-site management, session replay, heatmaps, funnels, alerts, performance monitoring, public site audit, and Telegram-first reporting into one coherent product.
 
----
+## What Exists Today
 
-## Prerequisites
+- Public landing page with ETB pricing and instant site audit
+- Email/password auth with workspace isolation
+- Onboarding flow that creates tracked client sites and install snippets
+- Real session collection via the SDK and SQLite-backed API
+- Session replay, heatmaps, funnels, user flow, alerts, and Web Vitals
+- Weekly Telegram digest plumbing
+- Demo mode for offline or sales-led walkthroughs
+- Agency-first overview, clients, reports, and settings surfaces
 
-- **Node.js** v18 or later
-- **npm** v9 or later
+## Honest Status
 
----
+Real and production-shaped:
+- Auth, multi-tenancy, SQLite schema, workspace-scoped APIs
+- SDK event collection and replay ingestion
+- Landing page, site audit, overview, clients, alerts, reports, and demo mode
+- Telegram alerts and weekly digest when credentials are configured
 
-## Getting Started
+Still intentionally partial:
+- Billing checkout is still manual/read-only in the product UI
+- Some analytics panels remain simpler than a full enterprise DXM tool
+- DXM Pulse AI is planned, but not shipped in this branch yet
 
-The project is a monorepo with two packages:
+## Monorepo Layout
 
-| Package | Location | Port |
-|---|---|---|
-| Web (React + Vite) | `apps/web` | 5173 |
-| API (Express + SQLite) | `apps/api` | 4000 |
+```text
+.
+├── apps/
+│   ├── api/        # Express + TypeScript + SQLite backend
+│   └── web/        # React + Vite frontend
+├── packages/
+│   ├── contracts/  # Shared DTOs and endpoint constants
+│   └── sdk/        # Tracking SDK and replay extension
+├── docs/           # Architecture, API, schema, roadmap, status
+├── .env.example
+└── package.json
+```
 
-### 1. Install all dependencies
+## Quick Start
 
-From the **project root**:
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
-
-This installs dependencies for the root workspace, `apps/web`, and `apps/api` in one step.
 
 ### 2. Configure environment
 
@@ -36,178 +55,86 @@ This installs dependencies for the root workspace, `apps/web`, and `apps/api` in
 cp .env.example .env
 ```
 
-Edit `.env` and set at minimum:
+Minimum required values:
 
 ```bash
-JWT_SECRET=your_random_32_char_secret_here
-JWT_REFRESH_SECRET=another_random_32_char_secret
+JWT_SECRET=change_this_in_production_min_32_chars
+JWT_REFRESH_SECRET=different_secret_also_min_32_chars
 ```
 
-For Telegram alerts and Chapa payments, fill in the optional fields. See [docs/environment-variables.md](docs/environment-variables.md) for the full reference.
-
-### 3. Run the database migration
-
-```bash
-npm run migrate -w apps/api
-```
-
-This creates `apps/api/data/dxm.db` with all tables and indexes. Safe to re-run at any time.
-
-### 4. (Optional) Seed demo data
-
-```bash
-npm run seed -w apps/api
-```
-
-Populates the database with a demo workspace, site, users, sessions, and events so the dashboard has data to display on first launch.
-
-### 5. Start development servers
-
-Open **two terminals** or use your preferred process manager:
-
-```bash
-# Terminal 1 — API server (port 4000)
-npm run dev -w apps/api
-
-# Terminal 2 — Web app (port 5173)
-npm run dev -w apps/web
-```
-
-The web app is available at **http://localhost:5173**
-The API is available at **http://localhost:4000**
-
-### 6. Build for production
-
-```bash
-npm run build -w apps/web     # outputs to apps/web/dist/
-npm run build -w apps/api     # compiles TypeScript to apps/api/dist/
-```
-
----
-
-## Project Structure
-
-```
-project/
-├── apps/
-│   ├── web/                          # React + Vite frontend
-│   │   └── src/
-│   │       ├── components/
-│   │       │   ├── AppShell.tsx      # Main layout + mobile nav
-│   │       │   ├── Navigation.tsx    # Sidebar navigation
-│   │       │   ├── Dashboard/        # Overview metrics + live feed
-│   │       │   ├── SessionReplays/   # Session list + rrweb replay player
-│   │       │   ├── Analytics/
-│   │       │   │   ├── HeatmapPage/  # Click / scroll / hover heatmaps
-│   │       │   │   ├── Funnels/      # Funnel builder + conversion analysis
-│   │       │   │   ├── UserFlow/     # Page-to-page navigation flow
-│   │       │   │   └── Performance/  # Core Web Vitals monitoring
-│   │       │   ├── Alerts/           # Alert feed + severity badges
-│   │       │   └── Users/            # Workspace user management
-│   │       ├── hooks/
-│   │       │   └── useRealTimeData.ts  # Polls sessions + metrics every 5s
-│   │       ├── lib/
-│   │       │   └── api.ts            # Typed fetch wrapper (auto-sends cookies)
-│   │       └── types/
-│   │           └── index.ts          # Shared TypeScript interfaces
-│   │
-│   └── api/                          # Express + SQLite backend
-│       ├── data/
-│       │   └── dxm.db                # SQLite database (auto-created by migrate)
-│       └── src/
-│           ├── app.ts                # Express app setup + routes
-│           ├── index.ts              # Server entry point
-│           ├── db/
-│           │   ├── schema.sql        # Full DB schema (tables + indexes)
-│           │   ├── migrate.ts        # DDL runner (idempotent)
-│           │   └── seed.ts           # Demo data seeder
-│           ├── routes/
-│           │   ├── auth.ts           # Login / signup / refresh / logout
-│           │   ├── collect.ts        # SDK event ingestion (POST /collect)
-│           │   ├── sessions.ts       # Session list + replay data
-│           │   ├── analytics.ts      # Vitals, heatmap, user flow aggregates
-│           │   ├── funnels.ts        # Funnel CRUD + step-by-step analysis
-│           │   ├── alerts.ts         # Alert list + resolve
-│           │   ├── billing.ts        # Chapa payment integration
-│           │   ├── settings.ts       # Workspace + site settings
-│           │   └── onboarding.ts     # First-run workspace setup
-│           ├── services/
-│           │   └── alertEngine.ts    # Background alert detection
-│           └── middleware/
-│               └── auth.ts           # JWT verification middleware
-│
-├── docs/                             # Detailed project documentation
-│   ├── architecture.md
-│   ├── api-reference.md
-│   ├── database-schema.md
-│   ├── sdk-integration.md
-│   ├── alert-engine.md
-│   └── environment-variables.md
-│
-├── .env.example                      # Environment variable template
-└── package.json                      # Workspace root
-```
-
----
-
-## Module Status
-
-| Module | Data Source | Status |
-|---|---|---|
-| Dashboard | Live — API (`/sessions`, `/metrics`) | ✅ Working |
-| Session Replays | Live — API (`/sessions`, `/sessions/:id/replay`) | ✅ Working |
-| Heatmaps | Live — API (`/analytics/heatmap`) | ✅ Working |
-| User Flow | Live — API (`/analytics/userflow`) | ✅ Working |
-| Funnel Analysis | Live — API (`/funnels`, `/funnels/:id/analysis`) | ✅ Working |
-| Performance / Vitals | Live — API (`/analytics/vitals`) | ✅ Working |
-| Alerts | Live — API (`/alerts`), auto-detected by alert engine | ✅ Working |
-| Users | Live — API (`/settings/users`) | ✅ Working |
-| Billing (Chapa) | Live — API (`/billing`) | ✅ Working |
-| Telegram Notifications | Background service in alert engine | ✅ Working (optional) |
-
----
-
-## Environment Variables
+Optional integrations:
+- Telegram for live alerts and weekly digest
+- Chapa for future payment automation
 
 See [docs/environment-variables.md](docs/environment-variables.md) for the full reference.
 
-Quick summary:
+### 3. Run database setup
 
-| Variable | Required | Description |
+```bash
+npm run migrate -w apps/api
+npm run seed -w apps/api
+```
+
+`seed` is optional, but useful if you want the dashboard to feel alive immediately.
+
+### 4. Start the full stack
+
+```bash
+npm run dev
+```
+
+This starts:
+- `apps/web` on `http://localhost:5173`
+- `apps/api` on `http://localhost:4000`
+- `packages/sdk` in watch mode
+
+### 5. Build or validate
+
+```bash
+npm run build
+npm run lint
+npm run check
+```
+
+## Default Local Flow
+
+- Visit `http://localhost:5173/` for the agency landing page
+- Visit `http://localhost:5173/demo` for the offline demo experience
+- Sign up at `http://localhost:5173/signup`
+- Add a client site, copy the snippet, and verify tracking
+
+## Product Surface
+
+| Area | Status | Notes |
 |---|---|---|
-| `JWT_SECRET` | ✅ Yes | Access token signing key (32+ chars) |
-| `JWT_REFRESH_SECRET` | ✅ Yes | Refresh token signing key (32+ chars) |
-| `DB_PATH` | No | SQLite file path (default: `./data/dxm.db`) |
-| `PORT` | No | API port (default: `4000`) |
-| `TELEGRAM_DEFAULT_BOT_TOKEN` | No | Enables Telegram alert notifications |
-| `CHAPA_SECRET_KEY` | No | Enables Chapa payment processing |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend framework | React 18 + TypeScript |
-| Build tool | Vite 5 |
-| Styling | Tailwind CSS 3 |
-| Icons | Lucide React |
-| i18n | i18next (Amharic + English) |
-| API server | Express 5 + TypeScript |
-| Runtime | tsx (ESM-native TS runner) |
-| Database | SQLite via better-sqlite3 |
-| Auth | JWT (httpOnly cookies, refresh token rotation) |
-| Payments | Chapa (Ethiopian payment gateway) |
-| Alerts | Telegram Bot API |
-| Session replay | rrweb |
-
----
+| Landing page | Live | Agency positioning, public demo CTA, site audit |
+| Auth + onboarding | Live | Workspace signup, client-site creation, install snippet |
+| Overview | Live | Portfolio health, alert hotspots, recent activity, next actions |
+| Clients | Live | Client-site list and detail with install, alerts, vitals, sessions |
+| Session replay | Live | Replay ingestion and playback are wired |
+| Heatmaps | Live | Aggregated click data from real events |
+| Funnels | Live | Create funnels and analyze live paths |
+| User flow | Live | Derived from navigation and pageview events |
+| Alerts | Live | DB-backed alerts with Telegram delivery when configured |
+| Reports | Live | Share-ready summaries generated from live portfolio data |
+| Weekly digest | Live plumbing | Requires Telegram credentials and digest key trigger |
+| Billing | Partial | Read-only/manual upgrade flow, webhook stub only |
+| DXM Pulse AI | Planned | Documented, not implemented in this branch |
 
 ## Documentation
 
+- [Codebase Onboarding](docs/codebase-onboarding.md)
+- [Current Status](docs/current-status.md)
+- [Product Roadmap](docs/product-roadmap.md)
 - [Architecture Overview](docs/architecture.md)
 - [API Reference](docs/api-reference.md)
 - [Database Schema](docs/database-schema.md)
 - [SDK Integration Guide](docs/sdk-integration.md)
 - [Alert Engine](docs/alert-engine.md)
 - [Environment Variables](docs/environment-variables.md)
+
+## Notes For Contributors
+
+- The stable target in this workspace is the monorepo line, not the older single-app Claude branch.
+- We selectively reconstructed strong product ideas on top of the current architecture instead of merging divergent legacy structure.
+- If you plan to build DXM Pulse AI next, start with [docs/product-roadmap.md](docs/product-roadmap.md) and [docs/current-status.md](docs/current-status.md).

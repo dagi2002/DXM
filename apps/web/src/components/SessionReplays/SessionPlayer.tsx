@@ -11,10 +11,10 @@ import {
   Maximize2,
 } from "lucide-react";
 
-import type { SessionRecording, SessionRecordingEvent } from "../../types";
+import type { SessionRecordingDetail, SessionRecordingEvent } from "../../types";
 
 interface SessionPlayerProps {
-  session: SessionRecording;
+  session: SessionRecordingDetail;
 }
 
 /* Format MM:SS */
@@ -43,19 +43,16 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
 
   const playbackContainerRef = useRef<HTMLDivElement>(null);
 
-  const screenDimensions = session.metadata.screen ?? { width: 1, height: 1 };
+  const screenWidth = session.metadata.screen?.width ?? 1;
+  const screenHeight = session.metadata.screen?.height ?? 1;
 
   const metadataDetails = useMemo(() => {
-    const extendedMetadata = session.metadata as SessionRecording["metadata"] & {
-      userId?: string;
-    };
-
     return {
-      url: extendedMetadata.url ?? "Unknown URL",
-      userId: extendedMetadata.userId ?? "Anonymous",
-      device: extendedMetadata.device ?? "desktop",
-      browser: extendedMetadata.browser ?? "Unknown browser",
-      language: extendedMetadata.language ?? "Unknown locale",
+      url: session.metadata.url ?? "Unknown URL",
+      userId: session.metadata.userId ?? "Anonymous",
+      device: session.metadata.device ?? "desktop",
+      browser: session.metadata.browser ?? "Unknown browser",
+      language: session.metadata.language ?? "Unknown locale",
     };
   }, [session.metadata]);
 
@@ -102,7 +99,8 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
   }, [isPlaying, playbackSpeed, durationMs]);
 
   const normalisedPointerPosition = useMemo(() => {
-    const { width, height } = screenDimensions;
+    const width = screenWidth;
+    const height = screenHeight;
 
     const event = [...session.events]
       .reverse()
@@ -121,7 +119,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
       x: (x / width) * 100,
       y: (y / height) * 100,
     };
-  }, [session.events, screenDimensions.width, screenDimensions.height, currentTime]);
+  }, [session.events, screenWidth, screenHeight, currentTime]);
 
   const recentClick = useMemo(() => {
     const clickEvent = [...session.events]
@@ -241,8 +239,8 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                         key={`move-${index}`}
                         className="absolute h-1 w-1 rounded-full bg-primary-400/40"
                         style={{
-                          left: `${((event.x ?? 0) / screenDimensions.width) * 100}%`,
-                          top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
+                          left: `${((event.x ?? 0) / screenWidth) * 100}%`,
+                          top: `${((event.y ?? 0) / screenHeight) * 100}%`,
                         }}
                       />
                     );
@@ -254,8 +252,8 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
                         key={`click-${index}`}
                         className="absolute -translate-x-1/2 -translate-y-1/2"
                         style={{
-                          left: `${((event.x ?? 0) / screenDimensions.width) * 100}%`,
-                          top: `${((event.y ?? 0) / screenDimensions.height) * 100}%`,
+                          left: `${((event.x ?? 0) / screenWidth) * 100}%`,
+                          top: `${((event.y ?? 0) / screenHeight) * 100}%`,
                         }}
                       >
                         <div className="h-6 w-6 rounded-full border-2 border-primary-400/80" />

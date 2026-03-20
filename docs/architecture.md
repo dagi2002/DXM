@@ -1,163 +1,126 @@
 # Architecture Overview
 
-## System Design
+DXM Pulse is a monorepo with three major runtime surfaces:
 
-DXM Pulse is a **monorepo** consisting of two independently deployable applications:
+- `apps/web`: React + Vite application for landing, auth, dashboard, demo, billing, and settings
+- `apps/api`: Express + TypeScript backend for auth, event collection, analytics, alerts, onboarding, audit, and digest
+- `packages/sdk`: base tracking SDK plus replay extension
+- `packages/contracts`: shared public DTO and endpoint contract for SDK/API/web alignment
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   Browser / App                      │
-│                                                     │
-│  ┌──────────────────┐    ┌──────────────────────┐  │
-│  │  DXM Pulse Web   │    │  Instrumented Site   │  │
-│  │  (apps/web)      │    │  (external customer) │  │
-│  │  React + Vite    │    │  + SDK script tag    │  │
-│  └────────┬─────────┘    └──────────┬───────────┘  │
-│           │  Dashboard API           │  Event stream │
-└───────────┼──────────────────────────┼──────────────┘
-            │                          │
-            ▼                          ▼
-┌──────────────────────────────────────────────────────┐
-│                   DXM Pulse API                      │
-│                  (apps/api)                          │
-│                Express 5 + TypeScript                │
-│                                                      │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ │
-│  │  Routes  │ │ Services │ │      Middleware       │ │
-│  │  auth    │ │  alert   │ │  JWT auth            │ │
-│  │  collect │ │  engine  │ │  CORS                │ │
-│  │  sessions│ └──────────┘ │  cookie-parser       │ │
-│  │  analytics              └──────────────────────┘ │
-│  │  funnels │                                        │
-│  │  alerts  │                                        │
-│  │  billing │                                        │
-│  └──────────┘                                        │
-│                                                      │
-│  ┌──────────────────────────────────────────────┐   │
-│  │              SQLite (better-sqlite3)          │   │
-│  │              apps/api/data/dxm.db            │   │
-│  └──────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────┘
-            │
-            ▼ (optional integrations)
-┌──────────────────────────┐   ┌─────────────────────┐
-│     Telegram Bot API     │   │   Chapa Payments    │
-│   (alert notifications)  │   │  (Ethiopian gateway) │
-└──────────────────────────┘   └─────────────────────┘
+## High-Level System
+
+```text
+Tracked Website
+  └─ dxm.js / dxm-replay.js
+      ├─ POST /collect
+      └─ POST /collect-replay/replay
+
+DXM Pulse Web (apps/web)
+  ├─ public marketing pages
+  ├─ auth + onboarding
+  ├─ dashboard + analytics
+  └─ settings + billing
+
+DXM Pulse API (apps/api)
+  ├─ auth + cookies
+  ├─ analytics + funnels
+  ├─ alerts + Telegram
+  ├─ onboarding + sites
+  ├─ public site audit
+  ├─ weekly digest trigger
+  ├─ session write model (collect + replay ingestion)
+  ├─ session read models (summary, detail, replay, heatmap)
+  └─ SQLite data layer
+
+SQLite
+  ├─ workspaces
+  ├─ users
+  ├─ sites
+  ├─ sessions
+  ├─ events
+  ├─ session_replays
+  ├─ alerts
+  └─ funnels
 ```
 
----
+## Core Flows
 
-## Data Flow
+### 1. Visitor tracking
 
-### 1. Event Collection (SDK → API)
+1. A tracked site loads `dxm.js`
+2. The SDK creates or reuses a session ID
+3. Events queue locally for resilience on weak networks
+4. The SDK flushes batches to `POST /collect`
+5. Replay chunks go to `POST /collect-replay/replay`
+6. Final page-hide flushes include `completed: true`
+7. The API resolves the `site_key`, writes to the session write model, derives KPI fields, and runs alert checks
 
-```
-User visits instrumented site
-  → SDK script tag fires
-  → SDK batches events in memory (clicks, scrolls, navigations, vitals)
-  → Every 3 seconds: POST /collect  { siteKey, sessionId, events[] }
-  → API validates siteKey → looks up site + workspace
-  → Inserts/updates session row
-  → Inserts event rows
-  → Triggers alert engine (fire-and-forget) in background
-```
+### 2. Operator workflow
 
-### 2. Dashboard (Web → API)
+1. A user signs up or logs in through `/auth/*`
+2. The web app receives auth via httpOnly cookies
+3. Dashboard screens fetch live data from workspace-scoped routes
+4. Settings surfaces tracked sites, install snippets, Telegram, and digest options
+5. Alerts and weekly digest keep value flowing outside the dashboard itself
 
-```
-User opens DXM Pulse dashboard
-  → Auto-login via httpOnly JWT cookie
-  → Web app fetches:
-      GET /sessions          — session list + counts
-      GET /analytics/vitals  — LCP, FID, CLS aggregates
-      GET /analytics/heatmap — click coordinate clusters
-      GET /analytics/userflow — page-to-page navigation matrix
-      GET /funnels           — funnel list
-      GET /funnels/:id/analysis — step-by-step drop-off rates
-      GET /alerts            — active alerts
-  → useRealTimeData hook re-polls /sessions every 5 seconds
-```
+### 3. Public top-of-funnel workflow
 
-### 3. Alert Detection (Background)
+1. A prospect lands on `/`
+2. They can run a public site audit without signing up
+3. They can then sign up, add a site, and verify installation
+4. From there the app transitions into the authenticated workspace flow
 
-```
-After each event batch arrives at POST /collect:
-  → runAlertChecks(workspaceId, siteId) runs asynchronously
-  → Checks last 2 seconds of events for rage clicks (3+ on same target)
-  → Checks last 30 minutes of vitals for slow LCP (> 4000 ms)
-  → Checks last 2 hours of sessions for high bounce rate (> 70%)
-  → If alert triggered and no open duplicate exists:
-      → INSERT INTO alerts
-      → POST to Telegram if bot token + chat_id are configured
-```
+## Multi-Tenancy
 
----
+Workspace isolation is row-based and enforced in the API:
 
-## Authentication
+- users belong to a workspace
+- sites belong to a workspace
+- sessions inherit both `site_id` and `workspace_id`
+- alerts and funnels are scoped to a workspace
+- authenticated routes read the workspace from the verified JWT payload
 
-DXM Pulse uses **dual-token JWT** with httpOnly cookies:
+`GET /users`, `GET /sessions`, `GET /alerts`, `GET /funnels`, and settings routes are all workspace-scoped.
 
-| Token | Storage | TTL | Purpose |
-|---|---|---|---|
-| Access token | httpOnly cookie (`dxm_access`) | 15 minutes | Authenticate API requests |
-| Refresh token | httpOnly cookie (`dxm_refresh`) | 7 days | Issue new access tokens |
+## Integrations
 
-Flow:
-1. `POST /auth/login` → validates email/password → sets both cookies
-2. Every authenticated request reads `dxm_access` cookie via `middleware/auth.ts`
-3. If access token expires, client calls `POST /auth/refresh` → new access token issued, refresh token rotated
-4. `POST /auth/logout` → clears both cookies, invalidates refresh token in DB
+### Telegram
 
-The frontend `fetchJson()` wrapper automatically sends cookies on every request via `credentials: 'include'`.
+Used for:
+- immediate alert delivery
+- weekly digest delivery
+- manual upgrade/contact path in the current MVP
 
----
+### Chapa
 
-## Multi-tenancy
+Current role:
+- plan and billing surface preparation
+- webhook stub for future production billing automation
 
-The data model is workspace-scoped:
+## Current Architectural Boundaries
 
-```
-Workspace (1)
-  └── Users (N)       — team members with roles (owner / admin / viewer)
-  └── Sites (N)       — tracked websites, each with a unique site_key
-        └── Sessions (N)
-              └── Events (N)
-        └── Funnels (N)
-        └── Alerts (N)
-```
+Intentionally strong already:
+- monorepo separation
+- workspace isolation
+- SDK/API split
+- SQLite-backed source of truth
 
-Every API route that touches site data requires the JWT user's `workspace_id` to match the resource's `workspace_id`. This prevents cross-tenant data access.
+Still intentionally lightweight:
+- no job queue yet for digest or heavy background work
+- no separate analytics warehouse
+- billing automation and AI features are not complete in this branch
 
----
+## Session Boundary
 
-## Monorepo Setup
+The session surface now has an explicit write/read split instead of one mixed route shape:
 
-The project uses **npm workspaces**:
+- write model:
+  - `POST /collect`
+  - `POST /collect-replay/replay`
+- read models:
+  - `GET /sessions`
+  - `GET /sessions/:id`
+  - `GET /sessions/:id/replay`
+  - `GET /analytics/heatmap`
 
-```json
-// package.json (root)
-{
-  "workspaces": ["apps/web", "apps/api"]
-}
-```
-
-Running `npm install` at the root installs all packages. Individual scripts are run with:
-
-```bash
-npm run dev -w apps/api      # run a script in a specific workspace
-npm run build -w apps/web
-```
-
----
-
-## Key Technology Choices
-
-| Decision | Choice | Reason |
-|---|---|---|
-| Database | SQLite | Zero-config, no separate DB process, perfect for self-hosted Ethiopian SaaS |
-| Auth storage | httpOnly cookies | Immune to XSS token theft vs localStorage |
-| TypeScript runner | tsx | Native ESM support, replaces ts-node-dev which breaks with `"type":"module"` |
-| Payment gateway | Chapa | Ethiopian payment gateway with Birr support |
-| Session replay | rrweb | Industry-standard DOM recording library |
-| Alerts delivery | Telegram | High mobile penetration in Ethiopia, no email server needed |
+This is intentionally a small structural refactor, not a broader platform redesign.

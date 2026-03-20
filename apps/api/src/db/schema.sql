@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   billing_status      TEXT NOT NULL DEFAULT 'active',     -- active | past_due | cancelled
   telegram_chat_id    TEXT,
   telegram_bot_token  TEXT,
+  digest_enabled      INTEGER NOT NULL DEFAULT 0,
+  digest_language     TEXT NOT NULL DEFAULT 'en',
   chapa_customer_id   TEXT,
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

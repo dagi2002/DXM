@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import type {
+  CollectReplayRequest,
+  CollectRequest,
+} from '../../../../packages/contracts/index.js';
 
 const sdkEventSchema = z.object({
-  type: z.string(),
+  type: z.enum(['pageview', 'click', 'scroll', 'navigation', 'vital', 'custom', 'identify']),
   ts: z.number().optional(),
   x: z.number().optional(),
   y: z.number().optional(),
@@ -20,6 +24,7 @@ export const collectSchema = z.object({
   sessionId: z.string().min(1).max(64),
   siteId: z.string().min(1).max(64),
   events: z.array(sdkEventSchema).max(500),
+  completed: z.boolean().optional(),
   metadata: z.object({
     url: z.string().optional(),
     userAgent: z.string().optional(),
@@ -37,3 +42,10 @@ export const collectReplaySchema = z.object({
 });
 
 export type CollectInput = z.infer<typeof collectSchema>;
+export type CollectReplayInput = z.infer<typeof collectReplaySchema>;
+
+type AssertExtends<T extends U, U> = true;
+type _CollectSchemaMatchesContract = AssertExtends<CollectInput, CollectRequest>;
+type _CollectContractMatchesSchema = AssertExtends<CollectRequest, CollectInput>;
+type _CollectReplaySchemaMatchesContract = AssertExtends<CollectReplayInput, CollectReplayRequest>;
+type _CollectReplayContractMatchesSchema = AssertExtends<CollectReplayRequest, CollectReplayInput>;

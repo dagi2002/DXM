@@ -1,0 +1,152 @@
+export interface ApiEndpoints {
+  collect: '/collect';
+  collectReplay: '/collect-replay/replay';
+  sessions: '/sessions';
+  heatmap: '/analytics/heatmap';
+}
+
+export const API_ENDPOINTS: ApiEndpoints;
+export const CONVERSION_EVENT_KEYWORDS: readonly string[];
+
+export type SdkEventType =
+  | 'pageview'
+  | 'click'
+  | 'scroll'
+  | 'navigation'
+  | 'vital'
+  | 'custom'
+  | 'identify';
+
+export interface SessionDimensions {
+  width: number;
+  height: number;
+}
+
+export interface SessionRecordingMetadata {
+  startedAt?: string;
+  userId?: string;
+  userAgent?: string;
+  url?: string;
+  referrer?: string;
+  language?: string;
+  screen?: SessionDimensions;
+  viewport?: SessionDimensions;
+  timezone?: string;
+  devicePixelRatio?: number;
+  device?: string;
+  browser?: string;
+}
+
+export interface SdkCollectEvent {
+  [key: string]: unknown;
+  type: SdkEventType;
+  ts?: number;
+  x?: number;
+  y?: number;
+  depth?: number;
+  pct?: number;
+  url?: string;
+  target?: string;
+  name?: string;
+  value?: string | number;
+  event?: string;
+  userId?: string;
+  data?: unknown;
+}
+
+export interface CollectRequest {
+  sessionId: string;
+  siteId: string;
+  events: SdkCollectEvent[];
+  metadata?: SessionRecordingMetadata;
+  completed?: boolean;
+}
+
+export interface CollectReplayRequest {
+  sessionId: string;
+  siteId: string;
+  replayEvents: unknown[];
+  chunkIndex: number;
+}
+
+export interface SessionRecordingStats {
+  clicks: number;
+  scrollDepth: number;
+  totalEvents: number;
+  bounced: boolean;
+  converted: boolean;
+}
+
+export type SessionRecordingEventType =
+  | 'click'
+  | 'scroll'
+  | 'navigation'
+  | 'pageview'
+  | 'custom'
+  | 'vital'
+  | 'hover'
+  | 'mousemove';
+
+export interface SessionRecordingEvent {
+  type: SessionRecordingEventType;
+  timestamp: number;
+  absoluteTimestamp: number;
+  x?: number;
+  y?: number;
+  scrollY?: number;
+  depth?: number;
+  button?: number;
+  target?: string;
+  url?: string;
+  value?: string;
+  phase?: 'enter' | 'leave';
+}
+
+export interface SessionSummary {
+  id: string;
+  startedAt: string;
+  endedAt?: string;
+  duration: number;
+  metadata: SessionRecordingMetadata;
+  stats: SessionRecordingStats;
+  events: SessionRecordingEvent[];
+  updatedAt: string;
+  completed: boolean;
+  hasReplay: boolean;
+  siteDomain?: string;
+}
+
+export interface SessionDetail extends Omit<SessionSummary, 'events'> {
+  events: SessionRecordingEvent[];
+}
+
+export interface ReplayEvent {
+  type: number;
+  data: unknown;
+  timestamp: number;
+}
+
+export interface SessionReplay {
+  sessionId: string;
+  startedAt: string;
+  duration: number;
+  sizeBytes: number;
+  events: ReplayEvent[];
+}
+
+export interface HeatmapPoint {
+  type: 'click' | 'scroll' | 'hover';
+  sessionId: string;
+  url: string;
+  x?: number;
+  y?: number;
+  depth?: number;
+  target?: string;
+  weight: number;
+  phase?: 'enter' | 'leave';
+}
+
+export interface HeatmapReadModel {
+  sessions: SessionSummary[];
+  points: HeatmapPoint[];
+}

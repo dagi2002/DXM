@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Settings, BarChart3 } from 'lucide-react';
 import { SiteHealthScore } from './SiteHealthScore';
 import { ProblemsSection } from './ProblemsSection';
+import { RecommendedActions } from './RecommendedActions';
 import { MetricCard } from './MetricCard';
 import { ActivityChart } from './ActivityChart';
 import { LiveSessions } from './LiveSessions';
@@ -105,7 +106,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 2. Problems Detected (alerts hero) */}
       <ProblemsSection alerts={alerts} isLoading={isLoading} />
 
-      {/* 3. Metrics Grid */}
+      {/* 3. Recommended Actions */}
+      <RecommendedActions sessions={sessions} metrics={metrics} alerts={alerts} />
+
+      {/* 4. Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {metrics.map((metric, index) => (
           <MetricCard key={index} metric={metric} />
@@ -123,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* 4. Activity Charts */}
+      {/* 5. Activity Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ActivityChart
           title={t('dashboard.liveActivity')}
@@ -137,7 +141,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
-      {/* 5. Live Sessions */}
+      {/* 6. Live Sessions */}
       <LiveSessions sessions={sessions} isLoading={isLoading} />
     </div>
   );

@@ -19,21 +19,11 @@ export const AnalyticsView: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Deep insights into user behavior and experience</p>
+          <p className="text-gray-600">Behavior, funnels, flows, and performance in a format your agency can act on.</p>
         </div>
-        
-        {/* TODO: Wire date range filter to real data — currently has no effect */}
-        <div className="flex items-center space-x-2">
-          <select
-            disabled
-            title="Date range filtering coming soon"
-            className="px-4 py-2 border border-gray-200 rounded-lg outline-none opacity-50 cursor-not-allowed"
-          >
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-            <option>Last 90 days</option>
-          </select>
-        </div>
+        <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-medium text-surface-600">
+          Live portfolio telemetry
+        </span>
       </div>
 
       {/* Tab Navigation */}

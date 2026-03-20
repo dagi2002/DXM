@@ -48,6 +48,12 @@ const scoreColor = (score: AuditResult['score']) => {
   return 'text-red-700 bg-red-50 border-red-200';
 };
 
+const getScoreLabel = (score: AuditResult['score'], t: (key: string) => string) => {
+  if (score === 'good') return t('audit.good');
+  if (score === 'needs-work') return t('audit.needsWork');
+  return t('audit.poor');
+};
+
 export const SiteAudit: React.FC = () => {
   const { t } = useTranslation();
   const [url, setUrl] = useState('');
@@ -66,7 +72,7 @@ export const SiteAudit: React.FC = () => {
     try {
       const data = await fetchJson<AuditResult>(`/audit?url=${encodeURIComponent(url.trim())}`);
       setResult(data);
-    } catch (err) {
+    } catch {
       setError(t('audit.error'));
     } finally {
       setLoading(false);
@@ -101,10 +107,10 @@ export const SiteAudit: React.FC = () => {
           {loading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              {t('audit.analyzing')}
+              {t('audit.checking')}
             </span>
           ) : (
-            t('audit.submit')
+            t('audit.check')
           )}
         </button>
       </form>
@@ -121,11 +127,9 @@ export const SiteAudit: React.FC = () => {
           <div className={`flex items-center justify-between rounded-xl border p-4 ${scoreColor(result.score)}`}>
             <div className="flex items-center gap-3">
               <ScoreIcon score={result.score} />
-              <span className="font-semibold">{t('audit.overallScore')}</span>
+              <span className="font-semibold">{t('audit.overall')}</span>
             </div>
-            <span className="font-bold capitalize">
-              {t(`audit.score_${result.score}`)}
-            </span>
+            <span className="font-bold capitalize">{getScoreLabel(result.score, t)}</span>
           </div>
 
           {/* Metrics Grid */}
@@ -177,7 +181,7 @@ export const SiteAudit: React.FC = () => {
           {/* CTA */}
           <div className="rounded-xl bg-primary-50 p-4 text-center">
             <p className="text-sm text-primary-800">
-              {t('audit.ctaText')}{' '}
+              {t('audit.cta')}{' '}
               <Link to="/signup" className="font-bold text-primary-600 underline hover:text-primary-700">
                 {t('audit.ctaLink')}
               </Link>

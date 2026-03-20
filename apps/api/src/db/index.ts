@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DB_PATH ||
   path.join(__dirname, '../../data/dxm.db');
 
-export const db = new Database(DB_PATH);
+export const db: Database.Database = new Database(DB_PATH);
 
 // Performance pragmas
 db.pragma('journal_mode = WAL');     // allows concurrent reads while writing

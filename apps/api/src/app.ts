@@ -10,12 +10,15 @@ import collectRoutes from './routes/collect.js';
 import sessionsRoutes from './routes/sessions.js';
 import analyticsRoutes from './routes/analytics.js';
 import alertsRoutes from './routes/alerts.js';
+import usersRoutes from './routes/users.js';
 import settingsRoutes from './routes/settings.js';
 import billingRoutes from './routes/billing.js';
 import onboardingRoutes from './routes/onboarding.js';
 import funnelsRoutes from './routes/funnels.js';
 import auditRoutes from './routes/audit.js';
 import digestRoutes from './routes/digest.js';
+import sitesRoutes from './routes/sites.js';
+import overviewRoutes from './routes/overview.js';
 
 const app = express();
 
@@ -43,6 +46,9 @@ app.use('/collect-replay', collectRoutes);   // collect router handles /replay s
 app.use('/sessions', sessionsRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/alerts', alertsRoutes);
+app.use('/users', usersRoutes);
+app.use('/overview', overviewRoutes);
+app.use('/sites', sitesRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/billing', billingRoutes);
 app.use('/onboarding', onboardingRoutes);

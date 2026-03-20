@@ -6,13 +6,89 @@ import { sendTelegramAlert } from '../services/telegram.js';
 const router = Router();
 router.use(requireAuth);
 
+type AlertType = 'error' | 'performance' | 'frustration' | 'conversion';
+type AlertSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+interface AlertRow {
+  id: string;
+  site_id: string | null;
+  type: string;
+  severity: string;
+  title: string;
+  description: string | null;
+  resolved: number;
+  affected_sessions: number;
+  telegram_sent: number;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+interface AlertDto {
+  id: string;
+  siteId: string | null;
+  type: AlertType;
+  severity: AlertSeverity;
+  title: string;
+  description: string;
+  timestamp: string;
+  resolved: boolean;
+  affectedSessions: number;
+  telegramSent: boolean;
+  resolvedAt: string | null;
+}
+
+function normalizeAlertType(type: string): AlertType {
+  if (type === 'performance' || type === 'frustration' || type === 'conversion') {
+    return type;
+  }
+
+  return 'error';
+}
+
+function normalizeAlertSeverity(severity: string): AlertSeverity {
+  if (severity === 'medium' || severity === 'high' || severity === 'critical') {
+    return severity;
+  }
+
+  return 'low';
+}
+
+function toAlertDto(row: AlertRow): AlertDto {
+  return {
+    id: row.id,
+    siteId: row.site_id,
+    type: normalizeAlertType(row.type),
+    severity: normalizeAlertSeverity(row.severity),
+    title: row.title,
+    description: row.description ?? '',
+    timestamp: row.created_at,
+    resolved: Boolean(row.resolved),
+    affectedSessions: row.affected_sessions,
+    telegramSent: Boolean(row.telegram_sent),
+    resolvedAt: row.resolved_at,
+  };
+}
+
 // GET /alerts
 router.get('/', (req, res) => {
-  const rows = db.prepare(`
-    SELECT * FROM alerts WHERE workspace_id = ?
+  const rows = db.prepare<[string], AlertRow>(`
+    SELECT
+      id,
+      site_id,
+      type,
+      severity,
+      title,
+      description,
+      resolved,
+      affected_sessions,
+      telegram_sent,
+      created_at,
+      resolved_at
+    FROM alerts
+    WHERE workspace_id = ?
     ORDER BY created_at DESC LIMIT 100
   `).all(req.user!.workspaceId);
-  return res.json(rows);
+  return res.json(rows.map(toAlertDto));
 });
 
 // POST /alerts — create a new alert (also fires Telegram if configured)

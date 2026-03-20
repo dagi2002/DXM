@@ -1,549 +1,273 @@
-import React, { createContext, useContext, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { Zap, X, BarChart2, Activity, AlertTriangle, Users, TrendingUp, MousePointer, Clock, Percent, ShieldCheck, ShieldAlert } from 'lucide-react';
 import {
-  demoMetrics,
-  demoSessions,
-  demoFunnel,
-  demoAlerts,
-  demoVitals,
-  demoClickPoints,
-} from '../data/demoData';
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  FileText,
+  Gauge,
+  PlayCircle,
+  Zap,
+} from 'lucide-react';
 
-// ─── Demo Context ──────────────────────────────────────────────────────────────
+const demoClients = [
+  {
+    name: 'Abebe Furniture',
+    domain: 'abebefurniture.et',
+    health: 87,
+    alerts: 0,
+    sessions: 1840,
+    note: 'Landing pages improved after the mobile hero refresh.',
+  },
+  {
+    name: 'Blue Nile Tours',
+    domain: 'blueniletours.com',
+    health: 74,
+    alerts: 2,
+    sessions: 932,
+    note: 'Checkout assistance CTA is driving stronger inquiry completion.',
+  },
+  {
+    name: 'Habesha Legal Studio',
+    domain: 'habeshalegal.com',
+    health: 51,
+    alerts: 3,
+    sessions: 418,
+    note: 'Mobile landing page is slow and one lead form is underperforming.',
+  },
+  {
+    name: 'Addis Learning Hub',
+    domain: 'addislearning.et',
+    health: 79,
+    alerts: 1,
+    sessions: 1264,
+    note: 'Course signup flow stabilized after fixing a rage-click step.',
+  },
+];
 
-interface DemoContextValue {
-  isDemo: true;
-}
+const demoAlerts = [
+  {
+    title: 'Habesha Legal Studio checkout CTA is rage-clicking on mobile',
+    detail: 'Users are repeatedly tapping the primary CTA but not progressing. This likely needs a form or navigation fix.',
+    severity: 'High',
+  },
+  {
+    title: 'Blue Nile Tours lead form response time crossed 4s',
+    detail: 'The account manager should review performance before the next client call.',
+    severity: 'Medium',
+  },
+];
 
-export const DemoContext = createContext<DemoContextValue>({ isDemo: true });
-export const useDemo = () => useContext(DemoContext);
-
-// ─── Helper components ─────────────────────────────────────────────────────────
-
-const MetricCard: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  color?: string;
-}> = ({ icon, label, value, sub, color = 'text-primary-600 bg-primary-50' }) => (
-  <div className="bg-white rounded-xl border border-gray-100 p-5">
-    <div className="flex items-center justify-between mb-3">
-      <span className="text-sm text-gray-500">{label}</span>
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${color}`}>
-        {icon}
-      </div>
-    </div>
-    <div className="text-2xl font-bold text-gray-900">{value}</div>
-    {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
-  </div>
-);
-
-const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
-  const map: Record<string, string> = {
-    critical: 'bg-red-100 text-red-700',
-    high: 'bg-orange-100 text-orange-700',
-    medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-green-100 text-green-700',
-  };
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${map[severity] || 'bg-gray-100 text-gray-600'}`}>
-      {severity}
-    </span>
-  );
-};
-
-// ─── Tab views ─────────────────────────────────────────────────────────────────
-
-const DemoHealthScore: React.FC = () => {
-  const score = 72;
-  const circumference = 2 * Math.PI * 42;
-  const offset = circumference - (score / 100) * circumference;
-  return (
-    <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
-      <div className="flex items-center gap-5">
-        <div className="relative flex-shrink-0">
-          <svg width="96" height="96" viewBox="0 0 96 96">
-            <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
-            <circle cx="48" cy="48" r="42" fill="none" stroke="#166534" strokeWidth="6" strokeLinecap="round"
-              strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 48 48)" />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-primary-600">{score}</span>
-            <span className="text-[10px] text-gray-400">/100</span>
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="h-5 w-5 text-primary-600" />
-            <span className="font-bold text-primary-700">Site is healthy</span>
-          </div>
-          <p className="text-sm text-primary-600">2 minor issues detected this week. Overall performance is good.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const DemoProblems: React.FC = () => {
-  const unresolvedAlerts = demoAlerts.filter(a => !a.resolved);
-  if (unresolvedAlerts.length === 0) return null;
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldAlert className="h-5 w-5 text-accent-600" />
-        <h3 className="font-semibold text-gray-900">{unresolvedAlerts.length} problems detected</h3>
-      </div>
-      <div className="space-y-2">
-        {unresolvedAlerts.slice(0, 3).map(alert => (
-          <div key={alert.id} className="flex items-start gap-3 p-3 rounded-xl border border-orange-100 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
-            <div>
-              <span className="text-sm font-medium text-gray-900">{alert.title}</span>
-              <p className="text-xs text-gray-500 mt-0.5">{alert.affectedSessions} sessions affected</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const OverviewTab: React.FC = () => {
-  const fmt = (s: number) => `${Math.floor(s / 60)}m ${s % 60}s`;
-
-  return (
-    <div className="space-y-6">
-      {/* Health Score */}
-      <DemoHealthScore />
-
-      {/* Problems */}
-      <DemoProblems />
-
-      {/* Metrics grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard
-          icon={<Activity className="h-4 w-4" />}
-          label="Active Sessions"
-          value={demoMetrics.activeSessions.toLocaleString()}
-          sub="Right now"
-          color="text-primary-600 bg-primary-50"
-        />
-        <MetricCard
-          icon={<Clock className="h-4 w-4" />}
-          label="Avg Session"
-          value={fmt(demoMetrics.avgSessionDuration)}
-          sub="Last 7 days"
-          color="text-purple-600 bg-purple-50"
-        />
-        <MetricCard
-          icon={<Percent className="h-4 w-4" />}
-          label="Bounce Rate"
-          value={`${demoMetrics.bounceRate}%`}
-          sub="↓ 3% vs last week"
-          color="text-orange-600 bg-orange-50"
-        />
-        <MetricCard
-          icon={<TrendingUp className="h-4 w-4" />}
-          label="Conversion"
-          value={`${demoMetrics.conversionRate}%`}
-          sub="↑ 0.4% vs last week"
-          color="text-green-600 bg-green-50"
-        />
-      </div>
-
-      {/* Live sessions */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          Live Sessions
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-400 border-b border-gray-100">
-                <th className="text-left pb-2 font-medium">Page</th>
-                <th className="text-left pb-2 font-medium">Device</th>
-                <th className="text-right pb-2 font-medium">Duration</th>
-                <th className="text-right pb-2 font-medium">Clicks</th>
-                <th className="text-right pb-2 font-medium">Scroll</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {demoSessions.slice(0, 5).map(s => (
-                <tr key={s.id} className="hover:bg-gray-50/50">
-                  <td className="py-2.5 pr-4 text-gray-700 max-w-[160px] truncate">
-                    {s.entryUrl}
-                  </td>
-                  <td className="py-2.5 pr-4">
-                    <span className="capitalize text-gray-500">{s.device}</span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right text-gray-600">{fmt(s.duration)}</td>
-                  <td className="py-2.5 pr-4 text-right text-gray-600">{s.clicks}</td>
-                  <td className="py-2.5 text-right">
-                    <span className={`${s.scrollDepth > 70 ? 'text-green-600' : 'text-gray-500'}`}>
-                      {s.scrollDepth}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const FunnelTab: React.FC = () => {
-  const maxUsers = demoFunnel[0].users;
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
-      <h3 className="font-semibold text-gray-900 mb-6">Purchase Funnel — Habesha Mart</h3>
-      <div className="space-y-4">
-        {demoFunnel.map((step, i) => {
-          const pct = (step.users / maxUsers) * 100;
-          const isBottleneck = step.dropoffRate > 35;
-          return (
-            <div key={step.name}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-gray-800">{step.name}</span>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-gray-600 font-medium">{step.users.toLocaleString()} users</span>
-                  {step.dropoffRate > 0 && (
-                    <span className={`font-medium ${isBottleneck ? 'text-red-600' : 'text-orange-500'}`}>
-                      −{step.dropoffRate.toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
-                <div
-                  className={`h-full rounded-lg transition-all ${
-                    isBottleneck ? 'bg-red-500' : i === 0 ? 'bg-primary-500' : i === demoFunnel.length - 1 ? 'bg-green-500' : 'bg-primary-400'
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              {isBottleneck && step.exitReasons.length > 0 && (
-                <div className="mt-2 ml-1 text-xs text-red-600 font-medium">
-                  ⚠ Main drop-off: {step.exitReasons[0].reason} ({step.exitReasons[0].pct}%)
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-xs text-gray-400 mt-6">
-        🇪🇹 Key insight: 51% of users drop off at checkout — primarily due to missing Telebirr/CBEBirr payment options.
-      </p>
-    </div>
-  );
-};
-
-const HeatmapTab: React.FC = () => {
-  const maxCount = Math.max(...demoClickPoints.map(p => p.count));
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
-      <h3 className="font-semibold text-gray-900 mb-2">Click Heatmap — Product Page</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        {demoClickPoints.reduce((a, p) => a + p.count, 0).toLocaleString()} total clicks recorded
-      </p>
-      <div
-        className="relative bg-gray-900 rounded-xl overflow-hidden"
-        style={{ paddingTop: '177.7%' }} // 9:16 mobile viewport ratio
-      >
-        {/* Phone-like UI skeleton */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 left-0 right-0 h-[5%] bg-gray-600" /> {/* header */}
-          <div className="absolute top-[5%] left-0 right-0 h-[30%] bg-gray-700" /> {/* product image */}
-          <div className="absolute top-[37%] left-[5%] right-[5%] h-[5%] bg-gray-600 rounded" /> {/* title */}
-          <div className="absolute top-[43%] left-[5%] w-[25%] h-[4%] bg-gray-600 rounded" /> {/* price */}
-          <div className="absolute top-[50%] left-[5%] right-[5%] h-[4%] bg-gray-600 rounded flex gap-2" /> {/* variants */}
-          <div className="absolute top-[59%] left-[5%] right-[5%] h-[6%] bg-primary-800 rounded" /> {/* add to cart */}
-          <div className="absolute top-[67%] left-[5%] right-[5%] h-[5%] bg-gray-600 rounded" /> {/* buy now */}
-        </div>
-
-        {/* Heatmap dots */}
-        {demoClickPoints.map((point, i) => {
-          const intensity = point.count / maxCount;
-          const radius = 4 + intensity * 20;
-          const alpha = 0.3 + intensity * 0.6;
-          const color =
-            intensity > 0.7
-              ? `rgba(239,68,68,${alpha})`
-              : intensity > 0.4
-              ? `rgba(249,115,22,${alpha})`
-              : `rgba(234,179,8,${alpha})`;
-          return (
-            <div
-              key={i}
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                left: `${point.x}%`,
-                top: `${point.y}%`,
-                width: `${radius * 2}px`,
-                height: `${radius * 2}px`,
-                backgroundColor: color,
-                transform: 'translate(-50%, -50%)',
-                filter: `blur(${radius * 0.4}px)`,
-              }}
-            />
-          );
-        })}
-
-        {/* Legend */}
-        <div className="absolute bottom-2 left-2 flex items-center gap-1 text-[10px] text-white/70">
-          <div className="w-3 h-3 rounded-full bg-yellow-400/70" />
-          <span>Low</span>
-          <div className="w-3 h-3 rounded-full bg-orange-500/70 ml-1" />
-          <span>Mid</span>
-          <div className="w-3 h-3 rounded-full bg-red-500/70 ml-1" />
-          <span>High</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AlertsTab: React.FC = () => {
-  const severityIcon: Record<string, string> = {
-    critical: '🔴',
-    high: '🟠',
-    medium: '🟡',
-    low: '🟢',
-  };
-
-  return (
-    <div className="space-y-3">
-      {demoAlerts.map(alert => (
-        <div
-          key={alert.id}
-          className={`bg-white rounded-xl border p-5 ${
-            alert.resolved ? 'border-gray-100 opacity-60' : 'border-gray-200'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <span className="text-lg leading-none mt-0.5">{severityIcon[alert.severity]}</span>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-900 text-sm">{alert.title}</span>
-                  <SeverityBadge severity={alert.severity} />
-                  {alert.resolved && (
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      Resolved
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">{alert.description}</p>
-                <p className="text-xs text-gray-400 mt-1.5">
-                  {alert.affectedSessions.toLocaleString()} sessions affected
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const VitalsTab: React.FC = () => {
-  const statusColors: Record<string, string> = {
-    good: 'text-green-600 bg-green-50 border-green-200',
-    warning: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-    poor: 'text-red-600 bg-red-50 border-red-200',
-  };
-
-  const thresholds: Record<string, { good: number; warning: number }> = {
-    LCP: { good: 2500, warning: 4000 },
-    FCP: { good: 1800, warning: 3000 },
-    TTFB: { good: 800, warning: 1800 },
-    CLS: { good: 0.1, warning: 0.25 },
-    INP: { good: 200, warning: 500 },
-  };
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {demoVitals.map(v => {
-        const t = thresholds[v.name];
-        const isLower = v.name !== 'CLS';
-        const fmt = (val: number) =>
-          v.name === 'CLS' ? val.toFixed(2) : `${val.toLocaleString()}${v.unit}`;
-
-        return (
-          <div
-            key={v.name}
-            className={`rounded-xl border p-5 ${statusColors[v.status]}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-lg font-bold">{v.name}</span>
-              <span className={`text-xs font-medium px-2 py-1 rounded-full border ${statusColors[v.status]} capitalize`}>
-                {v.status}
-              </span>
-            </div>
-            <div className="text-3xl font-bold mb-1">{fmt(v.p50)}</div>
-            <div className="text-xs opacity-70 mb-3">p50 (median)</div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <div className="opacity-60">p75</div>
-                <div className="font-semibold">{fmt(v.p75)}</div>
-              </div>
-              <div>
-                <div className="opacity-60">p95</div>
-                <div className="font-semibold">{fmt(v.p95)}</div>
-              </div>
-            </div>
-            <div className="text-xs opacity-60 mt-3">
-              Good: {isLower ? '<' : '>'}{fmt(t.good)} · Poor: {isLower ? '>' : '<'}{fmt(t.warning)}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// ─── Main DemoPage ─────────────────────────────────────────────────────────────
-
-type TabId = 'overview' | 'funnel' | 'heatmap' | 'alerts' | 'vitals';
-
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview', label: 'Overview', icon: <BarChart2 className="h-4 w-4" /> },
-  { id: 'funnel', label: 'Funnel', icon: <TrendingUp className="h-4 w-4" /> },
-  { id: 'heatmap', label: 'Heatmap', icon: <MousePointer className="h-4 w-4" /> },
-  { id: 'alerts', label: 'Alerts', icon: <AlertTriangle className="h-4 w-4" /> },
-  { id: 'vitals', label: 'Vitals', icon: <Activity className="h-4 w-4" /> },
+const reportCards = [
+  {
+    title: 'Weekly portfolio pulse',
+    summary: 'Four active clients were monitored this week. Two accounts need follow-up before the next status meetings, while Abebe Furniture is trending positively after last week’s landing page fix.',
+  },
+  {
+    title: 'Habesha Legal Studio risk brief',
+    summary: 'The client is underperforming on mobile. Replay and alert evidence point to a broken CTA path and slow page load in the lead flow.',
+  },
 ];
 
 export const DemoPage: React.FC = () => {
-  const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [bannerVisible, setBannerVisible] = useState(true);
-
   return (
-    <DemoContext.Provider value={{ isDemo: true }}>
-      <div className="min-h-screen bg-gray-50">
-        {/* Demo banner */}
-        {bannerVisible && (
-          <div className="bg-primary-600 text-white px-4 py-2.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Zap className="h-4 w-4 shrink-0" />
-              <span>
-                <strong>Demo mode</strong> — showing sample data for "Habesha Mart" Ethiopian e-commerce.
-                No account required.
-              </span>
+    <div className="min-h-screen bg-surface-50 text-surface-900">
+      <nav className="border-b border-surface-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 shadow-lg">
+              <Zap className="h-5 w-5 text-white" />
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <Link
-                to="/signup"
-                className="hidden sm:inline-flex items-center gap-1.5 bg-white text-primary-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary-50 transition-colors"
-              >
-                Start Free Trial →
-              </Link>
-              <button
-                onClick={() => setBannerVisible(false)}
-                className="text-white/70 hover:text-white transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            <div>
+              <p className="text-base font-bold text-surface-900">DXM Pulse</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-surface-500">Agency Demo</p>
             </div>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/signup" className="rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700">
+              Start free
+            </Link>
           </div>
-        )}
+        </div>
+      </nav>
 
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="h-6 w-6 text-primary-600" />
-              <span className="text-lg font-bold text-gray-900">DXM Pulse</span>
-              <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Demo</span>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 text-white shadow-xl md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-100">
+                Demo agency workspace
+              </div>
+              <h1 className="mt-4 text-4xl font-bold md:text-5xl">Addis Growth Studio portfolio overview</h1>
+              <p className="mt-4 text-base leading-7 text-primary-100">
+                This demo shows the exact story DXM Pulse should tell in a real agency environment: what is healthy, what is at risk, and what needs to be communicated to clients next.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                to="/login"
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                {t('auth.login')}
-              </Link>
-              <Link
-                to="/signup"
-                className="text-sm font-semibold bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                {t('auth.signup')}
-              </Link>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { label: 'Client sites', value: '18', icon: Building2 },
+                { label: 'Portfolio health', value: '81/100', icon: Gauge },
+                { label: 'Open alerts', value: '6', icon: AlertTriangle },
+                { label: 'Replay sessions', value: '428', icon: Eye },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-primary-100">{label}</p>
+                    <Icon className="h-4 w-4 text-primary-100" />
+                  </div>
+                  <p className="mt-4 text-3xl font-semibold">{value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
-          {/* Site header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-gray-900">Habesha Mart</h1>
-              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">habeshamart.et</span>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Portfolio clients</p>
+                <h2 className="mt-2 text-2xl font-semibold text-surface-900">Every client site, one coherent operating view</h2>
+              </div>
+              <div className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                Live demo
+              </div>
             </div>
-            <p className="text-sm text-gray-500">Last 7 days · {demoMetrics.totalPageviews.toLocaleString()} pageviews</p>
-          </div>
 
-          {/* Tab bar */}
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
+            <div className="mt-6 grid gap-4">
+              {demoClients.map((client) => (
+                <div key={client.name} className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-lg font-semibold text-surface-900">{client.name}</p>
+                      <p className="mt-1 text-sm text-surface-500">{client.domain}</p>
+                      <p className="mt-3 text-sm leading-6 text-surface-600">{client.note}</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 md:min-w-[260px]">
+                      {[
+                        { label: 'Health', value: `${client.health}/100` },
+                        { label: 'Alerts', value: client.alerts },
+                        { label: 'Sessions', value: client.sessions.toLocaleString() },
+                      ].map((stat) => (
+                        <div key={stat.label} className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{stat.label}</p>
+                          <p className="mt-2 text-lg font-semibold text-surface-900">{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
 
-          {/* Tab content */}
-          {activeTab === 'overview' && <OverviewTab />}
-          {activeTab === 'funnel' && <FunnelTab />}
-          {activeTab === 'heatmap' && <HeatmapTab />}
-          {activeTab === 'alerts' && <AlertsTab />}
-          {activeTab === 'vitals' && <VitalsTab />}
+          <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-surface-900">
+              <AlertTriangle className="h-5 w-5 text-primary-600" />
+              <h2 className="text-2xl font-semibold">Alert posture</h2>
+            </div>
+            <div className="mt-6 space-y-4">
+              {demoAlerts.map((alert) => (
+                <div key={alert.title} className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-lg font-semibold text-surface-900">{alert.title}</p>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                      {alert.severity}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-surface-700">{alert.detail}</p>
+                </div>
+              ))}
+            </div>
 
-          {/* CTA footer */}
-          <div className="mt-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl p-8 text-center text-white">
-            <Zap className="h-10 w-10 mx-auto mb-3 opacity-90" />
-            <h2 className="text-2xl font-bold mb-2">Ready to track your own site?</h2>
-            <p className="text-primary-100 mb-6 text-sm max-w-md mx-auto">
-              Add one line of code and get real session recording, heatmaps, funnel analysis,
-              and Telegram alerts — designed for Ethiopian businesses.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="mt-6 rounded-3xl border border-surface-200 bg-surface-50 p-5">
+              <div className="flex items-center gap-2 text-surface-900">
+                <PlayCircle className="h-5 w-5 text-primary-600" />
+                <h3 className="text-lg font-semibold">Replay narrative</h3>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-surface-600">
+                One replay session shows five repeated taps on the Habesha Legal Studio CTA before the user abandons the page. The portfolio story becomes instantly clearer when behavior and alerts line up.
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-surface-900">
+              <BarChart3 className="h-5 w-5 text-primary-600" />
+              <h2 className="text-2xl font-semibold">What this replaces</h2>
+            </div>
+            <div className="mt-6 space-y-4">
+              {[
+                'One place to see what is breaking across the portfolio',
+                'A cleaner handoff between traffic insight and client communication',
+                'Replay, alerts, and performance metrics organized around agency delivery',
+                'A more premium product feel than a generic dashboard clone',
+              ].map((point) => (
+                <div key={point} className="flex items-start gap-3 rounded-3xl bg-surface-50 p-4">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+                  <p className="text-sm leading-6 text-surface-700">{point}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-surface-900">
+              <FileText className="h-5 w-5 text-primary-600" />
+              <h2 className="text-2xl font-semibold">Ready-to-share reports</h2>
+            </div>
+            <div className="mt-6 space-y-4">
+              {reportCards.map((report) => (
+                <div key={report.title} className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                  <p className="text-lg font-semibold text-surface-900">{report.title}</p>
+                  <p className="mt-3 text-sm leading-6 text-surface-600">{report.summary}</p>
+                </div>
+              ))}
+              <div className="rounded-3xl border border-primary-200 bg-primary-50 p-5">
+                <div className="flex items-center gap-2 text-primary-700">
+                  <Clock3 className="h-5 w-5" />
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em]">Weekly operating rhythm</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-primary-900">
+                  The goal is not just pretty analytics. It is to make your agency look more proactive, more organized, and more valuable in every client interaction.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="mt-6 rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 text-white shadow-xl md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl font-bold">If this feels closer to the product you wanted, the next step is to connect a real client site.</h2>
+              <p className="mt-3 text-sm leading-7 text-primary-100">
+                Create a workspace, install the snippet on one live client site, and let the overview start earning its keep with real traffic.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-white text-primary-600 font-semibold px-6 py-3 rounded-xl hover:bg-primary-50 transition-colors"
+                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-primary-900 transition hover:bg-primary-50"
               >
-                Start Free Trial
+                Start free <ArrowRight className="h-4 w-4" />
               </Link>
-              <a
-                href="https://t.me/dxmpulse"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Contact on Telegram
-              </a>
+                Back to landing
+              </Link>
             </div>
-            <p className="text-primary-200 text-xs mt-4">Free plan available · No credit card required</p>
           </div>
         </div>
       </div>
-    </DemoContext.Provider>
+    </div>
   );
 };

@@ -21,7 +21,7 @@ if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
 const baseConfig = {
   entryPoints: [path.join(SRC, 'dxm.js')],
   outfile: path.join(DIST, 'dxm.js'),
-  bundle: false,         // no imports in base SDK
+  bundle: true,          // keeps internal contract constants aligned
   minify: true,
   target: ['es5'],       // support old Android browsers & Telebirr WebView
   format: 'iife',

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, Clock, BellOff, MoreVertical } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import type { Alert } from '../../types';
 import { fetchJson } from '../../lib/api';
 
 export const AlertsView: React.FC = () => {
   const [filter, setFilter] = useState('all');
-  // TODO: notificationsEnabled — persist to backend when notification system is implemented
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,20 +77,11 @@ export const AlertsView: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Alerts</h1>
-          <p className="text-gray-600">Monitor critical issues and performance problems</p>
+          <p className="text-gray-600">Stay ahead of client issues before they become uncomfortable status-call surprises.</p>
         </div>
-        
-        {/* TODO: Persist notification preference to backend — currently in-memory only */}
-        <div className="flex items-center space-x-3">
-          <button
-            disabled
-            title="Notification preferences coming soon"
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-400 opacity-60 cursor-not-allowed"
-          >
-            <BellOff className="h-4 w-4" />
-            <span>Notifications</span>
-          </button>
-        </div>
+        <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-medium text-surface-600">
+          Agency alert feed
+        </span>
       </div>
 
       {error && (
@@ -193,12 +183,7 @@ export const AlertsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                {!alert.resolved && <span className="px-3 py-2 text-xs font-medium text-gray-500">Read-only</span>}
-                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  <MoreVertical className="h-5 w-5" />
-                </button>
-              </div>
+              {!alert.resolved && <span className="px-3 py-2 text-xs font-medium text-gray-500">Read-only</span>}
             </div>
           </div>
         ))}

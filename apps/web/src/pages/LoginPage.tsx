@@ -7,7 +7,7 @@ export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/overview';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,17 +39,17 @@ export const LoginPage: React.FC = () => {
             <span className="text-3xl font-bold">DXM Pulse</span>
           </div>
           <h2 className="text-4xl font-bold mb-4 leading-tight">
-            Understand your users.<br />Grow your business.
+            Monitor every client site.<br />Prove your agency value.
           </h2>
           <p className="text-primary-200 text-lg">
-            Session recordings, heatmaps, and real-time alerts — built for Ethiopian businesses.
+            Session replay, performance insight, and proactive alerts for agencies managing client websites in Ethiopia.
           </p>
           <div className="mt-10 grid grid-cols-2 gap-6">
             {[
-              { label: 'Active Sessions', value: '1,324' },
-              { label: 'Avg Duration', value: '3m 12s' },
-              { label: 'Conversion Rate', value: '4.2%' },
-              { label: 'Bounce Rate', value: '39%' },
+              { label: 'Client Sites', value: '18' },
+              { label: 'At-Risk Sites', value: '3' },
+              { label: 'Weekly Alerts', value: '12' },
+              { label: 'Avg Health', value: '81/100' },
             ].map(stat => (
               <div key={stat.label} className="bg-primary-700 rounded-xl p-4">
                 <div className="text-2xl font-bold">{stat.value}</div>
@@ -70,7 +70,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
-          <p className="text-gray-500 mb-8">Sign in to your workspace</p>
+          <p className="text-gray-500 mb-8">Sign in to your agency workspace</p>
 
           {error && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
