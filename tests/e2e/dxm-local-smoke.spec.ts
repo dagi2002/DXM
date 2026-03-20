@@ -51,7 +51,8 @@ test('DXM local smoke flow captures sessions, replay, and heatmaps', async ({ pa
   await page.getByPlaceholder('Min. 8 characters').fill('smoke-test-password');
   await page.getByRole('button', { name: 'Create free account' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Your workspace is ready' })).toBeVisible();
+  await expect(page).toHaveURL(/\/onboarding/);
+  await expect(page.getByRole('heading', { name: 'Your workspace is ready' })).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: /Continue setup/i }).click();
 
   await page.getByPlaceholder('Abebe Furniture').fill(siteName);

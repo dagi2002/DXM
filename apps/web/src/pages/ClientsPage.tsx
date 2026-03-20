@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, Plus, Search } from 'lucide-react';
 import { fetchJson } from '../lib/api';
 import type { ClientSiteSummary } from '../types';
@@ -22,10 +22,20 @@ const formatDuration = (seconds: number) => {
 };
 
 export const ClientsPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [clients, setClients] = useState<ClientSiteSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const message = (location.state as { flashMessage?: string } | null)?.flashMessage;
+    if (!message) return;
+    setFlashMessage(message);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,6 +127,12 @@ export const ClientsPage: React.FC = () => {
       {error && (
         <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {flashMessage && (
+        <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
+          {flashMessage}
         </div>
       )}
 
