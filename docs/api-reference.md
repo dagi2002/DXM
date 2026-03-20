@@ -55,6 +55,12 @@ Returns the current user and workspace.
 
 Public SDK ingestion route. Authenticates by `siteId` which maps to a stored `site_key`.
 
+This route is intentionally public cross-origin for tracked client sites:
+
+- browser credentials are not required
+- arbitrary client origins may post SDK batches here
+- deployment CORS should allow `POST`, `OPTIONS`, and `Content-Type`
+
 Contract source of truth:
 
 - `packages/contracts/index.d.ts`
@@ -87,6 +93,8 @@ Notes:
 ### `POST /collect-replay/replay`
 
 Public replay chunk ingestion route.
+
+Like `POST /collect`, this route is intended for public cross-origin SDK traffic and does not rely on browser credentials.
 
 Contract source of truth:
 

@@ -23,12 +23,14 @@ DXM Pulse Web (apps/web)
 
 DXM Pulse API (apps/api)
   ├─ auth + cookies
+  ├─ dashboard/API CORS bound to the configured web origin
   ├─ analytics + funnels
   ├─ alerts + Telegram
   ├─ deterministic AI interpretation layer
   ├─ site management + onboarding compatibility alias
   ├─ public site audit
   ├─ weekly digest trigger
+  ├─ public cross-origin ingest for tracked client sites
   ├─ session write model (collect + replay ingestion)
   ├─ session read models (summary, detail, replay, heatmap)
   ├─ AI artifact cache
@@ -57,13 +59,13 @@ SQLite
 4. The SDK flushes batches to `POST /collect`
 5. Replay chunks go to `POST /collect-replay/replay`
 6. Final page-hide flushes include `completed: true`
-7. The API resolves the `site_key`, writes to the session write model, derives KPI fields, and runs alert checks
+7. The API accepts these public ingest requests cross-origin, resolves the `site_key`, writes to the session write model, derives KPI fields, and runs alert checks
 
 ### 2. Operator workflow
 
 1. A user signs up or logs in through `/auth/*`
 2. The web app receives auth via httpOnly cookies
-3. Dashboard screens fetch live data from workspace-scoped routes
+3. Dashboard screens fetch live data from workspace-scoped routes using browser credentials and the configured web origin
 4. Settings surfaces tracked sites, install snippets, Telegram, and digest options
 5. Alerts and weekly digest keep value flowing outside the dashboard itself
 

@@ -19,6 +19,7 @@ For local development, the important operational detail is:
 - `npm run dev` starts the web app, the API, and the SDK build watcher
 - the SDK watcher rebuilds files in `packages/sdk/dist`, but it does not serve those files by itself
 - if you want to load the SDK from a browser page locally, you must also serve `packages/sdk/dist` from a local static server
+- in production, the dashboard is expected to sit behind a reverse proxy path such as `/api`, while tracked client sites still post to the public API from arbitrary origins
 
 ## Preconditions
 
@@ -61,6 +62,12 @@ What each one does:
 - `SDK_CDN_URL`: snippet URL returned by the API for local site installs
 - `VITE_API_URL`: base URL used by the web app for API requests
 - `VITE_SDK_CDN_URL`: snippet URL shown in the frontend
+
+Network behavior assumptions:
+
+- dashboard/API browser traffic is tied to `WEB_ORIGIN` and uses credentials
+- `POST /collect` and `POST /collect-replay/replay` are public ingest endpoints for tracked client sites and must allow cross-origin browser requests without credentials
+- `GET /health` stays the simple local/non-browser verification endpoint
 
 Optional, not required for basic local boot:
 

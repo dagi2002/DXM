@@ -8,9 +8,11 @@ describe('onboarding site compatibility routes', () => {
   afterEach(async () => {
     await context?.cleanup();
     context = null;
+    delete process.env.API_PUBLIC_URL;
   });
 
   it('keeps /onboarding/sites as a thin compatibility alias over /sites', async () => {
+    process.env.API_PUBLIC_URL = '  https://app.dxmpulse.et/api/  ';
     context = await createTestApp();
 
     const { agent, response: signupResponse } = await signupAndAuthenticate(context.app);
@@ -30,6 +32,7 @@ describe('onboarding site compatibility routes', () => {
       siteKey: expect.any(String),
       snippet: expect.any(String),
     });
+    expect(createResponse.body.snippet).toContain('data-api-url="https://app.dxmpulse.et/api"');
 
     const siteId = createResponse.body.id as string;
     const siteKey = createResponse.body.siteKey as string;

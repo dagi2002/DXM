@@ -18,6 +18,7 @@ Shared public contract source:
 <script
   src="https://cdn.dxmpulse.com/dxm.js"
   data-site-id="YOUR_SITE_KEY"
+  data-api-url="https://app.dxmpulse.et/api"
   async
 ></script>
 ```
@@ -33,13 +34,15 @@ Optional override when self-hosting:
 ></script>
 ```
 
+Generated install snippets from the DXM API may now include `data-api-url` when `API_PUBLIC_URL` is configured on the server. If that env var is unset or blank, the generated snippet safely omits the attribute.
+
 ## Replay Install
 
 Load the replay extension after the base SDK:
 
 ```html
-<script src="https://cdn.dxmpulse.com/dxm.js" data-site-id="YOUR_SITE_KEY" async></script>
-<script src="https://cdn.dxmpulse.com/dxm-replay.js" data-site-id="YOUR_SITE_KEY" async></script>
+<script src="https://cdn.dxmpulse.com/dxm.js" data-site-id="YOUR_SITE_KEY" data-api-url="https://app.dxmpulse.et/api" async></script>
+<script src="https://cdn.dxmpulse.com/dxm-replay.js" data-site-id="YOUR_SITE_KEY" data-api-url="https://app.dxmpulse.et/api" async></script>
 ```
 
 ## What The Base SDK Captures

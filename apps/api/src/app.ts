@@ -24,11 +24,25 @@ const app = express();
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 const WEB_ORIGIN = process.env.WEB_ORIGIN || 'http://localhost:5173';
+const publicIngestCors = cors({
+  origin: '*',
+  credentials: false,
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  optionsSuccessStatus: 204,
+});
 
-app.use(cors({
-  origin: [WEB_ORIGIN, 'http://localhost:5173', 'http://localhost:3000'],
+const dashboardCors = cors({
+  origin(origin, callback) {
+    if (!origin || origin === WEB_ORIGIN) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, false);
+  },
   credentials: true,
-}));
+});
 
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
@@ -37,8 +51,13 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-app.use('/collect', collectRoutes);
-app.use('/collect-replay', collectRoutes);   // collect router handles /replay sub-path
+app.options('/collect', publicIngestCors);
+app.options('/collect-replay/replay', publicIngestCors);
+
+app.use('/collect', publicIngestCors, collectRoutes);
+app.use('/collect-replay', publicIngestCors, collectRoutes);   // collect router handles /replay sub-path
+
+app.use(dashboardCors);
 
 // Apply the general API limiter after telemetry so ingest uses collect-specific limits.
 app.use(apiLimiter);

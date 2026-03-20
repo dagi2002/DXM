@@ -162,9 +162,37 @@ const round = (value: number, precision = 1) => {
   return Math.round(value * factor) / factor;
 };
 
+const escapeHtmlAttribute = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+const normalizePublicApiUrl = (raw?: string) => {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/\/+$/, '');
+};
+
 const getSnippet = (siteKey: string) => {
-  const sdkCdnUrl = process.env.SDK_CDN_URL || DEFAULT_SDK_CDN_URL;
-  return `<script src="${sdkCdnUrl}" data-site-id="${siteKey}" async></script>`;
+  const sdkCdnUrl = process.env.SDK_CDN_URL?.trim() || DEFAULT_SDK_CDN_URL;
+  const publicApiUrl = normalizePublicApiUrl(process.env.API_PUBLIC_URL);
+  const attributes = [
+    ['src', sdkCdnUrl],
+    ['data-site-id', siteKey],
+    ...(publicApiUrl ? [['data-api-url', publicApiUrl] as const] : []),
+    ['async', null],
+  ];
+
+  const renderedAttributes = attributes
+    .map(([name, value]) =>
+      value === null ? name : `${name}="${escapeHtmlAttribute(value)}"`,
+    )
+    .join(' ');
+
+  return `<script ${renderedAttributes}></script>`;
 };
 
 const getSiteRow = (workspaceId: string, siteId: string) =>

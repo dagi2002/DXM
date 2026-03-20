@@ -151,6 +151,21 @@ SDK_CDN_URL=http://localhost:5173/sdk/dxm.js
 
 ---
 
+### `API_PUBLIC_URL`
+**Optional** | API-only public base URL used in generated install snippets.
+
+When set, the API adds an explicit `data-api-url="..."` attribute to generated SDK install snippets. This is useful for deployment setups where the SDK should post to a public API URL instead of relying on the SDK's baked-in default.
+
+- blank values are ignored after trimming
+- trailing slashes are removed in generated snippets
+- this variable only affects API-generated snippets in the current deployment-groundwork phase
+
+```bash
+API_PUBLIC_URL=https://app.dxmpulse.et/api
+```
+
+---
+
 ## Optional Integrations
 
 ### `TELEGRAM_DEFAULT_BOT_TOKEN`
@@ -214,6 +229,7 @@ CHAPA_WEBHOOK_SECRET=
 
 # ── SDK / Frontend ────────────────────────────────────────────────────────────
 SDK_CDN_URL=http://localhost:5173/sdk/dxm.js
+API_PUBLIC_URL=
 VITE_API_URL=http://localhost:4000
 VITE_SDK_CDN_URL=http://localhost:5173/sdk/dxm.js
 ```

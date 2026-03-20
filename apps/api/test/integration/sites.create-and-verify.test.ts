@@ -8,9 +8,10 @@ describe('sites create and verify flow', () => {
   afterEach(async () => {
     await context?.cleanup();
     context = null;
+    delete process.env.API_PUBLIC_URL;
   });
 
-  it('creates a site, returns a usable snippet, and verifies after collect', async () => {
+  it('omits data-api-url when API_PUBLIC_URL is unset', async () => {
     context = await createTestApp();
 
     const { agent, workspace, response: signupResponse } = await signupAndAuthenticate(context.app);
@@ -32,7 +33,9 @@ describe('sites create and verify flow', () => {
       snippet: expect.any(String),
     });
     expect(createResponse.body.id).toMatch(/^site_/);
+    expect(createResponse.body.snippet).toContain('src="https://cdn.dxmpulse.com/dxm.js"');
     expect(createResponse.body.snippet).toContain(`data-site-id="${createResponse.body.siteKey}"`);
+    expect(createResponse.body.snippet).not.toContain('data-api-url=');
 
     const listResponse = await agent.get('/sites');
     expect(listResponse.status).toBe(200);
@@ -75,5 +78,55 @@ describe('sites create and verify flow', () => {
     expect(verifyAfterCollect.status).toBe(200);
     expect(verifyAfterCollect.body.verified).toBe(true);
     expect(verifyAfterCollect.body.sessionCount).toBe(1);
+  });
+
+  it('includes data-api-url when API_PUBLIC_URL is configured', async () => {
+    process.env.API_PUBLIC_URL = 'https://app.dxmpulse.et/api';
+    context = await createTestApp();
+
+    const { agent, response: signupResponse } = await signupAndAuthenticate(context.app);
+    expect(signupResponse.status).toBe(201);
+
+    const createResponse = await agent.post('/sites').send({
+      name: 'Configured API URL Site',
+      domain: 'https://configured.example/',
+    });
+
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.snippet).toContain('src="https://cdn.dxmpulse.com/dxm.js"');
+    expect(createResponse.body.snippet).toContain('data-api-url="https://app.dxmpulse.et/api"');
+  });
+
+  it('normalizes API_PUBLIC_URL before adding data-api-url to the snippet', async () => {
+    process.env.API_PUBLIC_URL = '  https://app.dxmpulse.et/api/  ';
+    context = await createTestApp();
+
+    const { agent, response: signupResponse } = await signupAndAuthenticate(context.app);
+    expect(signupResponse.status).toBe(201);
+
+    const createResponse = await agent.post('/sites').send({
+      name: 'Normalized API URL Site',
+      domain: 'https://normalized.example/',
+    });
+
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.snippet).toContain('data-api-url="https://app.dxmpulse.et/api"');
+    expect(createResponse.body.snippet).not.toContain('data-api-url="https://app.dxmpulse.et/api/"');
+  });
+
+  it('ignores blank API_PUBLIC_URL values', async () => {
+    process.env.API_PUBLIC_URL = '   ';
+    context = await createTestApp();
+
+    const { agent, response: signupResponse } = await signupAndAuthenticate(context.app);
+    expect(signupResponse.status).toBe(201);
+
+    const createResponse = await agent.post('/sites').send({
+      name: 'Blank API URL Site',
+      domain: 'https://blank.example/',
+    });
+
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.snippet).not.toContain('data-api-url=');
   });
 });
