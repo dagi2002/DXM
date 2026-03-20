@@ -141,6 +141,7 @@ The Playwright smoke test is intentionally not required in CI yet. It still depe
 - [Current Status](docs/current-status.md)
 - [Product Roadmap](docs/product-roadmap.md)
 - [Architecture Overview](docs/architecture.md)
+- [Production Deployment](docs/production-deployment.md)
 - [API Reference](docs/api-reference.md)
 - [Database Schema](docs/database-schema.md)
 - [SDK Integration Guide](docs/sdk-integration.md)

@@ -2,7 +2,7 @@
 
 - Service: DXM Pulse
 - Owner: engineering
-- Environment: local development
+- Environment: local development + single-VM production baseline
 - Last verified: 2026-03-20
 
 ## Overview
@@ -23,7 +23,7 @@ For local development, the important operational detail is:
 
 ## Preconditions
 
-- Node.js 20+
+- Node.js 22.21.1 from `.nvmrc`
 - npm available on the command line
 - repo cloned locally
 - ability to open multiple terminals
@@ -195,6 +195,153 @@ Open:
 - `http://localhost:8080/dxm-replay.js`
 
 If either returns 404, the SDK is not being served correctly.
+
+## Production Operations
+
+The production baseline is a single Linux VM with:
+
+- a full repo checkout at `/opt/dxm-pulse/app`
+- API runtime env in `/etc/dxm-pulse.env`
+- API service managed by `dxm-api.service`
+- digest execution managed by `dxm-digest.service` and `dxm-digest.timer`
+- Caddy serving the web app at `/`, the API at `/api`, and SDK assets at `/sdk/*`
+- SQLite stored at `/var/lib/dxm/dxm.db`
+
+Keep the VM timezone set to `Africa/Addis_Ababa` so the weekly timer runs at the expected local time.
+
+### Required production paths
+
+- repo checkout: `/opt/dxm-pulse/app`
+- runtime env: `/etc/dxm-pulse.env`
+- database: `/var/lib/dxm/dxm.db`
+- backups: `/var/backups/dxm`
+
+### Build and file-mode expectations
+
+Build from the repo root after exporting the production Vite variables:
+
+```bash
+export VITE_API_URL=/api
+export VITE_SDK_CDN_URL=https://app.dxmpulse.et/sdk/dxm.js
+npm run build
+```
+
+If file mode is not preserved on the host, restore executability explicitly:
+
+```bash
+chmod +x /opt/dxm-pulse/app/ops/run-digest.sh
+chmod +x /opt/dxm-pulse/app/ops/backup-sqlite.sh
+```
+
+### Service management
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now dxm-api.service
+sudo systemctl enable --now dxm-digest.timer
+sudo systemctl restart dxm-api.service
+sudo systemctl restart caddy
+```
+
+Status checks:
+
+```bash
+systemctl status dxm-api.service
+systemctl status dxm-digest.service
+systemctl status dxm-digest.timer
+systemctl status caddy
+```
+
+### Log inspection
+
+```bash
+journalctl -u dxm-api.service -n 100 --no-pager
+journalctl -u dxm-digest.service -n 100 --no-pager
+journalctl -u caddy -n 100 --no-pager
+```
+
+### Health checks
+
+Local API:
+
+```bash
+curl -sS http://127.0.0.1:4000/health
+```
+
+External API:
+
+```bash
+curl -sS https://app.dxmpulse.et/api/health
+```
+
+SDK files:
+
+```bash
+curl -I https://app.dxmpulse.et/sdk/dxm.js
+curl -I https://app.dxmpulse.et/sdk/dxm-replay.js
+```
+
+### Digest timer and manual trigger
+
+Inspect the timer:
+
+```bash
+systemctl list-timers dxm-digest.timer
+```
+
+Trigger manually:
+
+```bash
+sudo -u dxm --preserve-env=NODE_ENV,DIGEST_CRON_SECRET,DIGEST_URL /opt/dxm-pulse/app/ops/run-digest.sh
+```
+
+### Backup creation
+
+```bash
+sudo DB_PATH=/var/lib/dxm/dxm.db BACKUP_DIR=/var/backups/dxm /opt/dxm-pulse/app/ops/backup-sqlite.sh
+sqlite3 /var/backups/dxm/<latest>.db "pragma integrity_check;"
+```
+
+### Backup restore
+
+1. Stop the API:
+
+```bash
+sudo systemctl stop dxm-api.service
+```
+
+2. Remove stale WAL/SHM files if present:
+
+```bash
+sudo rm -f /var/lib/dxm/dxm.db-wal /var/lib/dxm/dxm.db-shm
+```
+
+3. Restore the backup:
+
+```bash
+sudo cp /var/backups/dxm/<backup-file>.db /var/lib/dxm/dxm.db
+sudo chown dxm:dxm /var/lib/dxm/dxm.db
+```
+
+4. Start the API and recheck health:
+
+```bash
+sudo systemctl start dxm-api.service
+curl -sS https://app.dxmpulse.et/api/health
+```
+
+### Minimal rollback
+
+```bash
+cd /opt/dxm-pulse/app
+git checkout <previous-known-good-commit>
+export VITE_API_URL=/api
+export VITE_SDK_CDN_URL=https://app.dxmpulse.et/sdk/dxm.js
+npm ci
+npm run build
+sudo systemctl restart dxm-api.service
+sudo systemctl restart caddy
+```
 
 ## End-to-End Verification
 

@@ -1,0 +1,12 @@
+[Unit]
+Description=DXM Pulse Weekly Digest Trigger
+After=network-online.target dxm-api.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=dxm
+Group=dxm
+WorkingDirectory=/opt/dxm-pulse/app
+EnvironmentFile=/etc/dxm-pulse.env
+ExecStart=/opt/dxm-pulse/app/ops/run-digest.sh
