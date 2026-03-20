@@ -1,6 +1,14 @@
-import type { OverviewAiBrief, SiteAiBrief } from '../../../../../packages/contracts/index.js';
+import type {
+  AlertAiBrief,
+  AlertDetail,
+  OverviewAiBrief,
+  SiteAiBrief,
+} from '../../../../../packages/contracts/index.js';
 import type { ClientSiteDetail, PortfolioOverview } from '../siteAnalytics.js';
 import {
+  ALERT_AI_PERIOD,
+  ALERT_AI_TTL_HOURS,
+  ALERT_AI_VERSION,
   OVERVIEW_AI_PERIOD,
   OVERVIEW_AI_TTL_HOURS,
   OVERVIEW_AI_VERSION,
@@ -10,6 +18,8 @@ import {
   isAiEnabled,
 } from './config.js';
 import { addHours, getAiArtifact, hashAiInput, isArtifactFresh, upsertAiArtifact } from './artifactStore.js';
+import { buildAlertAiBrief } from './alertBrief.js';
+import { buildAlertAiContext, type AlertAiContext } from './alertContext.js';
 import { buildOverviewAiBrief } from './overviewBrief.js';
 import { buildOverviewAiContext, type OverviewAiContext } from './overviewContext.js';
 import { buildSiteAiBrief } from './siteBrief.js';
@@ -19,6 +29,8 @@ const OVERVIEW_ARTIFACT_KIND = 'overview_brief';
 const OVERVIEW_ENTITY_TYPE = 'workspace';
 const SITE_ARTIFACT_KIND = 'site_brief';
 const SITE_ENTITY_TYPE = 'site';
+const ALERT_ARTIFACT_KIND = 'alert_brief';
+const ALERT_ENTITY_TYPE = 'alert';
 
 export const getOverviewAiBriefOrNull = (
   workspaceId: string,
@@ -125,6 +137,62 @@ export const getSiteAiBriefOrNull = (
       evidence: context,
       output: brief,
       expiresAt: addHours(now, SITE_AI_TTL_HOURS).toISOString(),
+      now,
+    });
+
+    return brief;
+  } catch {
+    return null;
+  }
+};
+
+export const getAlertAiBriefOrNull = (
+  workspaceId: string,
+  alert: AlertDetail,
+): AlertAiBrief | null => {
+  if (!isAiEnabled()) return null;
+
+  try {
+    const context = buildAlertAiContext(alert);
+    const inputHash = hashAiInput({
+      version: ALERT_AI_VERSION,
+      period: ALERT_AI_PERIOD,
+      context,
+    });
+    const cachedArtifact = getAiArtifact<AlertAiBrief, AlertAiContext>({
+      workspaceId,
+      siteId: alert.siteId,
+      entityType: ALERT_ENTITY_TYPE,
+      entityId: alert.id,
+      artifactKind: ALERT_ARTIFACT_KIND,
+      periodKey: ALERT_AI_PERIOD,
+    });
+
+    if (
+      cachedArtifact &&
+      cachedArtifact.status === 'ready' &&
+      cachedArtifact.inputHash === inputHash &&
+      isArtifactFresh(cachedArtifact.expiresAt)
+    ) {
+      return cachedArtifact.output;
+    }
+
+    const now = new Date();
+    const brief = buildAlertAiBrief(context, now.toISOString());
+
+    upsertAiArtifact({
+      workspaceId,
+      siteId: alert.siteId,
+      entityType: ALERT_ENTITY_TYPE,
+      entityId: alert.id,
+      artifactKind: ALERT_ARTIFACT_KIND,
+      periodKey: ALERT_AI_PERIOD,
+      status: 'ready',
+      generatorType: 'deterministic',
+      inputHash,
+      evidence: context,
+      output: brief,
+      expiresAt: addHours(now, ALERT_AI_TTL_HOURS).toISOString(),
       now,
     });
 

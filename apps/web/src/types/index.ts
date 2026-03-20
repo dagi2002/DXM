@@ -1,9 +1,15 @@
 import type {
+  AlertAiBrief as AlertAiBriefContract,
+  AlertDetail as AlertDetailContract,
+  AlertListItem as AlertListItemContract,
   OverviewAiBrief as OverviewAiBriefContract,
   SiteAiBrief as SiteAiBriefContract,
 } from '../../../../packages/contracts/index.js';
 
 export type {
+  AlertAiBrief,
+  AlertDetail,
+  AlertListItem,
   CollectReplayRequest,
   CollectRequest,
   HeatmapPoint as SessionHeatmapPoint,
@@ -62,16 +68,10 @@ export interface Metric {
   trend: 'up' | 'down' | 'stable';
 }
 
-export interface Alert {
-  id: string;
-  type: 'error' | 'performance' | 'frustration' | 'conversion';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  title: string;
-  description: string;
-  timestamp: string | Date;
-  resolved: boolean;
-  affectedSessions: number;
-}
+export type Alert = AlertListItemContract;
+export type AlertListItem = AlertListItemContract;
+export type AlertDetail = AlertDetailContract;
+export type AlertAiBrief = AlertAiBriefContract;
 
 export interface HeatmapData {
   x: number;

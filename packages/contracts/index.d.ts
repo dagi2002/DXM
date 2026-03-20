@@ -190,3 +190,34 @@ export interface SiteAiBrief {
   recommendations: AiRecommendation[];
   evidence: AiEvidenceItem[];
 }
+
+export interface AlertAiBrief {
+  period: 'current';
+  mode: 'deterministic';
+  generatedAt: string;
+  state: 'active' | 'resolved';
+  headline: string;
+  summary: string;
+  whyFired: string;
+  impact: string;
+  recommendations: AiRecommendation[];
+  evidence: AiEvidenceItem[];
+}
+
+export interface AlertListItem {
+  id: string;
+  siteId: string | null;
+  type: 'error' | 'performance' | 'frustration' | 'conversion';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  timestamp: string;
+  resolved: boolean;
+  affectedSessions: number;
+  telegramSent: boolean;
+  resolvedAt: string | null;
+}
+
+export interface AlertDetail extends AlertListItem {
+  ai?: AlertAiBrief;
+}

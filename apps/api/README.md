@@ -43,7 +43,7 @@ npm run seed -w apps/api
 | Sessions | `GET /sessions`, `GET /sessions/:id`, `GET /sessions/:id/replay` |
 | Analytics | `GET /analytics/metrics`, `GET /analytics/vitals`, `GET /analytics/userflow`, `GET /analytics/heatmap` |
 | Funnels | `GET /funnels`, `POST /funnels`, `DELETE /funnels/:id`, `GET /funnels/:id/analysis` |
-| Alerts | `GET /alerts`, `POST /alerts`, `PATCH /alerts/:id/resolve` |
+| Alerts | `GET /alerts`, `GET /alerts/:id`, `POST /alerts`, `PATCH /alerts/:id/resolve` |
 | Users | `GET /users` |
 | Settings | `GET /settings`, `PATCH /settings`, `PUT /settings/telegram`, `POST /settings/telegram/test` |
 | Billing | `GET /billing/plans`, `GET /billing/current`, `POST /billing/chapa/webhook` |
@@ -90,7 +90,7 @@ Still partial:
 - Billing webhook is a stub for future Chapa automation
 - Digest triggering is protected by `x-digest-key` and intended for a scheduler or cron job
 - The API is SQLite-first and optimized for MVP/self-hosted simplicity, not multi-region scale
-- Deterministic AI currently enhances `GET /overview` and `GET /sites/:id` only
+- Deterministic AI currently enhances `GET /overview`, `GET /sites/:id`, and `GET /alerts/:id` only
 - Site deletion is intentionally conservative: no cascade delete and no archive flow yet
 
 ## Related Docs

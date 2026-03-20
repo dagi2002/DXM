@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import type { Alert } from '../../types';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, Sparkles } from 'lucide-react';
+import type { Alert, AlertDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
+
+const evidenceToneClasses = {
+  positive: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  neutral: 'border-surface-200 bg-surface-50 text-surface-700',
+  warning: 'border-amber-200 bg-amber-50 text-amber-700',
+} as const;
 
 export const AlertsView: React.FC = () => {
   const [filter, setFilter] = useState('all');
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertDetails, setAlertDetails] = useState<Record<string, AlertDetail>>({});
+  const [detailErrors, setDetailErrors] = useState<Record<string, string>>({});
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
+  const [loadingAlertId, setLoadingAlertId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +58,37 @@ export const AlertsView: React.FC = () => {
     if (filter === 'resolved') return alert.resolved;
     return true;
   });
+
+  const toggleAlertDetail = async (alertId: string) => {
+    if (expandedAlertId === alertId) {
+      setExpandedAlertId(null);
+      return;
+    }
+
+    setExpandedAlertId(alertId);
+    if (alertDetails[alertId] || loadingAlertId === alertId) {
+      return;
+    }
+
+    setLoadingAlertId(alertId);
+    setDetailErrors((current) => {
+      const next = { ...current };
+      delete next[alertId];
+      return next;
+    });
+
+    try {
+      const detail = await fetchJson<AlertDetail>(`/alerts/${alertId}`);
+      setAlertDetails((current) => ({ ...current, [alertId]: detail }));
+    } catch (loadError) {
+      setDetailErrors((current) => ({
+        ...current,
+        [alertId]: loadError instanceof Error ? loadError.message : 'Failed to load alert explanation',
+      }));
+    } finally {
+      setLoadingAlertId((current) => (current === alertId ? null : current));
+    }
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -183,8 +225,108 @@ export const AlertsView: React.FC = () => {
                 </div>
               </div>
 
-              {!alert.resolved && <span className="px-3 py-2 text-xs font-medium text-gray-500">Read-only</span>}
+              <div className="flex flex-col items-end gap-3">
+                {!alert.resolved && <span className="px-3 py-2 text-xs font-medium text-gray-500">Read-only</span>}
+                <button
+                  onClick={() => void toggleAlertDetail(alert.id)}
+                  className="inline-flex items-center gap-2 rounded-full border border-surface-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-surface-600 transition hover:border-primary-300 hover:text-primary-700"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Why this matters
+                  {expandedAlertId === alert.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+              </div>
             </div>
+
+            {expandedAlertId === alert.id && (
+              <div className="mt-5 rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                {loadingAlertId === alert.id && !alertDetails[alert.id] && (
+                  <div className="text-sm text-surface-500">Loading alert explanation…</div>
+                )}
+
+                {detailErrors[alert.id] && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {detailErrors[alert.id]}
+                  </div>
+                )}
+
+                {alertDetails[alert.id]?.ai && (
+                  <div>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Alert AI brief
+                        </div>
+                        <h3 className="mt-3 text-xl font-semibold text-surface-900">
+                          {alertDetails[alert.id]!.ai!.headline}
+                        </h3>
+                        <p className="mt-3 text-sm leading-6 text-surface-600">
+                          {alertDetails[alert.id]!.ai!.summary}
+                        </p>
+                      </div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+                        {new Date(alertDetails[alert.id]!.ai!.generatedAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-3xl border border-surface-200 bg-white p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Why it fired</p>
+                        <p className="mt-2 text-sm leading-6 text-surface-700">
+                          {alertDetails[alert.id]!.ai!.whyFired}
+                        </p>
+                      </div>
+                      <div className="rounded-3xl border border-surface-200 bg-white p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Impact</p>
+                        <p className="mt-2 text-sm leading-6 text-surface-700">
+                          {alertDetails[alert.id]!.ai!.impact}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-3">
+                      {alertDetails[alert.id]!.ai!.evidence.slice(0, 3).map((item) => (
+                        <div key={item.id} className={`rounded-3xl border p-5 ${evidenceToneClasses[item.tone]}`}>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em]">{item.label}</p>
+                          <p className="mt-3 text-lg font-semibold text-surface-900">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {alertDetails[alert.id]!.ai!.recommendations.length > 0 && (
+                      <div className="mt-5 rounded-3xl border border-surface-200 bg-white p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Recommended actions</p>
+                        <div className="mt-4 space-y-4">
+                          {alertDetails[alert.id]!.ai!.recommendations.slice(0, 3).map((recommendation) => (
+                            <div key={recommendation.id} className="rounded-2xl border border-surface-200 bg-surface-50 p-4">
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="max-w-2xl">
+                                  <p className="text-sm font-semibold text-surface-900">{recommendation.title}</p>
+                                  <p className="mt-2 text-sm leading-6 text-surface-600">{recommendation.detail}</p>
+                                </div>
+                                <Link
+                                  to={recommendation.href}
+                                  className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-primary-700"
+                                >
+                                  Open
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {alertDetails[alert.id] && !alertDetails[alert.id].ai && !detailErrors[alert.id] && loadingAlertId !== alert.id && (
+                  <div className="rounded-2xl border border-surface-200 bg-white px-4 py-3 text-sm text-surface-600">
+                    AI explanation is unavailable right now, but the alert details still loaded successfully.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

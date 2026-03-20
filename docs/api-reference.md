@@ -309,7 +309,7 @@ Runs live analysis against recorded session paths.
 
 ### `GET /alerts`
 
-Returns workspace alerts ordered by newest first using the stable web DTO:
+Returns workspace alerts ordered by newest first using the stable list-item DTO:
 
 ```json
 [
@@ -328,6 +328,43 @@ Returns workspace alerts ordered by newest first using the stable web DTO:
   }
 ]
 ```
+
+### `GET /alerts/:id`
+
+Returns a single alert detail record using the detail DTO. The base alert shape matches the list item contract, and when AI is enabled this route may also include an optional deterministic `ai` block.
+
+```json
+{
+  "id": "alert_123",
+  "siteId": "site_123",
+  "type": "performance",
+  "severity": "high",
+  "title": "Slow page load detected",
+  "description": "Recent signals suggest slower-than-expected rendering.",
+  "timestamp": "2026-03-20 10:15:00",
+  "resolved": false,
+  "affectedSessions": 12,
+  "telegramSent": true,
+  "resolvedAt": null,
+  "ai": {
+    "period": "current",
+    "mode": "deterministic",
+    "generatedAt": "2026-03-20T10:17:00.000Z",
+    "state": "active",
+    "headline": "Slow page load detected needs prompt attention.",
+    "summary": "High performance alert is still active and is currently tied to 12 sessions. Review it before it becomes client-visible.",
+    "whyFired": "This alert fired because recent performance signals suggest slower-than-expected load or rendering behavior.",
+    "impact": "This is already touching 12 sessions and can become account-visible quickly if it stays open.",
+    "recommendations": [],
+    "evidence": []
+  }
+}
+```
+
+Contracts:
+- `GET /alerts` → `AlertListItem[]`
+- `GET /alerts/:id` → `AlertDetail`
+- `AlertDetail.ai` → optional `AlertAiBrief`
 
 ### `POST /alerts`
 

@@ -203,3 +203,5 @@ PATCH /alerts/:id/resolve
 ```
 
 Once resolved, the alert's `resolved` flag is set to `1` and `resolved_at` is recorded. A new alert of the same type can be created after resolution if the problem recurs.
+
+The dashboard can also fetch `GET /alerts/:id`, which now layers a deterministic operator-facing AI explanation on top of the stored alert record without re-running detection logic.

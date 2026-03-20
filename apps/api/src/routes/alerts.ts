@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import type { AlertDetail, AlertListItem } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getAlertAiBriefOrNull } from '../services/ai/index.js';
 import { sendTelegramAlert } from '../services/telegram.js';
 
 const router = Router();
@@ -23,20 +25,6 @@ interface AlertRow {
   resolved_at: string | null;
 }
 
-interface AlertDto {
-  id: string;
-  siteId: string | null;
-  type: AlertType;
-  severity: AlertSeverity;
-  title: string;
-  description: string;
-  timestamp: string;
-  resolved: boolean;
-  affectedSessions: number;
-  telegramSent: boolean;
-  resolvedAt: string | null;
-}
-
 function normalizeAlertType(type: string): AlertType {
   if (type === 'performance' || type === 'frustration' || type === 'conversion') {
     return type;
@@ -53,7 +41,21 @@ function normalizeAlertSeverity(severity: string): AlertSeverity {
   return 'low';
 }
 
-function toAlertDto(row: AlertRow): AlertDto {
+const ALERT_SELECT_FIELDS = `
+  id,
+  site_id,
+  type,
+  severity,
+  title,
+  description,
+  resolved,
+  affected_sessions,
+  telegram_sent,
+  created_at,
+  resolved_at
+`;
+
+function toAlertListItem(row: AlertRow): AlertListItem {
   return {
     id: row.id,
     siteId: row.site_id,
@@ -69,26 +71,45 @@ function toAlertDto(row: AlertRow): AlertDto {
   };
 }
 
+const getAlertRows = (workspaceId: string) =>
+  db
+    .prepare<[string], AlertRow>(
+      `
+        SELECT
+          ${ALERT_SELECT_FIELDS}
+        FROM alerts
+        WHERE workspace_id = ?
+        ORDER BY created_at DESC LIMIT 100
+      `,
+    )
+    .all(workspaceId);
+
+const getAlertRow = (workspaceId: string, alertId: string) =>
+  db
+    .prepare<[string, string], AlertRow>(
+      `
+        SELECT
+          ${ALERT_SELECT_FIELDS}
+        FROM alerts
+        WHERE workspace_id = ?
+          AND id = ?
+      `,
+    )
+    .get(workspaceId, alertId);
+
 // GET /alerts
 router.get('/', (req, res) => {
-  const rows = db.prepare<[string], AlertRow>(`
-    SELECT
-      id,
-      site_id,
-      type,
-      severity,
-      title,
-      description,
-      resolved,
-      affected_sessions,
-      telegram_sent,
-      created_at,
-      resolved_at
-    FROM alerts
-    WHERE workspace_id = ?
-    ORDER BY created_at DESC LIMIT 100
-  `).all(req.user!.workspaceId);
-  return res.json(rows.map(toAlertDto));
+  const rows = getAlertRows(req.user!.workspaceId);
+  return res.json(rows.map(toAlertListItem));
+});
+
+router.get('/:id', (req, res) => {
+  const row = getAlertRow(req.user!.workspaceId, req.params.id);
+  if (!row) return res.status(404).json({ error: 'Alert not found' });
+
+  const detail: AlertDetail = { ...toAlertListItem(row) };
+  const ai = getAlertAiBriefOrNull(req.user!.workspaceId, detail);
+  return res.json(ai ? { ...detail, ai } : detail);
 });
 
 // POST /alerts — create a new alert (also fires Telegram if configured)
