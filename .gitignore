@@ -28,3 +28,8 @@ dist-ssr
 apps/api/data/*.db
 apps/api/data/*.db-shm
 apps/api/data/*.db-wal
+
+# Playwright runtime files
+.playwright-browsers/
+playwright-report/
+test-results/

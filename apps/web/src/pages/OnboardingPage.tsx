@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext';
 type Step = 1 | 2 | 3;
 
 interface SiteInfo {
-  siteId: string;
+  id?: string;
+  siteId?: string;
   siteKey: string;
   snippet: string;
 }
@@ -26,11 +27,12 @@ export const OnboardingPage: React.FC = () => {
 
   // Poll for verification in step 3
   useEffect(() => {
-    if (step !== 3 || !site || verified) return;
+    const siteId = site?.id ?? site?.siteId;
+    if (step !== 3 || !siteId || verified) return;
     setVerifying(true);
     const poll = async () => {
       try {
-        const res = await fetch(getApiUrl(`/sites/${site.siteId}/verify`), { credentials: 'include' });
+        const res = await fetch(getApiUrl(`/sites/${siteId}/verify`), { credentials: 'include' });
         const data = await res.json();
         if (data.verified) { setVerified(true); setVerifying(false); }
       } catch {}
@@ -53,7 +55,12 @@ export const OnboardingPage: React.FC = () => {
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to create site'); }
       const data = await res.json();
-      setSite(data);
+      setSite({
+        ...data,
+        id: data.id ?? data.siteId,
+        siteId: data.siteId ?? data.id,
+      });
+      setVerified(false);
       setStep(3);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create site');
