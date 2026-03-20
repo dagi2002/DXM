@@ -44,6 +44,7 @@ NODE_ENV=development
 DB_PATH=./data/dxm.db
 JWT_SECRET=change_this_in_production_min_32_chars
 JWT_REFRESH_SECRET=different_secret_also_min_32_chars
+DIGEST_CRON_SECRET=change_this_digest_secret_in_production
 COOKIE_DOMAIN=localhost
 WEB_ORIGIN=http://localhost:5173
 SDK_CDN_URL=http://localhost:8080/dxm.js
@@ -57,6 +58,7 @@ What each one does:
 - `DB_PATH`: SQLite database path used by `apps/api`
 - `JWT_SECRET`: signs access cookies
 - `JWT_REFRESH_SECRET`: signs refresh cookies
+- `DIGEST_CRON_SECRET`: authenticates manual or scheduled digest execution; required in production
 - `COOKIE_DOMAIN`: cookie domain; `localhost` is correct for local dev
 - `WEB_ORIGIN`: CORS allow-list origin for the frontend
 - `SDK_CDN_URL`: snippet URL returned by the API for local site installs
@@ -68,12 +70,18 @@ Network behavior assumptions:
 - dashboard/API browser traffic is tied to `WEB_ORIGIN` and uses credentials
 - `POST /collect` and `POST /collect-replay/replay` are public ingest endpoints for tracked client sites and must allow cross-origin browser requests without credentials
 - `GET /health` stays the simple local/non-browser verification endpoint
+- `POST /digest/send-all` is a separate authenticated operation using `x-digest-key`
 
 Optional, not required for basic local boot:
 
 - `TELEGRAM_DEFAULT_BOT_TOKEN`
 - `CHAPA_SECRET_KEY`
 - `CHAPA_WEBHOOK_SECRET`
+
+Digest auth note:
+
+- in production, `POST /digest/send-all` requires `DIGEST_CRON_SECRET`
+- in local/dev/test, the route falls back to `JWT_SECRET` only when `DIGEST_CRON_SECRET` is unset or blank
 
 ## Local Start Procedure
 
@@ -147,6 +155,29 @@ Expected result:
 ```json
 {"status":"ok","ts":"..."}
 ```
+
+## Manual Digest Trigger
+
+### Raw curl
+
+```bash
+curl -fsS -X POST http://127.0.0.1:4000/digest/send-all \
+  -H "x-digest-key: $DIGEST_CRON_SECRET"
+```
+
+For local development only, if `DIGEST_CRON_SECRET` is unset, the API falls back to `JWT_SECRET`.
+
+### Helper script
+
+```bash
+./ops/run-digest.sh
+```
+
+The helper uses:
+
+- `DIGEST_CRON_SECRET` when present
+- otherwise `JWT_SECRET` only when `NODE_ENV != production`
+- `DIGEST_URL` if you need a non-default local endpoint
 
 ### Web health
 

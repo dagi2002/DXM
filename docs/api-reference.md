@@ -517,4 +517,6 @@ Sends digest messages for all workspaces that have:
 - Telegram configured
 - `digest_enabled = 1`
 
-This route is protected by the `x-digest-key` header, which must match `JWT_SECRET`.
+This route is protected by the `x-digest-key` header.
+In production, the header must match `DIGEST_CRON_SECRET`.
+In non-production environments, the API falls back to `JWT_SECRET` only when `DIGEST_CRON_SECRET` is absent or blank after trimming.

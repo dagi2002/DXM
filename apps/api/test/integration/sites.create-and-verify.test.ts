@@ -95,6 +95,7 @@ describe('sites create and verify flow', () => {
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.snippet).toContain('src="https://cdn.dxmpulse.com/dxm.js"');
     expect(createResponse.body.snippet).toContain('data-api-url="https://app.dxmpulse.et/api"');
+    expect(createResponse.body.snippet).toContain('src="https://cdn.dxmpulse.com/dxm.js"');
   });
 
   it('normalizes API_PUBLIC_URL before adding data-api-url to the snippet', async () => {

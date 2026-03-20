@@ -1,8 +1,9 @@
 /**
  * DXM Pulse — Weekly Digest Route
  * POST /digest/send-all — sends weekly digest to all workspaces with Telegram configured.
- * Protected by x-digest-key header (matches JWT_SECRET).
+ * Protected by x-digest-key header.
  */
+import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { compileDigest, formatDigestEN, formatDigestAM } from '../services/weeklyDigest.js';
@@ -10,6 +11,44 @@ import { compileDigest, formatDigestEN, formatDigestAM } from '../services/weekl
 const router = Router();
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
+
+const normalizeSecret = (raw?: string): string | null => {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+
+  const normalized = raw.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const readDigestKeyHeader = (req: Request): string | null => {
+  const digestKey = req.headers['x-digest-key'];
+  return typeof digestKey === 'string' ? digestKey : null;
+};
+
+const resolveAcceptedDigestSecret = (): string | null => {
+  const digestSecret = normalizeSecret(process.env.DIGEST_CRON_SECRET);
+  if (process.env.NODE_ENV === 'production') {
+    return digestSecret;
+  }
+
+  return digestSecret ?? normalizeSecret(process.env.JWT_SECRET);
+};
+
+const digestKeysMatch = (provided: string | null, accepted: string | null): boolean => {
+  if (!provided || !accepted) {
+    return false;
+  }
+
+  const providedBuffer = Buffer.from(provided);
+  const acceptedBuffer = Buffer.from(accepted);
+
+  if (providedBuffer.length !== acceptedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(providedBuffer, acceptedBuffer);
+};
 
 async function sendTelegramMessage(botToken: string, chatId: string, text: string): Promise<boolean> {
   try {
@@ -37,11 +76,10 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
 }
 
 router.post('/send-all', async (req: Request, res: Response) => {
-  // Lightweight auth guard — check x-digest-key header
-  const digestKey = req.headers['x-digest-key'];
-  const secret = process.env.JWT_SECRET;
+  const digestKey = readDigestKeyHeader(req);
+  const secret = resolveAcceptedDigestSecret();
 
-  if (!secret || digestKey !== secret) {
+  if (!digestKeysMatch(digestKey, secret)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -60,7 +98,10 @@ router.post('/send-all', async (req: Request, res: Response) => {
       digest_language: string | null;
     }[];
 
+    console.info(`[digest] Starting digest run for ${workspaces.length} eligible workspaces`);
+
     let sent = 0;
+    let failed = 0;
 
     for (const ws of workspaces) {
       const data = compileDigest(ws.id);
@@ -68,8 +109,16 @@ router.post('/send-all', async (req: Request, res: Response) => {
       const message = lang === 'am' ? formatDigestAM(data) : formatDigestEN(data);
 
       const ok = await sendTelegramMessage(ws.telegram_bot_token, ws.telegram_chat_id, message);
-      if (ok) sent++;
+      if (ok) {
+        sent++;
+        continue;
+      }
+
+      failed++;
+      console.warn(`[digest] Delivery failed for workspace ${ws.id}`);
     }
+
+    console.info(`[digest] Completed digest run: eligible=${workspaces.length} sent=${sent} failed=${failed}`);
 
     return res.json({ sent });
   } catch (err) {

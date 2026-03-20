@@ -11,6 +11,10 @@ export interface ApiTestContext {
   cleanup: () => Promise<void>;
 }
 
+interface CreateTestAppOptions {
+  env?: Record<string, string | undefined>;
+}
+
 const TEST_JWT_SECRET = 'test-secret-change-me-1234567890';
 const TEST_REFRESH_SECRET = 'test-refresh-secret-change-me-1234567890';
 
@@ -29,16 +33,33 @@ const applySchema = (db: Database.Database) => {
   })();
 };
 
-export const createTestApp = async (): Promise<ApiTestContext> => {
+export const createTestApp = async (options?: CreateTestAppOptions): Promise<ApiTestContext> => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'dxm-api-test-'));
   const dbPath = path.join(tempDir, 'test.db');
+  const baseEnv: Record<string, string | undefined> = {
+    NODE_ENV: 'test',
+    DB_PATH: dbPath,
+    JWT_SECRET: TEST_JWT_SECRET,
+    JWT_REFRESH_SECRET: TEST_REFRESH_SECRET,
+    COOKIE_DOMAIN: 'localhost',
+    WEB_ORIGIN: 'http://localhost:5173',
+  };
+  const mergedEnv = { ...baseEnv, ...(options?.env ?? {}) };
+  const envKeys = new Set([...Object.keys(baseEnv), ...Object.keys(options?.env ?? {})]);
+  const previousEnv = new Map<string, string | undefined>();
 
-  process.env.NODE_ENV = 'test';
-  process.env.DB_PATH = dbPath;
-  process.env.JWT_SECRET = TEST_JWT_SECRET;
-  process.env.JWT_REFRESH_SECRET = TEST_REFRESH_SECRET;
-  process.env.COOKIE_DOMAIN = 'localhost';
-  process.env.WEB_ORIGIN = 'http://localhost:5173';
+  for (const key of envKeys) {
+    previousEnv.set(key, process.env[key]);
+  }
+
+  for (const [key, value] of Object.entries(mergedEnv)) {
+    if (value === undefined) {
+      delete process.env[key];
+      continue;
+    }
+
+    process.env[key] = value;
+  }
 
   vi.resetModules();
 
@@ -55,6 +76,16 @@ export const createTestApp = async (): Promise<ApiTestContext> => {
       try {
         db.close();
       } catch {}
+
+      for (const key of envKeys) {
+        const previousValue = previousEnv.get(key);
+        if (previousValue === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = previousValue;
+        }
+      }
+
       vi.resetModules();
       rmSync(tempDir, { recursive: true, force: true });
     },

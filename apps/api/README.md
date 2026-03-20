@@ -70,6 +70,7 @@ Optional:
 - `CHAPA_SECRET_KEY`
 - `CHAPA_WEBHOOK_SECRET`
 - `SDK_CDN_URL`
+- `DIGEST_CRON_SECRET`
 
 See [../../docs/environment-variables.md](../../docs/environment-variables.md) for details.
 
@@ -88,10 +89,12 @@ Fully live:
 
 Still partial:
 - Billing webhook is a stub for future Chapa automation
-- Digest triggering is protected by `x-digest-key` and intended for a scheduler or cron job
+- Digest triggering is protected by `x-digest-key`, uses `DIGEST_CRON_SECRET` in production, and falls back to `JWT_SECRET` only outside production when the digest secret is unset
 - The API is SQLite-first and optimized for MVP/self-hosted simplicity, not multi-region scale
 - Deterministic AI currently enhances `GET /overview`, `GET /sites/:id`, `GET /alerts/:id`, and `GET /funnels/:id/analysis` only
 - Site deletion is intentionally conservative: no cascade delete and no archive flow yet
+
+For local manual digest execution, use [../../ops/run-digest.sh](../../ops/run-digest.sh).
 
 ## Related Docs
 

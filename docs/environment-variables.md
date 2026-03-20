@@ -166,6 +166,21 @@ API_PUBLIC_URL=https://app.dxmpulse.et/api
 
 ---
 
+### `DIGEST_CRON_SECRET`
+**Optional in local/dev/test** | **Required for production digest execution**
+
+Dedicated secret for authenticating `POST /digest/send-all`.
+
+- in production, digest execution uses only `DIGEST_CRON_SECRET`
+- in non-production, the API falls back to `JWT_SECRET` only when `DIGEST_CRON_SECRET` is absent or blank after trimming
+- blank values are ignored after trimming
+
+```bash
+DIGEST_CRON_SECRET=change_this_digest_secret_in_production
+```
+
+---
+
 ## Optional Integrations
 
 ### `TELEGRAM_DEFAULT_BOT_TOKEN`
