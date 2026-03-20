@@ -160,14 +160,28 @@ Individual interaction events within a session.
 
 ### `session_replays`
 
-Full rrweb event log for session replay playback. One row per session.
+Replay summary row for session replay playback. One row per session.
 
 | Column | Type | Description |
 |---|---|---|
 | `session_id` | TEXT PK | References `sessions.id` (CASCADE DELETE) |
-| `events_json` | TEXT | JSON array of rrweb DOM snapshot + mutation events |
-| `size_bytes` | INTEGER | Byte length of `events_json` |
+| `events_json` | TEXT | Legacy fallback replay blob; new writes keep this as `[]` |
+| `size_bytes` | INTEGER | Total replay payload size across stored chunks |
 | `created_at` | DATETIME | Auto-set on insert |
+
+---
+
+### `session_replay_chunks`
+
+Chunked rrweb event storage for replay ingestion and playback. Multiple rows per session.
+
+| Column | Type | Description |
+|---|---|---|
+| `session_id` | TEXT PK/FK | References `sessions.id` (CASCADE DELETE) |
+| `chunk_index` | INTEGER PK | Replay chunk order within the session |
+| `events_json` | TEXT | JSON array for just this replay chunk |
+| `size_bytes` | INTEGER | Byte length of this chunk payload |
+| `created_at` | DATETIME | Insert/update timestamp |
 
 ---
 

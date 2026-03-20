@@ -39,6 +39,7 @@ SQLite
   ├─ sessions
   ├─ events
   ├─ session_replays
+  ├─ session_replay_chunks
   ├─ alerts
   └─ funnels
 ```

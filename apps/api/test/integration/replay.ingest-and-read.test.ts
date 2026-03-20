@@ -7,6 +7,10 @@ interface ReplayRow {
   size_bytes: number | null;
 }
 
+interface ReplayChunkCountRow {
+  count: number;
+}
+
 describe('replay ingest and read', () => {
   let context: ApiTestContext | null = null;
 
@@ -50,7 +54,7 @@ describe('replay ingest and read', () => {
     expect(collectResponse.status).toBe(200);
     expect(collectResponse.body).toEqual({ ok: true });
 
-    const replayEvents = [
+    const firstReplayChunk = [
       {
         type: 2,
         timestamp: startedAt,
@@ -68,15 +72,38 @@ describe('replay ingest and read', () => {
       },
     ];
 
-    const replayResponse = await agent.post('/collect-replay/replay').send({
+    const firstReplayResponse = await agent.post('/collect-replay/replay').send({
       sessionId,
       siteId: siteKey,
-      replayEvents,
+      replayEvents: firstReplayChunk,
       chunkIndex: 0,
     });
 
-    expect(replayResponse.status).toBe(200);
-    expect(replayResponse.body).toEqual({ ok: true, chunk: 0 });
+    expect(firstReplayResponse.status).toBe(200);
+    expect(firstReplayResponse.body).toEqual({ ok: true, chunk: 0 });
+
+    const secondReplayChunk = [
+      {
+        type: 3,
+        timestamp: startedAt + 1400,
+        data: {
+          source: 2,
+          x: 80,
+          y: 120,
+          id: 2,
+        },
+      },
+    ];
+
+    const secondReplayResponse = await agent.post('/collect-replay/replay').send({
+      sessionId,
+      siteId: siteKey,
+      replayEvents: secondReplayChunk,
+      chunkIndex: 1,
+    });
+
+    expect(secondReplayResponse.status).toBe(200);
+    expect(secondReplayResponse.body).toEqual({ ok: true, chunk: 1 });
 
     const replayRow = context.db
       .prepare<[string], ReplayRow>('SELECT session_id, size_bytes FROM session_replays WHERE session_id = ?')
@@ -86,6 +113,12 @@ describe('replay ingest and read', () => {
       session_id: sessionId,
     });
     expect(replayRow?.size_bytes).toBeGreaterThan(0);
+
+    const replayChunkCount = context.db
+      .prepare<[string], ReplayChunkCountRow>('SELECT COUNT(*) as count FROM session_replay_chunks WHERE session_id = ?')
+      .get(sessionId);
+
+    expect(replayChunkCount?.count).toBe(2);
 
     const sessionsResponse = await agent.get('/sessions');
     expect(sessionsResponse.status).toBe(200);
@@ -103,7 +136,7 @@ describe('replay ingest and read', () => {
     expect(replayReadResponse.body).toMatchObject({
       sessionId,
       sizeBytes: expect.any(Number),
-      events: replayEvents,
+      events: [...firstReplayChunk, ...secondReplayChunk],
     });
     expect(replayReadResponse.body.sizeBytes).toBeGreaterThan(0);
   });

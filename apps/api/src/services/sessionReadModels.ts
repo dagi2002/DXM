@@ -48,6 +48,11 @@ interface ReplayRow {
   size_bytes: number | null;
 }
 
+interface ReplayChunkRow {
+  events_json: string;
+  size_bytes: number | null;
+}
+
 const toSummary = (row: SessionSummaryRow): SessionSummary => ({
   id: row.id,
   startedAt: row.started_at ?? row.updated_at,
@@ -242,10 +247,30 @@ export const getSessionReplay = (workspaceId: string, sessionId: string): Sessio
   if (!replay) return null;
 
   let events: SessionReplay['events'] = [];
-  try {
-    events = JSON.parse(replay.events_json);
-  } catch {
-    events = [];
+  const chunkRows = db
+    .prepare<[string], ReplayChunkRow>(`
+      SELECT events_json, size_bytes
+      FROM session_replay_chunks
+      WHERE session_id = ?
+      ORDER BY chunk_index ASC
+    `)
+    .all(sessionId);
+
+  if (chunkRows.length > 0) {
+    for (const chunk of chunkRows) {
+      try {
+        const parsedChunk = JSON.parse(chunk.events_json);
+        if (Array.isArray(parsedChunk)) events.push(...parsedChunk);
+      } catch {
+        continue;
+      }
+    }
+  } else {
+    try {
+      events = JSON.parse(replay.events_json);
+    } catch {
+      events = [];
+    }
   }
 
   const durationMs =

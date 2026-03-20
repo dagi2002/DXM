@@ -34,15 +34,16 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// Apply general rate limit to all routes
-app.use(apiLimiter);
-
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-app.use('/auth', authRoutes);
 app.use('/collect', collectRoutes);
 app.use('/collect-replay', collectRoutes);   // collect router handles /replay sub-path
+
+// Apply the general API limiter after telemetry so ingest uses collect-specific limits.
+app.use(apiLimiter);
+
+app.use('/auth', authRoutes);
 app.use('/sessions', sessionsRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/alerts', alertsRoutes);

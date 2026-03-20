@@ -12,6 +12,7 @@ try {
   const schema = readFileSync(path.join(__dirname, '../src/db/schema.sql'), 'utf8');
   const stmts = schema.split(';').map(s => s.trim()).filter(s => s.length > 0);
   db.transaction(() => { for (const s of stmts) db.prepare(s).run(); })();
+  try { db.prepare("ALTER TABLE sessions ADD COLUMN page_count INTEGER NOT NULL DEFAULT 0").run(); } catch {}
   console.log('✅ Database schema is up to date.');
 } catch (err) {
   console.warn('⚠️  Could not auto-migrate:', err);

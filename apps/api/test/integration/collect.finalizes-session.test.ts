@@ -42,19 +42,35 @@ describe('collect finalizes session', () => {
     const sessionId = 'sess_finalize_001';
     const startedAt = Date.now();
 
+    const firstBatchResponse = await agent.post('/collect').send({
+      sessionId,
+      siteId: siteKey,
+      events: [
+        { type: 'pageview', ts: startedAt, url: 'https://checkout.example/' },
+        { type: 'navigation', ts: startedAt + 1000, url: 'https://checkout.example/pricing' },
+      ],
+      metadata: {
+        url: 'https://checkout.example/',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
+        language: 'en-US',
+        screen: { width: 1440, height: 900 },
+      },
+    });
+
+    expect(firstBatchResponse.status).toBe(200);
+    expect(firstBatchResponse.body).toEqual({ ok: true });
+
     const collectResponse = await agent.post('/collect').send({
       sessionId,
       siteId: siteKey,
       completed: true,
       events: [
-        { type: 'pageview', ts: startedAt, url: 'https://checkout.example/' },
-        { type: 'navigation', ts: startedAt + 1000, url: 'https://checkout.example/pricing' },
         { type: 'click', ts: startedAt + 2000, x: 120, y: 260, target: 'button.checkout', url: 'https://checkout.example/pricing' },
         { type: 'scroll', ts: startedAt + 3000, depth: 88, url: 'https://checkout.example/pricing' },
         { type: 'custom', ts: startedAt + 4000, event: 'lead_submitted', url: 'https://checkout.example/thank-you' },
       ],
       metadata: {
-        url: 'https://checkout.example/',
+        url: 'https://checkout.example/pricing',
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
         language: 'en-US',
         screen: { width: 1440, height: 900 },

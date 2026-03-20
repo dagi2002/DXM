@@ -13,27 +13,34 @@ export interface CollectionSite {
 
 interface ExistingSessionRow {
   id: string;
+  started_at: string | null;
+  duration: number | null;
   completed: number;
-}
-
-interface SessionAggregateRow {
-  min_ts: number | null;
-  max_ts: number | null;
-  total_events: number | null;
-  clicks: number | null;
-  max_scroll: number | null;
-  page_count: number | null;
   user_id_external: string | null;
+  total_events: number;
+  clicks: number;
+  scroll_depth: number;
+  converted: number;
+  page_count: number;
+  entry_url: string | null;
 }
 
-interface SessionEventValueRow {
-  value_text: string | null;
+interface ExistingReplayRow {
+  session_id: string;
+  events_json: string;
+  size_bytes: number | null;
 }
 
 const conversionKeywords = new Set(CONVERSION_EVENT_KEYWORDS.map((keyword) => keyword.toLowerCase()));
 
 const toSqliteDateTime = (timestamp: number) =>
   new Date(timestamp).toISOString().slice(0, 19).replace('T', ' ');
+
+const fromSqliteDateTime = (value: string | null | undefined): number | null => {
+  if (!value) return null;
+  const timestamp = new Date(value.replace(' ', 'T') + 'Z').getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
 
 const detectDevice = (ua: string): string => {
   if (!ua) return 'desktop';
@@ -65,6 +72,11 @@ const eventValueText = (event: SdkCollectEvent): string | null => {
   return null;
 };
 
+const normalizeTrackedUrl = (value: string | null | undefined) => {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+};
+
 const isConversionEventName = (eventName: string | null | undefined) => {
   if (!eventName) return false;
   const normalized = eventName.trim().toLowerCase();
@@ -88,14 +100,49 @@ export const findCollectionSite = (siteKey: string): CollectionSite | null => {
 export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest) => {
   const metadata = payload.metadata ?? {};
   const ua = metadata.userAgent || '';
-  const timestamps = payload.events
+  const eventTimestamps = payload.events
     .map((event) => (typeof event.ts === 'number' ? event.ts : Date.now()))
     .sort((a, b) => a - b);
-  const startedAtTimestamp = timestamps[0] ?? Date.now();
+  const batchStartedAtTimestamp = eventTimestamps[0] ?? Date.now();
+  const batchEndedAtTimestamp = eventTimestamps[eventTimestamps.length - 1] ?? batchStartedAtTimestamp;
+  const batchClickCount = payload.events.filter((event) => event.type === 'click').length;
+  const batchMaxScrollDepth = payload.events.reduce((maxDepth, event) => {
+    if (event.type !== 'scroll') return maxDepth;
+    return Math.max(maxDepth, event.depth ?? 0);
+  }, 0);
+  const batchIdentifyUserId =
+    [...payload.events]
+      .reverse()
+      .find((event) => event.type === 'identify' && typeof event.userId === 'string' && event.userId.trim())?.userId ??
+    null;
+  const batchConverted = payload.events.some(
+    (event) => event.type === 'custom' && isConversionEventName(event.event),
+  );
+  const batchPageUrls = new Set(
+    payload.events
+      .filter((event) => event.type === 'pageview' || event.type === 'navigation')
+      .map((event) => normalizeTrackedUrl(event.url ?? metadata.url))
+      .filter((url): url is string => Boolean(url)),
+  );
 
   db.transaction(() => {
     const existing = db
-      .prepare('SELECT id, completed FROM sessions WHERE id = ?')
+      .prepare(`
+        SELECT
+          id,
+          started_at,
+          duration,
+          completed,
+          user_id_external,
+          total_events,
+          clicks,
+          scroll_depth,
+          converted,
+          page_count,
+          entry_url
+        FROM sessions
+        WHERE id = ?
+      `)
       .get(payload.sessionId) as ExistingSessionRow | undefined;
 
     if (!existing) {
@@ -112,21 +159,23 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
           screen_width,
           screen_height,
           entry_url,
+          page_count,
           completed
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         payload.sessionId,
         site.id,
         site.workspaceId,
-        toSqliteDateTime(startedAtTimestamp),
+        toSqliteDateTime(batchStartedAtTimestamp),
         ua || null,
         detectDevice(ua),
         detectBrowser(ua),
         metadata.language || null,
         metadata.screen?.width ?? null,
         metadata.screen?.height ?? null,
-        metadata.url || null,
+        normalizeTrackedUrl(metadata.url),
+        0,
         payload.completed ? 1 : 0,
       );
     }
@@ -152,55 +201,32 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       }
     }
 
-    const aggregate =
-      db
-      .prepare<[string], SessionAggregateRow>(`
-        SELECT
-          MIN(ts) as min_ts,
-          MAX(ts) as max_ts,
-          COUNT(*) as total_events,
-          SUM(CASE WHEN type = 'click' THEN 1 ELSE 0 END) as clicks,
-          MAX(CASE WHEN type = 'scroll' THEN COALESCE(scroll_depth, 0) ELSE 0 END) as max_scroll,
-          COUNT(DISTINCT CASE WHEN type IN ('pageview', 'navigation') THEN NULLIF(url, '') END) as page_count,
-          MAX(CASE WHEN type = 'identify' THEN value_text ELSE NULL END) as user_id_external
-        FROM events
-        WHERE session_id = ?
-      `)
-      .get(payload.sessionId) ?? {
-        min_ts: null,
-        max_ts: null,
-        total_events: 0,
-        clicks: 0,
-        max_scroll: 0,
-        page_count: 0,
-        user_id_external: null,
-      };
-
-    const customEventNames = db
-      .prepare<[string], SessionEventValueRow>(`
-        SELECT value_text
-        FROM events
-        WHERE session_id = ? AND type = 'custom' AND value_text IS NOT NULL
-      `)
-      .all(payload.sessionId);
-
-    const totalEvents = aggregate.total_events || 0;
-    const clickCount = aggregate.clicks || 0;
-    const maxScrollDepth = aggregate.max_scroll || 0;
-    const pageCount = aggregate.page_count || 0;
+    const existingStartedAtTimestamp = fromSqliteDateTime(existing?.started_at) ?? batchStartedAtTimestamp;
+    const startedAtTimestamp = existing?.started_at
+      ? Math.min(existingStartedAtTimestamp, batchStartedAtTimestamp)
+      : batchStartedAtTimestamp;
+    const existingDurationMilliseconds = Math.max(0, (existing?.duration ?? 0) * 1000);
+    const existingLatestTimestamp = existingStartedAtTimestamp + existingDurationMilliseconds;
+    const latestTimestamp = Math.max(existingLatestTimestamp, batchEndedAtTimestamp);
+    const totalEvents = (existing?.total_events ?? 0) + payload.events.length;
+    const clickCount = (existing?.clicks ?? 0) + batchClickCount;
+    const maxScrollDepth = Math.max(existing?.scroll_depth ?? 0, batchMaxScrollDepth);
     const completed = payload.completed || existing?.completed === 1 ? 1 : 0;
-    const minTimestamp = aggregate.min_ts ?? startedAtTimestamp;
-    const maxTimestamp = aggregate.max_ts ?? startedAtTimestamp;
-    const durationSeconds = Math.max(0, Math.round((maxTimestamp - minTimestamp) / 1000));
+    const durationSeconds = Math.max(0, Math.round((latestTimestamp - startedAtTimestamp) / 1000));
+    const knownPages = new Set<string>();
+    const entryUrl = normalizeTrackedUrl(existing?.entry_url ?? metadata.url);
+    if (entryUrl) knownPages.add(entryUrl);
+    for (const url of batchPageUrls) knownPages.add(url);
+    const pageCount = Math.max(existing?.page_count ?? 0, knownPages.size);
     const bounced =
       completed && totalEvents > 0 && (totalEvents <= 2 || (pageCount <= 1 && clickCount === 0 && durationSeconds < 30))
         ? 1
         : 0;
-    const converted = customEventNames.some(({ value_text }) => isConversionEventName(value_text)) ? 1 : 0;
+    const converted = existing?.converted === 1 || batchConverted ? 1 : 0;
 
     db.prepare(`
       UPDATE sessions SET
-        started_at = COALESCE(started_at, ?),
+        started_at = ?,
         ended_at = ?,
         duration = ?,
         user_agent = COALESCE(user_agent, ?),
@@ -214,14 +240,15 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
         clicks = ?,
         scroll_depth = ?,
         total_events = ?,
+        page_count = ?,
         bounced = ?,
         converted = ?,
         completed = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
-      toSqliteDateTime(minTimestamp),
-      completed ? toSqliteDateTime(maxTimestamp) : null,
+      toSqliteDateTime(startedAtTimestamp),
+      completed ? toSqliteDateTime(latestTimestamp) : null,
       durationSeconds,
       ua || null,
       detectDevice(ua),
@@ -230,10 +257,11 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       metadata.screen?.width ?? null,
       metadata.screen?.height ?? null,
       metadata.url || null,
-      aggregate.user_id_external ?? null,
+      batchIdentifyUserId ?? existing?.user_id_external ?? null,
       clickCount,
       maxScrollDepth,
       totalEvents,
+      pageCount,
       bounced,
       converted,
       completed,
@@ -243,46 +271,82 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
 };
 
 export const ingestReplayChunk = (site: CollectionSite, payload: CollectReplayRequest) => {
-  const session = db
-    .prepare('SELECT id FROM sessions WHERE id = ? AND site_id = ?')
-    .get(payload.sessionId, site.id) as { id: string } | undefined;
+  db.transaction(() => {
+    const session = db
+      .prepare('SELECT id FROM sessions WHERE id = ? AND site_id = ?')
+      .get(payload.sessionId, site.id) as { id: string } | undefined;
 
-  if (!session) {
-    db.prepare(`
-      INSERT INTO sessions (id, site_id, workspace_id, started_at, completed)
-      VALUES (?, ?, ?, NULL, 0)
-      ON CONFLICT(id) DO NOTHING
-    `).run(payload.sessionId, site.id, site.workspaceId);
-  }
-
-  const existing = db
-    .prepare('SELECT session_id, events_json FROM session_replays WHERE session_id = ?')
-    .get(payload.sessionId) as { session_id: string; events_json: string } | undefined;
-
-  if (existing) {
-    let allEvents: unknown[] = [];
-    try {
-      allEvents = JSON.parse(existing.events_json);
-    } catch {
-      allEvents = [];
+    if (!session) {
+      db.prepare(`
+        INSERT INTO sessions (id, site_id, workspace_id, started_at, completed)
+        VALUES (?, ?, ?, NULL, 0)
+        ON CONFLICT(id) DO NOTHING
+      `).run(payload.sessionId, site.id, site.workspaceId);
     }
 
-    allEvents = allEvents.concat(payload.replayEvents);
-    if (allEvents.length > 10000) allEvents = allEvents.slice(-10000);
-    const json = JSON.stringify(allEvents);
+    let replay = db
+      .prepare<[string], ExistingReplayRow>('SELECT session_id, events_json, size_bytes FROM session_replays WHERE session_id = ?')
+      .get(payload.sessionId);
+
+    if (!replay) {
+      db.prepare('INSERT INTO session_replays (session_id, events_json, size_bytes) VALUES (?, ?, ?)').run(
+        payload.sessionId,
+        '[]',
+        0,
+      );
+      replay = {
+        session_id: payload.sessionId,
+        events_json: '[]',
+        size_bytes: 0,
+      };
+    }
+
+    const hasStoredChunks = Boolean(
+      db.prepare('SELECT 1 FROM session_replay_chunks WHERE session_id = ? LIMIT 1').get(payload.sessionId),
+    );
+
+    if (!hasStoredChunks && replay.events_json && replay.events_json !== '[]') {
+      const legacySize = replay.size_bytes ?? Buffer.byteLength(replay.events_json);
+      db.prepare(`
+        INSERT OR IGNORE INTO session_replay_chunks (session_id, chunk_index, events_json, size_bytes)
+        VALUES (?, ?, ?, ?)
+      `).run(payload.sessionId, -1, replay.events_json, legacySize);
+      db.prepare('UPDATE session_replays SET events_json = ?, size_bytes = ? WHERE session_id = ?').run(
+        '[]',
+        legacySize,
+        payload.sessionId,
+      );
+      replay = {
+        ...replay,
+        events_json: '[]',
+        size_bytes: legacySize,
+      };
+    }
+
+    const chunkJson = JSON.stringify(payload.replayEvents);
+    const chunkSize = Buffer.byteLength(chunkJson);
+    const previousChunk = db
+      .prepare<[string, number], { size_bytes: number | null }>(
+        'SELECT size_bytes FROM session_replay_chunks WHERE session_id = ? AND chunk_index = ?',
+      )
+      .get(payload.sessionId, payload.chunkIndex);
+
+    db.prepare(`
+      INSERT INTO session_replay_chunks (session_id, chunk_index, events_json, size_bytes)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(session_id, chunk_index) DO UPDATE SET
+        events_json = excluded.events_json,
+        size_bytes = excluded.size_bytes,
+        created_at = CURRENT_TIMESTAMP
+    `).run(payload.sessionId, payload.chunkIndex, chunkJson, chunkSize);
+
+    const updatedSize = Math.max(0, (replay.size_bytes ?? 0) - (previousChunk?.size_bytes ?? 0) + chunkSize);
     db.prepare('UPDATE session_replays SET events_json = ?, size_bytes = ? WHERE session_id = ?').run(
-      json,
-      Buffer.byteLength(json),
+      '[]',
+      updatedSize,
       payload.sessionId,
     );
-  } else {
-    const json = JSON.stringify(payload.replayEvents);
-    db.prepare('INSERT INTO session_replays (session_id, events_json, size_bytes) VALUES (?, ?, ?)').run(
-      payload.sessionId,
-      json,
-      Buffer.byteLength(json),
-    );
-  }
+  })();
 
   return true;
 };

@@ -26,5 +26,6 @@ db.transaction(() => {
 // Add digest columns if they don't exist
 try { db.prepare("ALTER TABLE workspaces ADD COLUMN digest_enabled INTEGER NOT NULL DEFAULT 0").run(); } catch {}
 try { db.prepare("ALTER TABLE workspaces ADD COLUMN digest_language TEXT NOT NULL DEFAULT 'en'").run(); } catch {}
+try { db.prepare("ALTER TABLE sessions ADD COLUMN page_count INTEGER NOT NULL DEFAULT 0").run(); } catch {}
 
 console.log('✅ Migration complete — all tables and indexes are up to date.');

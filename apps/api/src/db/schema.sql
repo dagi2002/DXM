@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   clicks           INTEGER NOT NULL DEFAULT 0,
   scroll_depth     INTEGER NOT NULL DEFAULT 0,
   total_events     INTEGER NOT NULL DEFAULT 0,
+  page_count       INTEGER NOT NULL DEFAULT 0,
   bounced          INTEGER NOT NULL DEFAULT 0,  -- 0/1 boolean
   converted        INTEGER NOT NULL DEFAULT 0,
   completed        INTEGER NOT NULL DEFAULT 0,
@@ -77,9 +78,18 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE TABLE IF NOT EXISTS session_replays (
   session_id   TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
-  events_json  TEXT NOT NULL,          -- JSON array of rrweb events
-  size_bytes   INTEGER,
+  events_json  TEXT NOT NULL,          -- legacy fallback blob, kept as [] for new writes
+  size_bytes   INTEGER,                -- total replay payload size across stored chunks
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS session_replay_chunks (
+  session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  chunk_index  INTEGER NOT NULL,
+  events_json  TEXT NOT NULL,
+  size_bytes   INTEGER NOT NULL DEFAULT 0,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (session_id, chunk_index)
 );
 
 CREATE TABLE IF NOT EXISTS alerts (
