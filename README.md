@@ -96,6 +96,20 @@ npm run lint
 npm run check
 ```
 
+## CI Checks
+
+GitHub Actions runs a minimal CI workflow on push and pull request to `main`.
+
+Current enforced checks:
+
+- Node.js from `.nvmrc`
+- `npm ci`
+- `npm rebuild better-sqlite3`
+- `npm run build`
+- `npm run test -w apps/api`
+
+The Playwright smoke test is intentionally not required in CI yet. It still depends on the local multi-process SDK/API/web setup and is better treated as an explicit smoke check until a stable CI browser setup is worth the extra complexity.
+
 ## Default Local Flow
 
 - Visit `http://localhost:5173/` for the agency landing page
