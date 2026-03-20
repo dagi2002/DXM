@@ -9,6 +9,8 @@ export const SITE_AI_TTL_HOURS = 24;
 export const ALERT_AI_VERSION = 'alert-ai-v1';
 export const ALERT_AI_PERIOD = 'current';
 export const ALERT_AI_TTL_HOURS = 24;
+export const FUNNEL_AI_VERSION = 'funnel-ai-v1';
+export const FUNNEL_AI_TTL_HOURS = 24;
 
 export const isAiEnabled = () => {
   const rawValue = process.env.DXM_AI_ENABLED;

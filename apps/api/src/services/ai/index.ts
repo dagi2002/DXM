@@ -1,6 +1,8 @@
 import type {
   AlertAiBrief,
   AlertDetail,
+  FunnelAiBrief,
+  FunnelAnalysisDetail,
   OverviewAiBrief,
   SiteAiBrief,
 } from '../../../../../packages/contracts/index.js';
@@ -9,6 +11,8 @@ import {
   ALERT_AI_PERIOD,
   ALERT_AI_TTL_HOURS,
   ALERT_AI_VERSION,
+  FUNNEL_AI_TTL_HOURS,
+  FUNNEL_AI_VERSION,
   OVERVIEW_AI_PERIOD,
   OVERVIEW_AI_TTL_HOURS,
   OVERVIEW_AI_VERSION,
@@ -20,6 +24,8 @@ import {
 import { addHours, getAiArtifact, hashAiInput, isArtifactFresh, upsertAiArtifact } from './artifactStore.js';
 import { buildAlertAiBrief } from './alertBrief.js';
 import { buildAlertAiContext, type AlertAiContext } from './alertContext.js';
+import { buildFunnelAiBrief } from './funnelBrief.js';
+import { buildFunnelAiContext, type FunnelAiContext } from './funnelContext.js';
 import { buildOverviewAiBrief } from './overviewBrief.js';
 import { buildOverviewAiContext, type OverviewAiContext } from './overviewContext.js';
 import { buildSiteAiBrief } from './siteBrief.js';
@@ -31,6 +37,8 @@ const SITE_ARTIFACT_KIND = 'site_brief';
 const SITE_ENTITY_TYPE = 'site';
 const ALERT_ARTIFACT_KIND = 'alert_brief';
 const ALERT_ENTITY_TYPE = 'alert';
+const FUNNEL_ARTIFACT_KIND = 'funnel_brief';
+const FUNNEL_ENTITY_TYPE = 'funnel';
 
 export const getOverviewAiBriefOrNull = (
   workspaceId: string,
@@ -193,6 +201,63 @@ export const getAlertAiBriefOrNull = (
       evidence: context,
       output: brief,
       expiresAt: addHours(now, ALERT_AI_TTL_HOURS).toISOString(),
+      now,
+    });
+
+    return brief;
+  } catch {
+    return null;
+  }
+};
+
+export const getFunnelAiBriefOrNull = (
+  workspaceId: string,
+  analysis: FunnelAnalysisDetail,
+  siteId: string | null,
+): FunnelAiBrief | null => {
+  if (!isAiEnabled()) return null;
+
+  try {
+    const context = buildFunnelAiContext(analysis, siteId);
+    const inputHash = hashAiInput({
+      version: FUNNEL_AI_VERSION,
+      period: analysis.period,
+      context,
+    });
+    const cachedArtifact = getAiArtifact<FunnelAiBrief, FunnelAiContext>({
+      workspaceId,
+      siteId,
+      entityType: FUNNEL_ENTITY_TYPE,
+      entityId: analysis.funnelId,
+      artifactKind: FUNNEL_ARTIFACT_KIND,
+      periodKey: analysis.period,
+    });
+
+    if (
+      cachedArtifact &&
+      cachedArtifact.status === 'ready' &&
+      cachedArtifact.inputHash === inputHash &&
+      isArtifactFresh(cachedArtifact.expiresAt)
+    ) {
+      return cachedArtifact.output;
+    }
+
+    const now = new Date();
+    const brief = buildFunnelAiBrief(context, now.toISOString());
+
+    upsertAiArtifact({
+      workspaceId,
+      siteId,
+      entityType: FUNNEL_ENTITY_TYPE,
+      entityId: analysis.funnelId,
+      artifactKind: FUNNEL_ARTIFACT_KIND,
+      periodKey: analysis.period,
+      status: 'ready',
+      generatorType: 'deterministic',
+      inputHash,
+      evidence: context,
+      output: brief,
+      expiresAt: addHours(now, FUNNEL_AI_TTL_HOURS).toISOString(),
       now,
     });
 

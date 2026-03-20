@@ -2,6 +2,9 @@ import type {
   AlertAiBrief as AlertAiBriefContract,
   AlertDetail as AlertDetailContract,
   AlertListItem as AlertListItemContract,
+  FunnelAiBrief as FunnelAiBriefContract,
+  FunnelAnalysisDetail as FunnelAnalysisDetailContract,
+  FunnelAnalysisStep as FunnelAnalysisStepContract,
   OverviewAiBrief as OverviewAiBriefContract,
   SiteAiBrief as SiteAiBriefContract,
 } from '../../../../packages/contracts/index.js';
@@ -12,6 +15,10 @@ export type {
   AlertListItem,
   CollectReplayRequest,
   CollectRequest,
+  FunnelAiBrief,
+  FunnelAnalysisDetail,
+  FunnelAnalysisPeriod,
+  FunnelAnalysisStep,
   HeatmapPoint as SessionHeatmapPoint,
   HeatmapReadModel,
   OverviewAiBrief,
@@ -72,6 +79,9 @@ export type Alert = AlertListItemContract;
 export type AlertListItem = AlertListItemContract;
 export type AlertDetail = AlertDetailContract;
 export type AlertAiBrief = AlertAiBriefContract;
+export type FunnelAnalysisStep = FunnelAnalysisStepContract;
+export type FunnelAnalysisDetail = FunnelAnalysisDetailContract;
+export type FunnelAiBrief = FunnelAiBriefContract;
 
 export interface HeatmapData {
   x: number;

@@ -305,6 +305,33 @@ Deletes a funnel.
 
 Runs live analysis against recorded session paths.
 
+Contract source of truth:
+
+- `packages/contracts/index.d.ts`
+- `FunnelAnalysisDetail`
+
+Response includes:
+
+- `funnelId`
+- `funnelName`
+- `period`
+- `totalSessions`
+- `steps`
+- optional `ai`
+
+When AI is enabled, `GET /funnels/:id/analysis` may include an additional deterministic `ai` block:
+
+- contract source of truth: `packages/contracts/index.d.ts`
+- DTO: `FunnelAiBrief`
+- generated from the existing funnel analysis payload, not a separate funnel-analysis pipeline
+- omitted entirely when `DXM_AI_ENABLED` is disabled or AI fails open
+
+Important notes:
+
+- the funnel AI brief is intentionally heuristic and conservative
+- it interprets step counts, conversion rates, and drop-off shape from the current analysis response
+- it does not make strong causal claims from `avgTimeToNext` or sparse data alone
+
 ## Alerts
 
 ### `GET /alerts`

@@ -1,17 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FunnelStep } from '../../../types';
+import { Link } from 'react-router-dom';
+import type { FunnelAnalysisDetail, FunnelAnalysisStep } from '../../../types';
 import {
   AlertTriangle,
   Calendar,
   Clock,
   Plus,
   RefreshCw,
+  Sparkles,
   Target,
   TrendingDown,
   Users,
 } from 'lucide-react';
 import { fetchJson } from '../../../lib/api';
 import { FunnelBuilder } from './FunnelBuilder';
+
+const evidenceToneClasses = {
+  positive: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  neutral: 'border-surface-200 bg-surface-50 text-surface-700',
+  warning: 'border-amber-200 bg-amber-50 text-amber-700',
+} as const;
 
 const timeframeOptions = [
   { value: '1d', label: 'Last 24 hours' },
@@ -26,24 +34,11 @@ interface ApiFunnel {
   steps: { name: string; urlPattern: string }[];
 }
 
-interface ApiFunnelStep extends FunnelStep {
-  urlPattern?: string;
-  avgTimeToNext?: number | null;
-}
-
-interface ApiAnalysis {
-  funnelId: string;
-  funnelName: string;
-  period: string;
-  totalSessions: number;
-  steps: ApiFunnelStep[];
-}
-
 export const FunnelAnalysis: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
   const [funnels, setFunnels] = useState<ApiFunnel[]>([]);
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
-  const [steps, setSteps] = useState<ApiFunnelStep[]>([]);
+  const [analysis, setAnalysis] = useState<FunnelAnalysisDetail | null>(null);
   const [loadingFunnels, setLoadingFunnels] = useState(true);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -64,18 +59,21 @@ export const FunnelAnalysis: React.FC = () => {
 
   const loadAnalysis = useCallback(async () => {
     if (!selectedFunnelId) {
-      setSteps([]);
+      setAnalysis(null);
       setAnalysisError(null);
       return;
     }
 
     setLoadingAnalysis(true);
     try {
-      const data = await fetchJson<ApiAnalysis>(`/funnels/${selectedFunnelId}/analysis?period=${selectedTimeframe}`);
-      setSteps(Array.isArray(data.steps) ? data.steps : []);
+      const data = await fetchJson<FunnelAnalysisDetail>(`/funnels/${selectedFunnelId}/analysis?period=${selectedTimeframe}`);
+      setAnalysis({
+        ...data,
+        steps: Array.isArray(data.steps) ? data.steps : [],
+      });
       setAnalysisError(null);
     } catch {
-      setSteps([]);
+      setAnalysis(null);
       setAnalysisError('Live funnel analysis is unavailable right now.');
     } finally {
       setLoadingAnalysis(false);
@@ -90,6 +88,7 @@ export const FunnelAnalysis: React.FC = () => {
     void loadAnalysis();
   }, [loadAnalysis]);
 
+  const steps = analysis?.steps ?? [];
   const totalEntries = steps[0]?.users ?? 0;
   const overallConversion = steps.length > 0 ? steps[steps.length - 1].conversionRate : 0;
   const stepWithBestRetention = steps.reduce<{
@@ -142,7 +141,7 @@ export const FunnelAnalysis: React.FC = () => {
   }, [steps]);
 
   const largestDropoffStep = useMemo(() => {
-    return steps.slice(1).reduce<ApiFunnelStep | null>((current, step) => {
+    return steps.slice(1).reduce<FunnelAnalysisStep | null>((current, step) => {
       if (!current || step.dropoffRate > current.dropoffRate) {
         return step;
       }
@@ -331,6 +330,72 @@ export const FunnelAnalysis: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {analysis?.ai && (
+                <section className="rounded-[28px] border border-primary-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Funnel AI brief
+                      </div>
+                      <h3 className="mt-3 text-2xl font-semibold text-surface-900">{analysis.ai.headline}</h3>
+                      <p className="mt-3 text-sm leading-6 text-surface-600">{analysis.ai.summary}</p>
+                    </div>
+                    <p className="shrink-0 text-xs font-medium uppercase tracking-[0.18em] text-surface-500">
+                      {new Date(analysis.ai.generatedAt).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Biggest drop-off</p>
+                      <p className="mt-2 text-sm leading-6 text-surface-700">
+                        {analysis.ai.biggestDropoff || 'Not enough signal yet to identify a dominant leak.'}
+                      </p>
+                    </div>
+                    <div className="rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Likely reason</p>
+                      <p className="mt-2 text-sm leading-6 text-surface-700">
+                        {analysis.ai.likelyReason || 'Not enough signal yet to describe a likely explanation.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    {analysis.ai.evidence.slice(0, 3).map((item) => (
+                      <div key={item.id} className={`rounded-3xl border p-5 ${evidenceToneClasses[item.tone]}`}>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em]">{item.label}</p>
+                        <p className="mt-3 text-lg font-semibold text-surface-900">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {analysis.ai.recommendations.length > 0 && (
+                    <div className="mt-6 rounded-3xl border border-surface-200 bg-surface-50 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Next actions</p>
+                      <div className="mt-4 space-y-4">
+                        {analysis.ai.recommendations.slice(0, 3).map((recommendation) => (
+                          <div key={recommendation.id} className="rounded-2xl border border-surface-200 bg-white p-4">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="max-w-2xl">
+                                <p className="text-sm font-semibold text-surface-900">{recommendation.title}</p>
+                                <p className="mt-2 text-sm leading-6 text-surface-600">{recommendation.detail}</p>
+                              </div>
+                              <Link
+                                to={recommendation.href}
+                                className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-primary-700"
+                              >
+                                Open
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
 
               <div className="rounded-lg border border-gray-200 bg-white p-6">
                 <h3 className="mb-6 text-lg font-semibold text-gray-900">Conversion Funnel</h3>

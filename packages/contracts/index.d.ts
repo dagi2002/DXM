@@ -134,6 +134,17 @@ export interface SessionReplay {
   events: ReplayEvent[];
 }
 
+export type FunnelAnalysisPeriod = '1d' | '7d' | '30d' | '90d';
+
+export interface FunnelAnalysisStep {
+  name: string;
+  urlPattern: string;
+  users: number;
+  conversionRate: number;
+  dropoffRate: number;
+  avgTimeToNext: number | null;
+}
+
 export interface HeatmapPoint {
   type: 'click' | 'scroll' | 'hover';
   sessionId: string;
@@ -220,4 +231,25 @@ export interface AlertListItem {
 
 export interface AlertDetail extends AlertListItem {
   ai?: AlertAiBrief;
+}
+
+export interface FunnelAiBrief {
+  period: FunnelAnalysisPeriod;
+  mode: 'deterministic';
+  generatedAt: string;
+  headline: string;
+  summary: string;
+  biggestDropoff: string | null;
+  likelyReason: string | null;
+  recommendations: AiRecommendation[];
+  evidence: AiEvidenceItem[];
+}
+
+export interface FunnelAnalysisDetail {
+  funnelId: string;
+  funnelName: string;
+  period: FunnelAnalysisPeriod;
+  totalSessions: number;
+  steps: FunnelAnalysisStep[];
+  ai?: FunnelAiBrief;
 }

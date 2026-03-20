@@ -238,7 +238,7 @@ The `urlPattern` is matched against `events.url` using SQL `LIKE '%pattern%'`.
 
 ### `ai_artifacts`
 
-Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1 uses this for overview, site, and alert AI briefs, but the table is intentionally generic.
+Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1 uses this for overview, site, alert, and funnel AI briefs, but the table is intentionally generic.
 
 | Column | Type | Description |
 |---|---|---|
@@ -247,8 +247,8 @@ Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1
 | `site_id` | TEXT FK | Optional reference to `sites.id` |
 | `entity_type` | TEXT | `workspace` \| `site` \| `alert` \| `funnel` \| `session` \| `report` |
 | `entity_id` | TEXT | ID of the entity the artifact belongs to |
-| `artifact_kind` | TEXT | Phase 1 uses `overview_brief`, `site_brief`, and `alert_brief` |
-| `period_key` | TEXT | Phase 1 uses `7d` and `current` |
+| `artifact_kind` | TEXT | Phase 1 uses `overview_brief`, `site_brief`, `alert_brief`, and `funnel_brief` |
+| `period_key` | TEXT | Phase 1 uses `7d`, `current`, and funnel analysis periods such as `1d`, `30d`, and `90d` |
 | `status` | TEXT | `ready` \| `error` \| `building` |
 | `generator_type` | TEXT | `deterministic` \| `llm` |
 | `input_hash` | TEXT | Hash of the structured input used to detect staleness |
@@ -261,10 +261,10 @@ Cached AI outputs keyed by workspace, entity, artifact kind, and period. Phase 1
 
 Important notes:
 
-- the phase-1 overview, site, and alert briefs are deterministic and lazy-generated on the primary read routes
+- the phase-1 overview, site, alert, and funnel briefs are deterministic and lazy-generated on the primary read routes
 - cache invalidation is driven primarily by `input_hash`, not just TTL
 - `building` is reserved for a later async refresh path, but phase 1 still writes `ready` artifacts synchronously
-- if this table is missing or AI is disabled, the overview, site detail, and alert detail routes still return the non-AI response
+- if this table is missing or AI is disabled, the overview, site detail, alert detail, and funnel analysis routes still return the non-AI response
 
 ---
 

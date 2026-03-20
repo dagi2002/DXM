@@ -7,12 +7,129 @@
  * GET  /funnels/:id/analysis       Run analysis for a funnel
  */
 import { Router } from 'express';
+import type {
+  FunnelAnalysisDetail,
+  FunnelAnalysisPeriod,
+  FunnelAnalysisStep,
+} from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getFunnelAiBriefOrNull } from '../services/ai/index.js';
 import { nanoid } from 'nanoid';
 
 const router = Router();
 router.use(requireAuth);
+
+interface StoredFunnel {
+  id: string;
+  name: string;
+  steps_json: string;
+  site_id: string | null;
+}
+
+const PERIOD_MAP: Record<FunnelAnalysisPeriod, string> = {
+  '1d': '-1 day',
+  '7d': '-7 days',
+  '30d': '-30 days',
+  '90d': '-90 days',
+};
+
+const normalizePeriod = (value: string | undefined): FunnelAnalysisPeriod => {
+  if (value === '1d' || value === '30d' || value === '90d') return value;
+  return '7d';
+};
+
+const getStoredFunnel = (workspaceId: string, funnelId: string) =>
+  db.prepare<[string, string], StoredFunnel>(
+    'SELECT id, name, steps_json, site_id FROM funnels WHERE id = ? AND workspace_id = ?',
+  ).get(funnelId, workspaceId);
+
+const buildFunnelAnalysisDetail = (
+  workspaceId: string,
+  funnel: StoredFunnel,
+  period: FunnelAnalysisPeriod,
+): FunnelAnalysisDetail => {
+  const since = PERIOD_MAP[period];
+  const steps: { name: string; urlPattern: string }[] = JSON.parse(funnel.steps_json);
+
+  const siteFilter = funnel.site_id ? 'AND s.site_id = ?' : '';
+  const siteArgs = funnel.site_id ? [workspaceId, funnel.site_id] : [workspaceId];
+
+  const navEvents = db.prepare(`
+    SELECT e.session_id, e.url, e.ts
+    FROM events e
+    JOIN sessions s ON s.id = e.session_id
+    WHERE e.type IN ('pageview', 'navigation')
+      AND s.workspace_id = ?
+      ${siteFilter}
+      AND e.created_at >= datetime('now', '${since}')
+    ORDER BY e.session_id, e.ts ASC
+  `).all(...siteArgs) as { session_id: string; url: string; ts: number }[];
+
+  const bySession: Record<string, string[]> = {};
+  for (const ev of navEvents) {
+    if (!bySession[ev.session_id]) bySession[ev.session_id] = [];
+    bySession[ev.session_id].push(ev.url);
+  }
+
+  const stepCounts = new Array(steps.length).fill(0);
+  const stepTimes: number[][] = steps.map(() => []);
+  const totalSessions = Object.keys(bySession).length;
+
+  for (const urls of Object.values(bySession)) {
+    let lastStepIdx = -1;
+    let lastStepTs = 0;
+
+    for (const [i, step] of steps.entries()) {
+      const matchIdx = urls.findIndex((url, idx) => {
+        if (idx < Math.max(0, lastStepIdx)) return false;
+        try {
+          return new RegExp(step.urlPattern, 'i').test(url);
+        } catch {
+          return url.toLowerCase().includes(step.urlPattern.toLowerCase());
+        }
+      });
+
+      if (matchIdx === -1) break;
+
+      stepCounts[i]++;
+      if (lastStepTs > 0 && i > 0) {
+        // Current backend timings are still simplified, so AI must treat them as weak signal only.
+        stepTimes[i].push(30);
+      }
+      lastStepIdx = matchIdx;
+      lastStepTs = Date.now();
+    }
+  }
+
+  const firstCount = stepCounts[0] || totalSessions;
+  const result: FunnelAnalysisStep[] = steps.map((step, i) => {
+    const users = stepCounts[i];
+    const conversionRate = firstCount > 0 ? Math.round((users / firstCount) * 100 * 10) / 10 : 0;
+    const prevUsers = i > 0 ? stepCounts[i - 1] : firstCount;
+    const dropoffRate = prevUsers > 0 ? Math.round(((prevUsers - users) / prevUsers) * 100 * 10) / 10 : 0;
+    const avgTime = stepTimes[i].length > 0
+      ? Math.round(stepTimes[i].reduce((a, b) => a + b, 0) / stepTimes[i].length)
+      : null;
+
+    return {
+      name: step.name,
+      urlPattern: step.urlPattern,
+      users,
+      conversionRate,
+      dropoffRate,
+      avgTimeToNext: avgTime,
+    };
+  });
+
+  return {
+    funnelId: funnel.id,
+    funnelName: funnel.name,
+    period,
+    totalSessions,
+    steps: result,
+  };
+};
 
 // GET /funnels — list all funnels for the workspace
 router.get('/', (req, res) => {
@@ -63,103 +180,15 @@ router.delete('/:id', (req, res) => {
 // GET /funnels/:id/analysis — run funnel analysis against real session events
 router.get('/:id/analysis', (req, res) => {
   const workspaceId = req.user!.workspaceId;
-
-  const funnel = db.prepare('SELECT * FROM funnels WHERE id = ? AND workspace_id = ?')
-    .get(req.params.id, workspaceId) as { id: string; name: string; steps_json: string; site_id: string | null } | undefined;
+  const funnel = getStoredFunnel(workspaceId, req.params.id);
 
   if (!funnel) return res.status(404).json({ error: 'Funnel not found' });
 
-  const period = (req.query.period as string) || '7d';
-  const periodMap: Record<string, string> = {
-    '1d': '-1 day', '7d': '-7 days', '30d': '-30 days', '90d': '-90 days',
-  };
-  const since = periodMap[period] ?? '-7 days';
+  const period = normalizePeriod(req.query.period as string | undefined);
+  const analysis = buildFunnelAnalysisDetail(workspaceId, funnel, period);
+  const ai = getFunnelAiBriefOrNull(workspaceId, analysis, funnel.site_id);
 
-  const steps: { name: string; urlPattern: string }[] = JSON.parse(funnel.steps_json);
-
-  // Fetch all navigation events for this workspace in the period
-  const siteFilter = funnel.site_id ? 'AND s.site_id = ?' : '';
-  const siteArgs = funnel.site_id ? [workspaceId, funnel.site_id] : [workspaceId];
-
-  const navEvents = db.prepare(`
-    SELECT e.session_id, e.url, e.ts
-    FROM events e
-    JOIN sessions s ON s.id = e.session_id
-    WHERE e.type IN ('pageview', 'navigation')
-      AND s.workspace_id = ?
-      ${siteFilter}
-      AND e.created_at >= datetime('now', '${since}')
-    ORDER BY e.session_id, e.ts ASC
-  `).all(...siteArgs) as { session_id: string; url: string; ts: number }[];
-
-  // Group by session
-  const bySession: Record<string, string[]> = {};
-  for (const ev of navEvents) {
-    if (!bySession[ev.session_id]) bySession[ev.session_id] = [];
-    bySession[ev.session_id].push(ev.url);
-  }
-
-  // For each session, track which steps they completed (in order)
-  const stepCounts = new Array(steps.length).fill(0);
-  const stepTimes: number[][] = steps.map(() => []);
-
-  const totalSessions = Object.keys(bySession).length;
-
-  for (const urls of Object.values(bySession)) {
-    let lastStepIdx = -1;
-    let lastStepTs = 0;
-
-    for (const [i, step] of steps.entries()) {
-      // Find the first URL matching this step's pattern that occurs after the last step
-      const matchIdx = urls.findIndex((url, idx) => {
-        if (idx < Math.max(0, lastStepIdx)) return false;
-        try {
-          return new RegExp(step.urlPattern, 'i').test(url);
-        } catch {
-          return url.toLowerCase().includes(step.urlPattern.toLowerCase());
-        }
-      });
-
-      if (matchIdx === -1) break; // session didn't reach this step
-
-      stepCounts[i]++;
-      if (lastStepTs > 0 && i > 0) {
-        // We don't have precise per-event timestamps here (simplified)
-        stepTimes[i].push(30); // placeholder avg seconds
-      }
-      lastStepIdx = matchIdx;
-      lastStepTs = Date.now();
-    }
-  }
-
-  // Build result
-  const firstCount = stepCounts[0] || totalSessions;
-  const result = steps.map((step, i) => {
-    const users = stepCounts[i];
-    const conversionRate = firstCount > 0 ? Math.round((users / firstCount) * 100 * 10) / 10 : 0;
-    const prevUsers = i > 0 ? stepCounts[i - 1] : firstCount;
-    const dropoffRate = prevUsers > 0 ? Math.round(((prevUsers - users) / prevUsers) * 100 * 10) / 10 : 0;
-    const avgTime = stepTimes[i].length > 0
-      ? Math.round(stepTimes[i].reduce((a, b) => a + b, 0) / stepTimes[i].length)
-      : null;
-
-    return {
-      name:           step.name,
-      urlPattern:     step.urlPattern,
-      users,
-      conversionRate,
-      dropoffRate,
-      avgTimeToNext:  avgTime,
-    };
-  });
-
-  return res.json({
-    funnelId: funnel.id,
-    funnelName: funnel.name,
-    period,
-    totalSessions,
-    steps: result,
-  });
+  return res.json(ai ? { ...analysis, ai } : analysis);
 });
 
 export default router;

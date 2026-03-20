@@ -149,6 +149,11 @@ The web app uses authenticated, workspace-scoped read models instead of reconstr
    - `GET /analytics/vitals`
 4. Alerts are read from `GET /alerts` and can be pushed to Telegram.
 
+Notes:
+
+- `GET /funnels/:id/analysis` remains the product-truth funnel read path
+- that route can now add an optional deterministic funnel AI brief without changing the underlying funnel analysis model
+
 ## Major Live Routes And Surfaces
 
 ### Web surfaces
@@ -208,6 +213,7 @@ Notes:
 
 - `/sites/*` is the primary client-site management contract
 - `/onboarding/sites*` remains only to avoid breaking older onboarding callers and should not grow new product logic
+- `/funnels/:id/analysis` remains the primary live funnel-analysis contract and may now include an optional deterministic AI brief
 
 ## How To Run It Locally
 
@@ -306,10 +312,10 @@ Setup assumptions:
 
 - billing is still partial in the UI and manual operationally
 - the Chapa webhook endpoint exists, but billing automation is not complete
-- DXM Pulse AI is planned, but not implemented in this branch
+- DXM Pulse AI is partially implemented in this branch with deterministic overview, site, alert, and funnel briefs layered onto existing read routes
 - the API still runs on SQLite and does not yet use a job queue for heavier background work
 - weekly digest sending exists, but is intended to be triggered by a scheduler with `x-digest-key`
-- funnel analysis is live, but still intentionally lightweight compared with a mature analytics product
+- funnel analysis is live, still intentionally lightweight compared with a mature analytics product, and can now carry an optional deterministic AI brief layered on top of the existing analysis response
 - site deletion is intentionally conservative: there is no cascade delete or archive flow yet
 - `/onboarding/sites*` remains as compatibility-only routing and should be removed later once no callers depend on it
 

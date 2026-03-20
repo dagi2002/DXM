@@ -90,7 +90,7 @@ Still partial:
 - Billing webhook is a stub for future Chapa automation
 - Digest triggering is protected by `x-digest-key` and intended for a scheduler or cron job
 - The API is SQLite-first and optimized for MVP/self-hosted simplicity, not multi-region scale
-- Deterministic AI currently enhances `GET /overview`, `GET /sites/:id`, and `GET /alerts/:id` only
+- Deterministic AI currently enhances `GET /overview`, `GET /sites/:id`, `GET /alerts/:id`, and `GET /funnels/:id/analysis` only
 - Site deletion is intentionally conservative: no cascade delete and no archive flow yet
 
 ## Related Docs

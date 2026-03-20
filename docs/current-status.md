@@ -41,13 +41,13 @@ This document is the truthful snapshot of DXM Pulse on the stabilized agency-fir
 - Landing page, demo page, and site audit are not just mock screens
 - Settings can now manage live client-site setup and weekly digest behavior
 - Build, lint, and root `check` are passing targets for this branch
-- The phase-1 AI foundation is live with deterministic overview, site, and alert briefs layered onto the primary detail routes
+- The phase-1 AI foundation is live with deterministic overview, site, alert, and funnel briefs layered onto the primary detail routes
 
 ### Partial or intentionally deferred
 
 - Billing is still honest/read-only in the UI and manual operationally
 - Chapa webhook remains a stub until production credentials and flow details are ready
-- DXM Pulse AI is only partially implemented here: overview, site, and alert AI are live, but funnel, report, digest, and provider-backed AI layers are still deferred
+- DXM Pulse AI is only partially implemented here: overview, site, alert, and funnel AI are live, but report, digest, and provider-backed AI layers are still deferred
 - Some higher-order business features are still roadmap items rather than shipped workflows
 - Site deletion is intentionally conservative: clean sites can be deleted, but there is still no cascade delete or archive flow
 - The onboarding compatibility alias should remain thin and can be removed later once no callers depend on `/onboarding/sites*`
@@ -76,10 +76,12 @@ DXM Pulse AI has started in a deliberately small shape:
 - `GET /overview` can now include an optional deterministic AI brief
 - `GET /sites/:id` can now include an optional deterministic site AI brief
 - `GET /alerts/:id` can now include an optional deterministic alert AI brief
+- `GET /funnels/:id/analysis` can now include an optional deterministic funnel AI brief
 - the AI layer reads the existing overview rollups instead of replacing them
 - the site AI layer reads the existing client detail payload instead of replacing it
 - the alert AI layer reads the existing alert detail record instead of re-deriving alert truth
+- the funnel AI layer reads the existing funnel analysis response instead of replacing the funnel analysis route
 - outputs are cached in `ai_artifacts`
 - AI remains additive and fail-open, so the core product still works unchanged when AI is disabled
 
-Later AI phases for funnels, reports, digests, and provider-backed generation remain roadmap work.
+Later AI phases for reports, digests, and provider-backed generation remain roadmap work.

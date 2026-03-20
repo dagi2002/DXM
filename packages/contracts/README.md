@@ -15,6 +15,8 @@ Primary contract surfaces:
 - `SessionDetail`
 - `SessionReplay`
 - `HeatmapReadModel`
+- `FunnelAnalysisDetail`
+- `FunnelAiBrief`
 - `OverviewAiBrief`
 - `SiteAiBrief`
 - `AlertAiBrief`
@@ -27,6 +29,7 @@ The phase-1 AI surface is intentionally small:
 
 - `GET /overview` may include an optional deterministic `ai` block using `OverviewAiBrief`
 - `GET /sites/:id` may include an optional deterministic `ai` block using `SiteAiBrief`
+- `GET /funnels/:id/analysis` may include an optional deterministic `ai` block using `FunnelAnalysisDetail`
 - `GET /alerts` stays on the list-item contract using `AlertListItem`
 - `GET /alerts/:id` may include an optional deterministic `ai` block using `AlertDetail`
 - the AI contract is shared so API and web stay aligned even while AI remains an internal, cached interpretation layer
