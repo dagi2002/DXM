@@ -120,9 +120,17 @@ CREATE TABLE IF NOT EXISTS funnels (
 CREATE INDEX IF NOT EXISTS idx_sessions_workspace ON sessions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_site      ON sessions(site_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created   ON sessions(created_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_workspace_created ON sessions(workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_site_created ON sessions(site_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_workspace_site_created ON sessions(workspace_id, site_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_session     ON events(session_id);
 CREATE INDEX IF NOT EXISTS idx_events_type        ON events(type);
+CREATE INDEX IF NOT EXISTS idx_events_session_ts ON events(session_id, ts ASC);
+CREATE INDEX IF NOT EXISTS idx_events_session_type_ts ON events(session_id, type, ts ASC);
+CREATE INDEX IF NOT EXISTS idx_events_type_created_session ON events(type, created_at DESC, session_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_workspace   ON alerts(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_resolved    ON alerts(resolved);
+CREATE INDEX IF NOT EXISTS idx_alerts_workspace_site_resolved_created ON alerts(workspace_id, site_id, resolved, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email);
 CREATE INDEX IF NOT EXISTS idx_sites_key          ON sites(site_key);
+CREATE INDEX IF NOT EXISTS idx_sites_workspace_created ON sites(workspace_id, created_at DESC);

@@ -24,6 +24,14 @@ interface AlertStatsRow {
   critical_alerts: number;
 }
 
+interface SessionStatsBySiteRow extends SessionStatsRow {
+  site_id: string;
+}
+
+interface AlertStatsBySiteRow extends AlertStatsRow {
+  site_id: string;
+}
+
 interface RecentSessionRow {
   id: string;
   started_at: string | null;
@@ -163,6 +171,20 @@ const getSiteRow = (workspaceId: string, siteId: string) =>
     )
     .get(workspaceId, siteId);
 
+const EMPTY_SESSION_STATS: SessionStatsRow = {
+  total_sessions: 0,
+  sessions_7d: 0,
+  last_activity_at: null,
+  avg_duration_seconds: 0,
+  bounced_sessions: 0,
+  converted_sessions: 0,
+};
+
+const EMPTY_ALERT_STATS: AlertStatsRow = {
+  open_alerts: 0,
+  critical_alerts: 0,
+};
+
 const getSessionStats = (siteId: string) =>
   (db
     .prepare<[string], SessionStatsRow>(
@@ -178,14 +200,7 @@ const getSessionStats = (siteId: string) =>
         WHERE site_id = ?
       `
     )
-    .get(siteId) ?? {
-    total_sessions: 0,
-    sessions_7d: 0,
-    last_activity_at: null,
-    avg_duration_seconds: 0,
-    bounced_sessions: 0,
-    converted_sessions: 0,
-  });
+    .get(siteId) ?? EMPTY_SESSION_STATS);
 
 const getAlertStats = (workspaceId: string, siteId: string) =>
   (db
@@ -198,10 +213,47 @@ const getAlertStats = (workspaceId: string, siteId: string) =>
         WHERE workspace_id = ? AND site_id = ?
       `
     )
-    .get(workspaceId, siteId) ?? {
-    open_alerts: 0,
-    critical_alerts: 0,
-  });
+    .get(workspaceId, siteId) ?? EMPTY_ALERT_STATS);
+
+const getWorkspaceSessionStats = (workspaceId: string) => {
+  const rows = db
+    .prepare<[string], SessionStatsBySiteRow>(
+      `
+        SELECT
+          site_id,
+          COUNT(*) as total_sessions,
+          SUM(CASE WHEN created_at >= datetime('now', '-7 days') THEN 1 ELSE 0 END) as sessions_7d,
+          MAX(created_at) as last_activity_at,
+          AVG(CASE WHEN duration > 0 THEN duration END) as avg_duration_seconds,
+          SUM(CASE WHEN bounced = 1 THEN 1 ELSE 0 END) as bounced_sessions,
+          SUM(CASE WHEN converted = 1 THEN 1 ELSE 0 END) as converted_sessions
+        FROM sessions
+        WHERE workspace_id = ?
+        GROUP BY site_id
+      `
+    )
+    .all(workspaceId);
+
+  return new Map(rows.map((row) => [row.site_id, row]));
+};
+
+const getWorkspaceAlertStats = (workspaceId: string) => {
+  const rows = db
+    .prepare<[string], AlertStatsBySiteRow>(
+      `
+        SELECT
+          site_id,
+          SUM(CASE WHEN resolved = 0 THEN 1 ELSE 0 END) as open_alerts,
+          SUM(CASE WHEN resolved = 0 AND severity = 'critical' THEN 1 ELSE 0 END) as critical_alerts
+        FROM alerts
+        WHERE workspace_id = ? AND site_id IS NOT NULL
+        GROUP BY site_id
+      `
+    )
+    .all(workspaceId);
+
+  return new Map(rows.map((row) => [row.site_id, row]));
+};
 
 export const computeHealthScore = (input: {
   verified: boolean;
@@ -237,9 +289,11 @@ const getTrackingStatus = (verified: boolean, openAlerts: number, lastActivityAt
   return 'live' as const;
 };
 
-const buildSiteSummaryFromRow = (workspaceId: string, site: SiteRow): ClientSiteSummary => {
-  const sessionStats = getSessionStats(site.id);
-  const alertStats = getAlertStats(workspaceId, site.id);
+const buildSiteSummary = (
+  site: SiteRow,
+  sessionStats: SessionStatsRow = EMPTY_SESSION_STATS,
+  alertStats: AlertStatsRow = EMPTY_ALERT_STATS,
+): ClientSiteSummary => {
   const totalSessions = sessionStats.total_sessions || 0;
   const avgDurationSeconds = Math.round(sessionStats.avg_duration_seconds || 0);
   const bounceRate = totalSessions > 0 ? round((sessionStats.bounced_sessions / totalSessions) * 100) : 0;
@@ -281,7 +335,16 @@ export const listWorkspaceSites = (workspaceId: string): ClientSiteSummary[] => 
     )
     .all(workspaceId);
 
-  return sites.map((site) => buildSiteSummaryFromRow(workspaceId, site));
+  const sessionStatsBySite = getWorkspaceSessionStats(workspaceId);
+  const alertStatsBySite = getWorkspaceAlertStats(workspaceId);
+
+  return sites.map((site) =>
+    buildSiteSummary(
+      site,
+      sessionStatsBySite.get(site.id) ?? EMPTY_SESSION_STATS,
+      alertStatsBySite.get(site.id) ?? EMPTY_ALERT_STATS,
+    )
+  );
 };
 
 export const getSiteVerification = (workspaceId: string, siteId: string) => {
@@ -344,7 +407,7 @@ export const getSiteDetail = (workspaceId: string, siteId: string): ClientSiteDe
   const site = getSiteRow(workspaceId, siteId);
   if (!site) return null;
 
-  const summary = buildSiteSummaryFromRow(workspaceId, site);
+  const summary = buildSiteSummary(site, getSessionStats(site.id), getAlertStats(workspaceId, site.id));
 
   const recentSessions = db
     .prepare<[string, string], RecentSessionRow>(
