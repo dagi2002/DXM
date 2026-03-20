@@ -1,5 +1,6 @@
 import request, { type Response } from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
+import { setWorkspacePlan } from '../helpers/billing.js';
 import { createTestApp, type ApiTestContext } from '../helpers/testApp.js';
 
 interface SignupResult {
@@ -63,6 +64,7 @@ describe('alert ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const alertResponse = await createAlert(context.app, cookieHeader, {
       type: 'performance',
@@ -104,6 +106,7 @@ describe('alert ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Alert Client');
     expect(siteResponse.status).toBe(201);
@@ -160,6 +163,7 @@ describe('alert ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const alertResponse = await createAlert(context.app, cookieHeader, {
       type: 'performance',
@@ -205,6 +209,7 @@ describe('alert ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const alertResponse = await createAlert(context.app, cookieHeader, {
       type: 'conversion',
@@ -276,8 +281,9 @@ describe('alert ai brief', () => {
   it('keeps GET /alerts on the list-item shape without inline ai', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const alertResponse = await createAlert(context.app, cookieHeader, {
       type: 'performance',
@@ -301,8 +307,9 @@ describe('alert ai brief', () => {
   it('maps known alert titles to type-specific why-fired explanations', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const frustrationResponse = await createAlert(context.app, cookieHeader, {
       type: 'frustration',
@@ -344,8 +351,9 @@ describe('alert ai brief', () => {
   it('preserves the existing 404 response for unknown alerts', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const detailResponse = await request(context.app)
       .get('/alerts/alert_does_not_exist')

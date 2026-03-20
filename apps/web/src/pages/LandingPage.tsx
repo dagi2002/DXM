@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { SiteAudit } from '../components/Landing/SiteAudit';
+import { PLAN_CATALOG } from '../lib/billing';
 
 const pains = [
   {
@@ -70,31 +71,6 @@ const workflow = [
     step: '03',
     title: 'Turn insight into client-facing proof',
     body: 'Use ready-to-share summaries and weekly narratives that make your work visible and measurable.',
-  },
-];
-
-const pricing = [
-  {
-    name: 'Small agency',
-    price: '1,490 ETB',
-    period: '/month',
-    description: 'For teams handling a small portfolio of active client sites.',
-    features: ['Up to 10 client sites', 'Replay, vitals, and alerts', 'Weekly digest'],
-  },
-  {
-    name: 'Growth agency',
-    price: '3,490 ETB',
-    period: '/month',
-    description: 'For agencies running ongoing optimization across multiple accounts.',
-    features: ['Up to 30 client sites', 'Priority alerting', 'Client-ready report cards'],
-    highlight: true,
-  },
-  {
-    name: 'Portfolio agency',
-    price: 'Custom',
-    period: '',
-    description: 'For larger studios managing a portfolio and multi-person delivery team.',
-    features: ['Higher site limits', 'Custom onboarding', 'Roadmap input and rollout support'],
   },
 ];
 
@@ -296,9 +272,9 @@ export const LandingPage: React.FC = () => {
             <h2 className="mt-3 text-3xl font-bold text-surface-900">Per-agency pricing with client-site limits built in.</h2>
           </div>
           <div className="mt-10 grid gap-5 xl:grid-cols-3">
-            {pricing.map((tier) => (
+            {PLAN_CATALOG.map((tier) => (
               <div
-                key={tier.name}
+                key={tier.id}
                 className={`rounded-[28px] border p-6 shadow-sm ${
                   tier.highlight
                     ? 'border-primary-300 bg-white ring-2 ring-primary-300'
@@ -317,8 +293,10 @@ export const LandingPage: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-6 flex items-end gap-2">
-                  <span className="text-4xl font-bold text-surface-900">{tier.price}</span>
-                  {tier.period && <span className="pb-1 text-sm text-surface-500">{tier.period}</span>}
+                  <span className="text-4xl font-bold text-surface-900">
+                    {tier.priceEtb === 0 ? 'Free' : `${tier.priceEtb.toLocaleString()} ETB`}
+                  </span>
+                  {tier.priceEtb > 0 && <span className="pb-1 text-sm text-surface-500">/ month</span>}
                 </div>
                 <div className="mt-6 space-y-3">
                   {tier.features.map((feature) => (

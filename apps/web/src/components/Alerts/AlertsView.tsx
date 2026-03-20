@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, Sparkles } from 'lucide-react';
+import { UpgradeGate } from '../UpgradeGate';
+import { useAuth } from '../../context/AuthContext';
 import type { Alert, AlertDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
+import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
+import { markJourneyMilestone } from '../../lib/workspaceSignals';
 
 const evidenceToneClasses = {
   positive: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -11,6 +15,7 @@ const evidenceToneClasses = {
 } as const;
 
 export const AlertsView: React.FC = () => {
+  const { workspace } = useAuth();
   const [filter, setFilter] = useState('all');
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertDetails, setAlertDetails] = useState<Record<string, AlertDetail>>({});
@@ -19,8 +24,14 @@ export const AlertsView: React.FC = () => {
   const [loadingAlertId, setLoadingAlertId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canUseAlerts = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.alerts);
 
   useEffect(() => {
+    if (!canUseAlerts) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const loadAlerts = async () => {
@@ -51,7 +62,7 @@ export const AlertsView: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [canUseAlerts]);
 
   const filteredAlerts = alerts.filter(alert => {
     if (filter === 'active') return !alert.resolved;
@@ -80,6 +91,7 @@ export const AlertsView: React.FC = () => {
     try {
       const detail = await fetchJson<AlertDetail>(`/alerts/${alertId}`);
       setAlertDetails((current) => ({ ...current, [alertId]: detail }));
+      void markJourneyMilestone('alert_reviewed').catch(() => {});
     } catch (loadError) {
       setDetailErrors((current) => ({
         ...current,
@@ -113,6 +125,22 @@ export const AlertsView: React.FC = () => {
         return <AlertTriangle className="h-5 w-5" />;
     }
   };
+
+  if (!canUseAlerts) {
+    return (
+      <div className="p-6">
+        <UpgradeGate
+          source="alerts"
+          title="Unlock alerts before client issues find you first."
+          description="The alert feed is part of the paid DXM bundle because it starts acting like an operational system, not just an analytics dashboard."
+          bullets={[
+            'See live issues before the next client check-in',
+            'Unlock replay, funnels, reports, and Telegram delivery together',
+          ]}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

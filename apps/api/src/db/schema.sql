@@ -14,6 +14,42 @@ CREATE TABLE IF NOT EXISTS workspaces (
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS workspace_profiles (
+  workspace_id        TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  agency_type         TEXT,
+  managed_sites_band  TEXT,
+  reporting_workflow  TEXT,
+  evaluation_reason   TEXT,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS workspace_milestones (
+  workspace_id                TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  first_site_live_at          DATETIME,
+  first_replay_viewed_at      DATETIME,
+  first_alert_reviewed_at     DATETIME,
+  first_report_exported_at    DATETIME,
+  first_upgrade_request_at    DATETIME,
+  created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS upgrade_requests (
+  id                     TEXT PRIMARY KEY,
+  workspace_id           TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  requested_by_user_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  current_plan           TEXT NOT NULL,
+  requested_plan         TEXT NOT NULL,
+  source                 TEXT NOT NULL,
+  site_count_at_request  INTEGER NOT NULL DEFAULT 0,
+  site_limit_at_request  INTEGER NOT NULL DEFAULT 0,
+  notes                  TEXT,
+  status                 TEXT NOT NULL DEFAULT 'requested',
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  activated_at           DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id                  TEXT PRIMARY KEY,
   workspace_id        TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -153,6 +189,10 @@ CREATE INDEX IF NOT EXISTS idx_alerts_workspace_site_resolved_created ON alerts(
 CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email);
 CREATE INDEX IF NOT EXISTS idx_sites_key          ON sites(site_key);
 CREATE INDEX IF NOT EXISTS idx_sites_workspace_created ON sites(workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_upgrade_requests_workspace_created
+  ON upgrade_requests(workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_upgrade_requests_workspace_status
+  ON upgrade_requests(workspace_id, status, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_ai_artifacts_scope
   ON ai_artifacts(workspace_id, entity_type, entity_id, artifact_kind, period_key);
 CREATE INDEX IF NOT EXISTS idx_ai_artifacts_workspace_kind_expiry

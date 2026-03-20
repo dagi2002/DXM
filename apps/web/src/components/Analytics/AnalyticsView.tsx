@@ -3,9 +3,15 @@ import { HeatmapView } from './HeatmapPage/HeatmapView.tsx';
 import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlowView } from './UserFlow/UserFlowView';
 import PerformanceMetrics from './Performance/PerformanceMetrics';
+import { UpgradeGate } from '../UpgradeGate';
+import { useAuth } from '../../context/AuthContext';
+import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
 
 export const AnalyticsView: React.FC = () => {
+  const { workspace } = useAuth();
   const [activeTab, setActiveTab] = useState('heatmaps');
+  const canUseFunnels = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.funnels);
+  const canUseUserFlow = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.userFlow);
 
   const tabs = [
     { id: 'heatmaps', label: 'Heatmaps', description: 'Click and scroll patterns' },
@@ -51,8 +57,34 @@ export const AnalyticsView: React.FC = () => {
       {/* Tab Content */}
       <div className="space-y-6">
         {activeTab === 'heatmaps' && <HeatmapView />}
-        {activeTab === 'funnels' && <FunnelAnalysis />}
-        {activeTab === 'flows' && <UserFlowView />}
+        {activeTab === 'funnels' &&
+          (canUseFunnels ? (
+            <FunnelAnalysis />
+          ) : (
+            <UpgradeGate
+              source="funnels"
+              title="Unlock funnels to explain where conversions break."
+              description="Heatmaps and performance stay free. Funnel analysis moves into the paid bundle because that is where agencies start turning telemetry into actionable client stories."
+              bullets={[
+                'Keep heatmaps and performance on Free',
+                'Unlock funnels, replay, alerts, user flow, and reports together',
+              ]}
+            />
+          ))}
+        {activeTab === 'flows' &&
+          (canUseUserFlow ? (
+            <UserFlowView />
+          ) : (
+            <UpgradeGate
+              source="user_flow"
+              title="Unlock user flow to see where visitors go next."
+              description="User flow is part of the paid DXM bundle for agencies that need more than page-level behavior and want navigation patterns across the portfolio."
+              bullets={[
+                'Keep basic analytics available for evaluation',
+                'Unlock user flow with the rest of the paid ops features',
+              ]}
+            />
+          ))}
         {activeTab === 'performance' && <PerformanceMetrics />}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '../lib/api';
+import type { AgencyType, ManagedSitesBand, ReportingWorkflow } from '../lib/workspaceSignals';
 
 export interface WorkspaceUser {
   id: string;
@@ -23,7 +24,16 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  signup: (data: { name: string; email: string; password: string; workspaceName: string }) => Promise<void>;
+  signup: (data: {
+    name: string;
+    email: string;
+    password: string;
+    workspaceName: string;
+    agencyType?: AgencyType | null;
+    managedSitesBand?: ManagedSitesBand | null;
+    reportingWorkflow?: ReportingWorkflow | null;
+    evaluationReason?: string | null;
+  }) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -91,7 +101,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signup = useCallback(async (data: {
-    name: string; email: string; password: string; workspaceName: string;
+    name: string;
+    email: string;
+    password: string;
+    workspaceName: string;
+    agencyType?: AgencyType | null;
+    managedSitesBand?: ManagedSitesBand | null;
+    reportingWorkflow?: ReportingWorkflow | null;
+    evaluationReason?: string | null;
   }) => {
     const requestVersion = ++authStateVersionRef.current;
     const res = await fetch(getApiUrl('/auth/signup'), {

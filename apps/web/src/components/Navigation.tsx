@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth, type WorkspaceUser, type Workspace } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { getPlanLabel } from '../lib/billing';
 
 interface NavigationProps {
   currentView: string;
@@ -81,9 +82,12 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user, works
             <p className="mt-1 text-sm text-surface-600">
               Monitor client websites, catch issues first, and show the value of your work.
             </p>
-            <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-primary-700 shadow-sm">
-              {workspace?.plan || 'free'} plan
-            </div>
+            <Link
+              to="/settings/billing"
+              className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary-700 shadow-sm transition hover:bg-primary-50"
+            >
+              {getPlanLabel(workspace?.plan || 'free')} plan
+            </Link>
           </div>
         </div>
 

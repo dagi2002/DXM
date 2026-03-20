@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, Plus, Search } from 'lucide-react';
 import { fetchJson } from '../lib/api';
+import { UpgradeGate } from '../components/UpgradeGate';
+import { useAuth } from '../context/AuthContext';
+import { getPlanMeta, getRecommendedUpgradePlan } from '../lib/billing';
 import type { ClientSiteSummary } from '../types';
 
 const statusStyles = {
@@ -22,6 +25,7 @@ const formatDuration = (seconds: number) => {
 };
 
 export const ClientsPage: React.FC = () => {
+  const { workspace } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientSiteSummary[]>([]);
@@ -29,6 +33,7 @@ export const ClientsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
+  const [showSiteLimitGate, setShowSiteLimitGate] = useState(false);
 
   useEffect(() => {
     const message = (location.state as { flashMessage?: string } | null)?.flashMessage;
@@ -78,6 +83,9 @@ export const ClientsPage: React.FC = () => {
         ? Math.round(clients.reduce((total, client) => total + client.healthScore, 0) / clients.length)
         : 0,
   };
+  const siteLimit = getPlanMeta(workspace?.plan || 'free').siteLimit;
+  const hasReachedSiteLimit = clients.length >= siteLimit;
+  const nextPlanId = getRecommendedUpgradePlan(workspace?.plan || 'free');
 
   return (
     <div className="mx-auto max-w-7xl p-6 md:p-8">
@@ -89,13 +97,21 @@ export const ClientsPage: React.FC = () => {
             Track install status, spot underperforming sites, and jump from portfolio management into the details that matter.
           </p>
         </div>
-        <Link
-          to="/onboarding"
+        <button
+          type="button"
+          onClick={() => {
+            if (hasReachedSiteLimit) {
+              setShowSiteLimitGate(true);
+              return;
+            }
+
+            navigate('/onboarding');
+          }}
           className="inline-flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-primary-700"
         >
           <Plus className="h-4 w-4" />
           Add client site
-        </Link>
+        </button>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-4">
@@ -200,6 +216,31 @@ export const ClientsPage: React.FC = () => {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {showSiteLimitGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/45 p-6">
+          <div className="w-full max-w-2xl">
+            <UpgradeGate
+              source="site_limit"
+              planId={nextPlanId}
+              eyebrow="Tracked-site limit reached"
+              title={`You are already using ${clients.length}/${siteLimit} tracked site${siteLimit === 1 ? '' : 's'}.`}
+              description="DXM enforces the tracked-site limit at site creation. Upgrade before adding another client site so the workspace stays consistent."
+              bullets={[
+                'Keep the current portfolio in one workspace',
+                'Unlock the full paid agency bundle at the same time',
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => setShowSiteLimitGate(false)}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              Not now
+            </button>
+          </div>
         </div>
       )}
     </div>

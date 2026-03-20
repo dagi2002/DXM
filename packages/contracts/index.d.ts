@@ -7,6 +7,52 @@ export interface ApiEndpoints {
 
 export const API_ENDPOINTS: ApiEndpoints;
 export const CONVERSION_EVENT_KEYWORDS: readonly string[];
+export type WorkspacePlanId = 'free' | 'starter' | 'pro';
+export type BillingFeatureId =
+  | 'session_list'
+  | 'heatmaps'
+  | 'performance'
+  | 'replay'
+  | 'alerts'
+  | 'funnels'
+  | 'user_flow'
+  | 'reports'
+  | 'telegram'
+  | 'digest';
+
+export interface BillingFeatureRegistry {
+  sessionList: 'session_list';
+  heatmaps: 'heatmaps';
+  performance: 'performance';
+  replay: 'replay';
+  alerts: 'alerts';
+  funnels: 'funnels';
+  userFlow: 'user_flow';
+  reports: 'reports';
+  telegram: 'telegram';
+  digest: 'digest';
+}
+
+export interface PlanCatalogEntry {
+  id: WorkspacePlanId;
+  name: string;
+  description: string;
+  priceEtb: number;
+  sessions: number;
+  sessionsLabel: string;
+  siteLimit: number;
+  siteLimitLabel: string;
+  features: readonly string[];
+  featureIds: readonly BillingFeatureId[];
+  highlight: boolean;
+}
+
+export const BILLING_FEATURES: BillingFeatureRegistry;
+export const DXM_PLAN_CATALOG: readonly PlanCatalogEntry[];
+export function getPlanCatalogEntry(planId: string): PlanCatalogEntry;
+export function getNextPlanId(planId: WorkspacePlanId | string): WorkspacePlanId;
+export function getPlanSiteLimit(planId: WorkspacePlanId | string): number;
+export function planSupportsFeature(planId: WorkspacePlanId | string, featureId: BillingFeatureId): boolean;
 
 export type SdkEventType =
   | 'pageview'

@@ -7,6 +7,7 @@ import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { compileDigest, formatDigestEN, formatDigestAM } from '../services/weeklyDigest.js';
+import { BILLING_FEATURES, planSupportsFeature } from '../lib/billing.js';
 
 const router = Router();
 
@@ -86,24 +87,29 @@ router.post('/send-all', async (req: Request, res: Response) => {
   try {
     // Get all workspaces with Telegram configured and digest enabled
     const workspaces = db.prepare(`
-      SELECT id, telegram_bot_token, telegram_chat_id, digest_language
+      SELECT id, plan, telegram_bot_token, telegram_chat_id, digest_language
       FROM workspaces
       WHERE telegram_chat_id IS NOT NULL
         AND telegram_bot_token IS NOT NULL
         AND digest_enabled = 1
     `).all() as {
       id: string;
+      plan: string;
       telegram_bot_token: string;
       telegram_chat_id: string;
       digest_language: string | null;
     }[];
 
-    console.info(`[digest] Starting digest run for ${workspaces.length} eligible workspaces`);
+    const eligibleWorkspaces = workspaces.filter((workspace) =>
+      planSupportsFeature(workspace.plan, BILLING_FEATURES.digest),
+    );
+
+    console.info(`[digest] Starting digest run for ${eligibleWorkspaces.length} eligible workspaces`);
 
     let sent = 0;
     let failed = 0;
 
-    for (const ws of workspaces) {
+    for (const ws of eligibleWorkspaces) {
       const data = compileDigest(ws.id);
       const lang = (ws.digest_language || 'en').toLowerCase();
       const message = lang === 'am' ? formatDigestAM(data) : formatDigestEN(data);
@@ -118,7 +124,7 @@ router.post('/send-all', async (req: Request, res: Response) => {
       console.warn(`[digest] Delivery failed for workspace ${ws.id}`);
     }
 
-    console.info(`[digest] Completed digest run: eligible=${workspaces.length} sent=${sent} failed=${failed}`);
+    console.info(`[digest] Completed digest run: eligible=${eligibleWorkspaces.length} sent=${sent} failed=${failed}`);
 
     return res.json({ sent });
   } catch (err) {

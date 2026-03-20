@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { signupSchema, loginSchema } from '../schemas/authSchemas.js';
+import { upsertWorkspaceFitProfile } from '../lib/workspaceSignals.js';
 
 const router = Router();
 
@@ -56,7 +57,16 @@ function clearTokenCookies(res: any) {
 
 // POST /auth/signup
 router.post('/signup', authLimiter, validate(signupSchema), async (req, res) => {
-  const { name, email, password, workspaceName } = req.body;
+  const {
+    name,
+    email,
+    password,
+    workspaceName,
+    agencyType,
+    managedSitesBand,
+    reportingWorkflow,
+    evaluationReason,
+  } = req.body;
   try {
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
     if (existing) return res.status(409).json({ message: 'An account with that email already exists' });
@@ -78,6 +88,23 @@ router.post('/signup', authLimiter, validate(signupSchema), async (req, res) => 
     const refreshHash = await bcrypt.hash(refresh, 6);
     db.prepare('UPDATE users SET refresh_token_hash = ? WHERE id = ?').run(refreshHash, userId);
     setTokenCookies(res, access, refresh);
+
+    if (
+      typeof agencyType !== 'undefined' ||
+      typeof managedSitesBand !== 'undefined' ||
+      typeof reportingWorkflow !== 'undefined' ||
+      typeof evaluationReason !== 'undefined'
+    ) {
+      upsertWorkspaceFitProfile(workspaceId, {
+        agencyType: agencyType ?? null,
+        managedSitesBand: managedSitesBand ?? null,
+        reportingWorkflow: reportingWorkflow ?? null,
+        evaluationReason:
+          typeof evaluationReason === 'string' && evaluationReason.trim().length > 0
+            ? evaluationReason.trim()
+            : null,
+      });
+    }
 
     return res.status(201).json({
       user: { id: userId, name, email, role: 'owner' },

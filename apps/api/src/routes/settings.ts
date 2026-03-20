@@ -5,6 +5,24 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { listWorkspaceSites } from '../services/siteAnalytics.js';
 import { sendTelegramTest } from '../services/telegram.js';
+import {
+  managedSitesBandValues,
+  reportingWorkflowValues,
+  agencyTypeValues,
+} from '../schemas/authSchemas.js';
+import {
+  BILLING_FEATURES,
+  getWorkspacePlanState,
+  planSupportsFeature,
+  requirePlanFeature,
+  sendFeatureNotInPlan,
+} from '../lib/billing.js';
+import {
+  getWorkspaceFitProfile,
+  getWorkspaceJourneyMilestones,
+  recordJourneyMilestone,
+  upsertWorkspaceFitProfile,
+} from '../lib/workspaceSignals.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -19,12 +37,20 @@ const workspaceSettingsSchema = z
     name: z.string().trim().min(1).max(80).optional(),
     digestEnabled: z.boolean().optional(),
     digestLanguage: z.enum(['en', 'am']).optional(),
+    agencyType: z.enum(agencyTypeValues).nullable().optional(),
+    managedSitesBand: z.enum(managedSitesBandValues).nullable().optional(),
+    reportingWorkflow: z.enum(reportingWorkflowValues).nullable().optional(),
+    evaluationReason: z.string().trim().max(240).nullable().optional(),
   })
   .refine(
     (value) =>
       typeof value.name !== 'undefined' ||
       typeof value.digestEnabled !== 'undefined' ||
-      typeof value.digestLanguage !== 'undefined',
+      typeof value.digestLanguage !== 'undefined' ||
+      typeof value.agencyType !== 'undefined' ||
+      typeof value.managedSitesBand !== 'undefined' ||
+      typeof value.reportingWorkflow !== 'undefined' ||
+      typeof value.evaluationReason !== 'undefined',
     {
       message: 'At least one setting is required',
     }
@@ -77,12 +103,34 @@ router.get('/', (req, res) => {
       lastLogin: member.last_login,
     })),
     sites: listWorkspaceSites(req.user!.workspaceId),
+    fitProfile: getWorkspaceFitProfile(req.user!.workspaceId),
+    journey: getWorkspaceJourneyMilestones(req.user!.workspaceId),
   });
 });
 
 // PATCH /settings — update workspace name
 router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
-  const { name, digestEnabled, digestLanguage } = req.body;
+  const {
+    name,
+    digestEnabled,
+    digestLanguage,
+    agencyType,
+    managedSitesBand,
+    reportingWorkflow,
+    evaluationReason,
+  } = req.body;
+  const planState = getWorkspacePlanState(req.user!.workspaceId);
+  const touchesPaidDigestSetting =
+    digestEnabled === true || typeof digestLanguage === 'string';
+  const touchesFitProfile =
+    typeof agencyType !== 'undefined' ||
+    typeof managedSitesBand !== 'undefined' ||
+    typeof reportingWorkflow !== 'undefined' ||
+    typeof evaluationReason !== 'undefined';
+
+  if (touchesPaidDigestSetting && !planSupportsFeature(planState.plan, BILLING_FEATURES.digest)) {
+    return sendFeatureNotInPlan(res, planState.plan, BILLING_FEATURES.digest);
+  }
 
   db.prepare(`
     UPDATE workspaces
@@ -98,11 +146,49 @@ router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
     req.user!.workspaceId
   );
 
+  if (touchesFitProfile) {
+    upsertWorkspaceFitProfile(req.user!.workspaceId, {
+      agencyType: typeof agencyType !== 'undefined' ? agencyType : undefined,
+      managedSitesBand:
+        typeof managedSitesBand !== 'undefined' ? managedSitesBand : undefined,
+      reportingWorkflow:
+        typeof reportingWorkflow !== 'undefined' ? reportingWorkflow : undefined,
+      evaluationReason:
+        typeof evaluationReason !== 'undefined'
+          ? typeof evaluationReason === 'string' && evaluationReason.trim().length > 0
+            ? evaluationReason.trim()
+            : null
+          : undefined,
+    });
+  }
+
   return res.json({ ok: true });
 });
 
+router.post('/milestones/:milestoneKey', (req, res) => {
+  const milestoneKey = req.params.milestoneKey;
+
+  if (
+    milestoneKey !== 'replay_viewed' &&
+    milestoneKey !== 'alert_reviewed' &&
+    milestoneKey !== 'report_exported'
+  ) {
+    return res.status(400).json({ error: 'Unknown milestone' });
+  }
+
+  const mappedKey =
+    milestoneKey === 'replay_viewed'
+      ? 'replay_viewed'
+      : milestoneKey === 'alert_reviewed'
+      ? 'alert_reviewed'
+      : 'report_exported';
+
+  const journey = recordJourneyMilestone(req.user!.workspaceId, mappedKey);
+  return res.status(201).json(journey);
+});
+
 // PUT /settings/telegram — save Telegram credentials
-router.put('/telegram', validate(telegramSchema), (req, res) => {
+router.put('/telegram', requirePlanFeature(BILLING_FEATURES.telegram), validate(telegramSchema), (req, res) => {
   const { botToken, chatId } = req.body;
   db.prepare('UPDATE workspaces SET telegram_bot_token = ?, telegram_chat_id = ? WHERE id = ?')
     .run(botToken, chatId, req.user!.workspaceId);
@@ -110,7 +196,7 @@ router.put('/telegram', validate(telegramSchema), (req, res) => {
 });
 
 // POST /settings/telegram/test — send a test message
-router.post('/telegram/test', async (req, res) => {
+router.post('/telegram/test', requirePlanFeature(BILLING_FEATURES.telegram), async (req, res) => {
   const ws = db.prepare('SELECT telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?')
     .get(req.user!.workspaceId) as any;
   if (!ws?.telegram_bot_token || !ws?.telegram_chat_id) {

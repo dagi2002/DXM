@@ -5,6 +5,7 @@ import type {
   SdkCollectEvent,
 } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
+import { recordJourneyMilestone } from '../lib/workspaceSignals.js';
 
 export interface CollectionSite {
   id: string;
@@ -268,6 +269,10 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       payload.sessionId,
     );
   })();
+
+  if (payload.events.length > 0) {
+    recordJourneyMilestone(site.workspaceId, 'site_live');
+  }
 };
 
 export const ingestReplayChunk = (site: CollectionSite, payload: CollectReplayRequest) => {

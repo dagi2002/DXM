@@ -14,8 +14,20 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
+import { UpgradeGate } from '../components/UpgradeGate';
 import { useAuth } from '../context/AuthContext';
 import { fetchJson } from '../lib/api';
+import { BILLING_FEATURES, getPlanLabel, workspaceHasFeature } from '../lib/billing';
+import {
+  AGENCY_TYPE_OPTIONS,
+  MANAGED_SITES_BAND_OPTIONS,
+  REPORTING_WORKFLOW_OPTIONS,
+  formatAgencyType,
+  formatManagedSitesBand,
+  formatReportingWorkflow,
+  type WorkspaceFitProfile,
+  type WorkspaceJourney,
+} from '../lib/workspaceSignals';
 import type { ClientSiteSummary } from '../types';
 
 interface SettingsPayload {
@@ -47,15 +59,11 @@ interface SettingsPayload {
     lastLogin: string | null;
   }>;
   sites: ClientSiteSummary[];
+  fitProfile: WorkspaceFitProfile;
+  journey: WorkspaceJourney;
 }
 
 const DEFAULT_SDK_CDN_URL = 'https://cdn.dxmpulse.com/dxm.js';
-
-const planLabel: Record<SettingsPayload['workspace']['plan'], string> = {
-  free: 'Foundations',
-  starter: 'Growth agency',
-  pro: 'Portfolio agency',
-};
 
 const formatDateTime = (value: string | null) => {
   if (!value) return 'Never';
@@ -73,6 +81,10 @@ export const SettingsPage: React.FC = () => {
   const [chatId, setChatId] = useState('');
   const [digestEnabled, setDigestEnabled] = useState(false);
   const [digestLanguage, setDigestLanguage] = useState<'en' | 'am'>('en');
+  const [agencyType, setAgencyType] = useState('');
+  const [managedSitesBand, setManagedSitesBand] = useState('');
+  const [reportingWorkflow, setReportingWorkflow] = useState('');
+  const [evaluationReason, setEvaluationReason] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -82,6 +94,7 @@ export const SettingsPage: React.FC = () => {
 
   const sdkCdnUrl =
     (import.meta.env.VITE_SDK_CDN_URL as string | undefined)?.trim() || DEFAULT_SDK_CDN_URL;
+  const hasPaidMessaging = workspaceHasFeature(authWorkspace?.plan || 'free', BILLING_FEATURES.telegram);
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -92,6 +105,10 @@ export const SettingsPage: React.FC = () => {
       setChatId(data.workspace.telegramChatId || '');
       setDigestEnabled(Boolean(data.workspace.digestEnabled));
       setDigestLanguage(data.workspace.digestLanguage === 'am' ? 'am' : 'en');
+      setAgencyType(data.fitProfile.agencyType || '');
+      setManagedSitesBand(data.fitProfile.managedSitesBand || '');
+      setReportingWorkflow(data.fitProfile.reportingWorkflow || '');
+      setEvaluationReason(data.fitProfile.evaluationReason || '');
       setError(null);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load settings');
@@ -123,14 +140,28 @@ export const SettingsPage: React.FC = () => {
       await fetchJson('/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: workspaceName,
-          digestEnabled,
-          digestLanguage,
-        }),
+        body: JSON.stringify(
+          hasPaidMessaging
+            ? {
+                name: workspaceName,
+                agencyType: agencyType || null,
+                managedSitesBand: managedSitesBand || null,
+                reportingWorkflow: reportingWorkflow || null,
+                evaluationReason: evaluationReason.trim() || null,
+                digestEnabled,
+                digestLanguage,
+              }
+            : {
+                name: workspaceName,
+                agencyType: agencyType || null,
+                managedSitesBand: managedSitesBand || null,
+                reportingWorkflow: reportingWorkflow || null,
+                evaluationReason: evaluationReason.trim() || null,
+              },
+        ),
       });
 
-      if (botToken.trim() && chatId.trim()) {
+      if (hasPaidMessaging && botToken.trim() && chatId.trim()) {
         await fetchJson('/settings/telegram', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -187,6 +218,29 @@ export const SettingsPage: React.FC = () => {
   }
 
   if (!payload) return null;
+
+  const activationSteps = [
+    {
+      label: 'First live site',
+      value: payload.journey.firstSiteLiveAt,
+    },
+    {
+      label: 'First replay reviewed',
+      value: payload.journey.firstReplayViewedAt,
+    },
+    {
+      label: 'First alert reviewed',
+      value: payload.journey.firstAlertReviewedAt,
+    },
+    {
+      label: 'First report exported',
+      value: payload.journey.firstReportExportedAt,
+    },
+    {
+      label: 'First upgrade request',
+      value: payload.journey.firstUpgradeRequestAt,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl p-6 md:p-8">
@@ -255,7 +309,7 @@ export const SettingsPage: React.FC = () => {
 
         <section className="rounded-[28px] border border-primary-200 bg-gradient-to-br from-primary-50 to-accent-50 p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Workspace posture</p>
-          <h2 className="mt-3 text-2xl font-semibold text-surface-900">{planLabel[payload.workspace.plan]}</h2>
+          <h2 className="mt-3 text-2xl font-semibold text-surface-900">{getPlanLabel(payload.workspace.plan)}</h2>
           <p className="mt-2 text-sm leading-6 text-surface-600">
             {siteCountCopy}, {payload.team.length} team member{payload.team.length === 1 ? '' : 's'}, and billing status is currently <span className="font-semibold capitalize">{payload.workspace.billingStatus}</span>.
           </p>
@@ -310,53 +364,182 @@ export const SettingsPage: React.FC = () => {
             <h2 className="text-xl font-semibold">Telegram and digest</h2>
           </div>
 
+          {hasPaidMessaging ? (
+            <div className="mt-5 grid gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-surface-700">Bot token</label>
+                <input
+                  value={botToken}
+                  onChange={(event) => setBotToken(event.target.value)}
+                  placeholder={payload.workspace.telegramConfigured ? 'Saved. Paste a new token to replace it.' : 'Paste your Telegram bot token'}
+                  className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-surface-700">Chat ID</label>
+                <input
+                  value={chatId}
+                  onChange={(event) => setChatId(event.target.value)}
+                  placeholder="Your Telegram chat or channel ID"
+                  className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                />
+              </div>
+              <div className="rounded-3xl border border-surface-200 bg-surface-50 p-4">
+                <label className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-surface-900">Weekly digest</p>
+                    <p className="mt-1 text-sm text-surface-500">Send the agency a push summary of the last 7 days.</p>
+                  </div>
+                  <input type="checkbox" checked={digestEnabled} onChange={(event) => setDigestEnabled(event.target.checked)} className="h-5 w-5 rounded border-surface-300 text-primary-600 focus:ring-primary-500" />
+                </label>
+                <div className="mt-4">
+                  <label className="mb-2 block text-sm font-medium text-surface-700">Digest language</label>
+                  <select
+                    value={digestLanguage}
+                    onChange={(event) => setDigestLanguage(event.target.value as 'en' | 'am')}
+                    className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                  >
+                    <option value="en">English</option>
+                    <option value="am">Amharic</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={() => void handleTelegramTest()}
+                disabled={testing || !payload.workspace.telegramConfigured}
+                className="inline-flex items-center gap-2 rounded-2xl border border-surface-200 px-4 py-3 text-sm font-semibold text-surface-700 transition hover:border-primary-300 hover:text-primary-700 disabled:opacity-60"
+              >
+                <Send className="h-4 w-4" />
+                {testing ? 'Sending test…' : 'Send Telegram test'}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-5">
+              <UpgradeGate
+                source="telegram"
+                title="Unlock Telegram alerts and weekly digests when DXM becomes part of your operating rhythm."
+                description="These delivery features are gated with the paid bundle because they turn DXM from a dashboard you open into a system that actively pushes issues and summaries to the team."
+                bullets={[
+                  'Telegram alert delivery for urgent issues',
+                  'Weekly digest for founders and operators',
+                ]}
+              />
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 text-surface-900">
+            <Sparkles className="h-5 w-5 text-primary-600" />
+            <h2 className="text-xl font-semibold">Agency fit profile</h2>
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-surface-600">
+            Keep this lightweight. It helps DXM learn which agency setups convert and stick without turning onboarding into a survey.
+          </p>
+
           <div className="mt-5 grid gap-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-surface-700">Bot token</label>
-              <input
-                value={botToken}
-                onChange={(event) => setBotToken(event.target.value)}
-                placeholder={payload.workspace.telegramConfigured ? 'Saved. Paste a new token to replace it.' : 'Paste your Telegram bot token'}
+              <label className="mb-2 block text-sm font-medium text-surface-700">Agency type</label>
+              <select
+                value={agencyType}
+                onChange={(event) => setAgencyType(event.target.value)}
                 className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-              />
+              >
+                <option value="">Select one</option>
+                {AGENCY_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
+
             <div>
-              <label className="mb-2 block text-sm font-medium text-surface-700">Chat ID</label>
+              <label className="mb-2 block text-sm font-medium text-surface-700">Managed client sites</label>
+              <select
+                value={managedSitesBand}
+                onChange={(event) => setManagedSitesBand(event.target.value)}
+                className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              >
+                <option value="">Select one</option>
+                {MANAGED_SITES_BAND_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-surface-700">Current reporting workflow</label>
+              <select
+                value={reportingWorkflow}
+                onChange={(event) => setReportingWorkflow(event.target.value)}
+                className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              >
+                <option value="">Select one</option>
+                {REPORTING_WORKFLOW_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-surface-700">Why you are evaluating DXM</label>
               <input
-                value={chatId}
-                onChange={(event) => setChatId(event.target.value)}
-                placeholder="Your Telegram chat or channel ID"
+                value={evaluationReason}
+                onChange={(event) => setEvaluationReason(event.target.value)}
+                placeholder="Example: we need cleaner client reports and faster issue detection"
                 className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               />
             </div>
-            <div className="rounded-3xl border border-surface-200 bg-surface-50 p-4">
-              <label className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-surface-900">Weekly digest</p>
-                  <p className="mt-1 text-sm text-surface-500">Send the agency a push summary of the last 7 days.</p>
-                </div>
-                <input type="checkbox" checked={digestEnabled} onChange={(event) => setDigestEnabled(event.target.checked)} className="h-5 w-5 rounded border-surface-300 text-primary-600 focus:ring-primary-500" />
-              </label>
-              <div className="mt-4">
-                <label className="mb-2 block text-sm font-medium text-surface-700">Digest language</label>
-                <select
-                  value={digestLanguage}
-                  onChange={(event) => setDigestLanguage(event.target.value as 'en' | 'am')}
-                  className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                >
-                  <option value="en">English</option>
-                  <option value="am">Amharic</option>
-                </select>
-              </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-3xl bg-surface-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Type</p>
+              <p className="mt-2 text-sm font-semibold text-surface-900">{formatAgencyType(payload.fitProfile.agencyType)}</p>
             </div>
-            <button
-              onClick={() => void handleTelegramTest()}
-              disabled={testing || !payload.workspace.telegramConfigured}
-              className="inline-flex items-center gap-2 rounded-2xl border border-surface-200 px-4 py-3 text-sm font-semibold text-surface-700 transition hover:border-primary-300 hover:text-primary-700 disabled:opacity-60"
-            >
-              <Send className="h-4 w-4" />
-              {testing ? 'Sending test…' : 'Send Telegram test'}
-            </button>
+            <div className="rounded-3xl bg-surface-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Managed sites</p>
+              <p className="mt-2 text-sm font-semibold text-surface-900">{formatManagedSitesBand(payload.fitProfile.managedSitesBand)}</p>
+            </div>
+            <div className="rounded-3xl bg-surface-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Reporting flow</p>
+              <p className="mt-2 text-sm font-semibold text-surface-900">{formatReportingWorkflow(payload.fitProfile.reportingWorkflow)}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 text-surface-900">
+            <CheckCircle2 className="h-5 w-5 text-primary-600" />
+            <h2 className="text-xl font-semibold">Activation signals</h2>
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-surface-600">
+            These milestones show whether the workspace is moving from setup into real client-facing value.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {activationSteps.map((step) => (
+              <div key={step.label} className="flex items-center justify-between gap-4 rounded-3xl border border-surface-200 bg-surface-50 px-4 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-surface-900">{step.label}</p>
+                  <p className="mt-1 text-xs text-surface-500">
+                    {step.value ? formatDateTime(step.value) : 'Not completed yet'}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${
+                    step.value
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-surface-200 text-surface-500'
+                  }`}
+                >
+                  {step.value ? 'Done' : 'Pending'}
+                </span>
+              </div>
+            ))}
           </div>
         </section>
       </div>

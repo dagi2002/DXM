@@ -12,6 +12,7 @@
 import { db } from '../db/index.js';
 import { sendTelegramAlert } from './telegram.js';
 import { nanoid } from 'nanoid';
+import { BILLING_FEATURES, planSupportsFeature } from '../lib/billing.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,10 +46,16 @@ export async function runAlertChecks(workspaceId: string, siteId: string): Promi
     if (detected.length === 0) return;
 
     const workspace = db.prepare(
-      'SELECT id, telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?'
-    ).get(workspaceId) as { id: string; telegram_bot_token: string | null; telegram_chat_id: string | null } | undefined;
+      'SELECT id, plan, telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?'
+    ).get(workspaceId) as {
+      id: string;
+      plan: string;
+      telegram_bot_token: string | null;
+      telegram_chat_id: string | null;
+    } | undefined;
 
     if (!workspace) return;
+    if (!planSupportsFeature(workspace.plan, BILLING_FEATURES.alerts)) return;
 
     for (const alert of detected) {
       await createAlertIfNew(alert, workspace);
@@ -172,6 +179,7 @@ function detectHighBounceRate(workspaceId: string, siteId: string): DetectedAler
 
 interface Workspace {
   id: string;
+  plan?: string;
   telegram_bot_token: string | null;
   telegram_chat_id:   string | null;
 }

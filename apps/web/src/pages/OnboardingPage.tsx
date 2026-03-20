@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Copy, ArrowRight, Zap, Loader2 } from 'lucide-react';
 import { getApiUrl } from '../lib/api';
+import { UpgradeGate } from '../components/UpgradeGate';
 import { useAuth } from '../context/AuthContext';
+import { getRecommendedUpgradePlan } from '../lib/billing';
 
 type Step = 1 | 2 | 3;
 
@@ -24,6 +26,7 @@ export const OnboardingPage: React.FC = () => {
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
   // Poll for verification in step 3
   useEffect(() => {
@@ -46,6 +49,7 @@ export const OnboardingPage: React.FC = () => {
   const handleAddSite = async () => {
     if (!domain || !siteName) return;
     setError(null);
+    setLimitReached(false);
     try {
       const res = await fetch(getApiUrl('/sites'), {
         method: 'POST',
@@ -53,7 +57,13 @@ export const OnboardingPage: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify({ name: siteName, domain }),
       });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to create site'); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: 'Failed to create site' }));
+        if (res.status === 409 && e?.code === 'plan_limit_reached') {
+          setLimitReached(true);
+        }
+        throw new Error(e.error || 'Failed to create site');
+      }
       const data = await res.json();
       setSite({
         ...data,
@@ -164,7 +174,11 @@ export const OnboardingPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Site name</label>
                 <input
-                  value={siteName} onChange={e => setSiteName(e.target.value)}
+                  value={siteName}
+                  onChange={e => {
+                    setSiteName(e.target.value);
+                    setLimitReached(false);
+                  }}
                   className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   placeholder="Abebe Furniture"
                 />
@@ -172,18 +186,36 @@ export const OnboardingPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Client domain</label>
                 <input
-                  value={domain} onChange={e => setDomain(e.target.value)}
+                  value={domain}
+                  onChange={e => {
+                    setDomain(e.target.value);
+                    setLimitReached(false);
+                  }}
                   className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   placeholder="abebefurniture.et"
                 />
               </div>
-              <button
-                onClick={handleAddSite}
-                disabled={!domain || !siteName}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Generate install snippet <ArrowRight className="h-4 w-4" />
-              </button>
+              {limitReached ? (
+                <UpgradeGate
+                  source="site_limit"
+                  planId={getRecommendedUpgradePlan(workspace?.plan || 'free')}
+                  eyebrow="Tracked-site limit reached"
+                  title="Add another tracked site by upgrading the workspace plan."
+                  description="This workspace hit its current site limit, so onboarding cannot create another client site until the plan changes."
+                  bullets={[
+                    'Upgrade first, then return to onboarding',
+                    'The rest of the setup flow stays the same once the plan is active',
+                  ]}
+                />
+              ) : (
+                <button
+                  onClick={handleAddSite}
+                  disabled={!domain || !siteName}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate install snippet <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         )}

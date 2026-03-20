@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getHeatmapReadModel } from '../services/sessionReadModels.js';
+import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -44,7 +45,7 @@ router.get('/vitals', (req, res) => {
 });
 
 // GET /analytics/userflow
-router.get('/userflow', (req, res) => {
+router.get('/userflow', requirePlanFeature(BILLING_FEATURES.userFlow), (req, res) => {
   const workspaceId = req.user!.workspaceId;
 
   const navEvents = db.prepare(`

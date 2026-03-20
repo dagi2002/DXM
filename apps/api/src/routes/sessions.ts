@@ -5,6 +5,7 @@ import {
   getSessionReplay,
   listSessionSummaries,
 } from '../services/sessionReadModels.js';
+import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -22,7 +23,7 @@ router.get('/:id', (req, res) => {
 });
 
 // GET /sessions/:id/replay — rrweb replay data
-router.get('/:id/replay', (req, res) => {
+router.get('/:id/replay', requirePlanFeature(BILLING_FEATURES.replay), (req, res) => {
   const replay = getSessionReplay(req.user!.workspaceId, req.params.id);
   if (!replay) return res.status(404).json({ error: 'No replay data for this session' });
   return res.json(replay);

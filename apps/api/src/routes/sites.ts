@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getSiteAiBriefOrNull } from '../services/ai/index.js';
 import { getSiteDetail, getSiteVerification, listWorkspaceSites } from '../services/siteAnalytics.js';
+import { getWorkspaceBillingSnapshot, sendPlanLimitReached } from '../lib/billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -32,6 +33,12 @@ export const listSitesHandler: RequestHandler = (req, res) => {
 
 export const createSiteHandler: RequestHandler = (req, res) => {
   const workspaceId = req.user!.workspaceId;
+  const snapshot = getWorkspaceBillingSnapshot(workspaceId);
+
+  if (snapshot.siteCount >= snapshot.siteLimit) {
+    return sendPlanLimitReached(res, snapshot);
+  }
+
   const siteId = 'site_' + nanoid(16);
   const siteKey = nanoid(12);
   const name = req.body.name.trim();

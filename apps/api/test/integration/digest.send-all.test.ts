@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { signupAndAuthenticate } from '../helpers/auth.js';
+import { setWorkspacePlan } from '../helpers/billing.js';
 import { createTestApp, type ApiTestContext } from '../helpers/testApp.js';
 
 describe('digest send-all', () => {
@@ -41,6 +42,7 @@ describe('digest send-all', () => {
     const { agent, workspace, response: signupResponse } = await signupAndAuthenticate(context.app);
     expect(signupResponse.status).toBe(201);
     expect(workspace?.id).toBeTruthy();
+    setWorkspacePlan(context.db, workspace!.id as string, 'starter');
 
     context.db.prepare(`
       UPDATE workspaces

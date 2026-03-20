@@ -151,6 +151,17 @@ export interface PortfolioOverview {
     summary: string;
     audience: string;
     highlights: string[];
+    kind: 'portfolio' | 'client';
+    siteId: string | null;
+    siteName: string | null;
+    headline: string;
+    signalStatus: 'ready' | 'warming_up';
+    metrics: Array<{
+      label: string;
+      value: string;
+      tone: 'positive' | 'neutral' | 'warning';
+    }>;
+    recommendedNextSteps: string[];
   }>;
   ai?: OverviewAiBrief;
 }
@@ -654,6 +665,16 @@ export const buildWorkspaceOverview = (workspaceId: string): PortfolioOverview =
       title: 'Weekly portfolio pulse',
       period: 'Last 7 days',
       audience: 'Internal agency ops',
+      kind: 'portfolio',
+      siteId: null,
+      siteName: null,
+      headline:
+        siteRollups.length === 0
+          ? 'Connect one live client site before promising portfolio reporting.'
+          : unresolvedAlerts > 0
+          ? `${unresolvedAlerts} unresolved alert${unresolvedAlerts === 1 ? '' : 's'} need a client-facing response this week.`
+          : 'Portfolio health is stable enough to package into a proactive update.',
+      signalStatus: siteRollups.length === 0 || sessions7d < 5 ? 'warming_up' : 'ready',
       summary:
         siteRollups.length === 0
           ? 'No client sites are connected yet. The fastest path to value is installing tracking on one live client site.'
@@ -663,6 +684,13 @@ export const buildWorkspaceOverview = (workspaceId: string): PortfolioOverview =
         strongestSite ? `${strongestSite.name} is the strongest client site at ${strongestSite.healthScore}/100` : 'No top performer yet',
         weakestSite ? `${weakestSite.name} needs attention at ${weakestSite.healthScore}/100` : 'No at-risk client yet',
       ],
+      metrics: [
+        { label: 'Tracked clients', value: `${siteRollups.length}`, tone: 'neutral' },
+        { label: 'Live clients', value: `${liveClients}`, tone: liveClients > 0 ? 'positive' : 'warning' },
+        { label: 'Sessions (7d)', value: `${sessions7d}`, tone: sessions7d > 0 ? 'positive' : 'warning' },
+        { label: 'Unresolved alerts', value: `${unresolvedAlerts}`, tone: unresolvedAlerts > 0 ? 'warning' : 'positive' },
+      ],
+      recommendedNextSteps: recommendedActions.slice(0, 3).map((action) => action.title),
     },
   ];
 
@@ -672,11 +700,30 @@ export const buildWorkspaceOverview = (workspaceId: string): PortfolioOverview =
       title: `${strongestSite.name} client win summary`,
       period: 'Last 7 days',
       audience: 'Client-facing update',
+      kind: 'client',
+      siteId: strongestSite.id,
+      siteName: strongestSite.name,
+      headline:
+        strongestSite.sessionCount7d >= 3
+          ? `${strongestSite.name} has enough live signal to support a confident client update.`
+          : `${strongestSite.name} is moving in the right direction, but the signal is still warming up.`,
+      signalStatus: strongestSite.sessionCount7d >= 3 ? 'ready' : 'warming_up',
       summary: `${strongestSite.name} stayed healthy with ${strongestSite.sessionCount7d} tracked sessions, ${strongestSite.conversionRate}% conversion, and ${strongestSite.openAlerts} open alerts.`,
       highlights: [
         `${strongestSite.healthScore}/100 health score`,
         `${strongestSite.bounceRate}% bounce rate`,
         strongestSite.lastActivityAt ? `Last tracked activity: ${strongestSite.lastActivityAt}` : 'Traffic is still warming up',
+      ],
+      metrics: [
+        { label: 'Health score', value: `${strongestSite.healthScore}/100`, tone: strongestSite.healthScore >= 70 ? 'positive' : 'warning' },
+        { label: 'Sessions (7d)', value: `${strongestSite.sessionCount7d}`, tone: strongestSite.sessionCount7d > 0 ? 'positive' : 'warning' },
+        { label: 'Bounce rate', value: `${strongestSite.bounceRate}%`, tone: strongestSite.bounceRate <= 45 ? 'positive' : 'warning' },
+        { label: 'Conversion rate', value: `${strongestSite.conversionRate}%`, tone: strongestSite.conversionRate >= 2 ? 'positive' : 'neutral' },
+      ],
+      recommendedNextSteps: [
+        `Use ${strongestSite.name} as a proof point in the next client status update.`,
+        'Call out the strongest behavior trends and keep monitoring for new alerts.',
+        'Pair the metrics with one replay or journey example if the client asks for proof.',
       ],
     });
   }
@@ -687,11 +734,30 @@ export const buildWorkspaceOverview = (workspaceId: string): PortfolioOverview =
       title: `${weakestSite.name} risk brief`,
       period: 'Last 7 days',
       audience: 'Client escalation',
+      kind: 'client',
+      siteId: weakestSite.id,
+      siteName: weakestSite.name,
+      headline:
+        weakestSite.sessionCount7d >= 3
+          ? `${weakestSite.name} needs intervention before the next client check-in.`
+          : `${weakestSite.name} shows early risk, but more traffic is still needed before overreacting.`,
+      signalStatus: weakestSite.sessionCount7d >= 3 ? 'ready' : 'warming_up',
       summary: `${weakestSite.name} is underperforming relative to the rest of the portfolio and should be reviewed before the next status update.`,
       highlights: [
         `${weakestSite.healthScore}/100 health score`,
         `${weakestSite.openAlerts} unresolved alerts`,
         `${weakestSite.bounceRate}% bounce rate and ${weakestSite.conversionRate}% conversion`,
+      ],
+      metrics: [
+        { label: 'Health score', value: `${weakestSite.healthScore}/100`, tone: weakestSite.healthScore < 55 ? 'warning' : 'neutral' },
+        { label: 'Open alerts', value: `${weakestSite.openAlerts}`, tone: weakestSite.openAlerts > 0 ? 'warning' : 'positive' },
+        { label: 'Bounce rate', value: `${weakestSite.bounceRate}%`, tone: weakestSite.bounceRate >= 55 ? 'warning' : 'neutral' },
+        { label: 'Sessions (7d)', value: `${weakestSite.sessionCount7d}`, tone: weakestSite.sessionCount7d > 0 ? 'neutral' : 'warning' },
+      ],
+      recommendedNextSteps: [
+        `Review ${weakestSite.name} before the next client-facing update.`,
+        'Use alerts and recent session evidence to explain what needs attention.',
+        'Turn the findings into one concrete next action the client can approve quickly.',
       ],
     });
   }

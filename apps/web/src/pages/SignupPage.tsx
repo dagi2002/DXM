@@ -2,17 +2,34 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Zap } from 'lucide-react';
+import {
+  AGENCY_TYPE_OPTIONS,
+  MANAGED_SITES_BAND_OPTIONS,
+  REPORTING_WORKFLOW_OPTIONS,
+  type AgencyType,
+  type ManagedSitesBand,
+  type ReportingWorkflow,
+} from '../lib/workspaceSignals';
 
 export const SignupPage: React.FC = () => {
   const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', workspaceName: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    workspaceName: '',
+    agencyType: '',
+    managedSitesBand: '',
+    reportingWorkflow: '',
+    evaluationReason: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +41,20 @@ export const SignupPage: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      await signup(form);
+      await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        workspaceName: form.workspaceName,
+        agencyType: form.agencyType ? (form.agencyType as AgencyType) : null,
+        managedSitesBand: form.managedSitesBand
+          ? (form.managedSitesBand as ManagedSitesBand)
+          : null,
+        reportingWorkflow: form.reportingWorkflow
+          ? (form.reportingWorkflow as ReportingWorkflow)
+          : null,
+        evaluationReason: form.evaluationReason.trim() || null,
+      });
       navigate('/onboarding', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
@@ -94,6 +124,68 @@ export const SignupPage: React.FC = () => {
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm font-semibold text-gray-900">Help us tailor DXM</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">
+              Optional, but useful while DXM is in early beta and we are narrowing on the best-fit agency workflow.
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Agency type</label>
+                <select
+                  value={form.agencyType}
+                  onChange={set('agencyType')}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                >
+                  <option value="">Select one</option>
+                  {AGENCY_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Managed client sites</label>
+                <select
+                  value={form.managedSitesBand}
+                  onChange={set('managedSitesBand')}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                >
+                  <option value="">Select one</option>
+                  {MANAGED_SITES_BAND_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Current reporting workflow</label>
+                <select
+                  value={form.reportingWorkflow}
+                  onChange={set('reportingWorkflow')}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                >
+                  <option value="">Select one</option>
+                  {REPORTING_WORKFLOW_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Why are you evaluating DXM right now?</label>
+                <input
+                  type="text"
+                  value={form.evaluationReason}
+                  onChange={set('evaluationReason')}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                  placeholder="Example: we need cleaner client reporting and faster issue detection"
+                />
+              </div>
             </div>
           </div>
 

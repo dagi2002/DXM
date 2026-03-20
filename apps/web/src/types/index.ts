@@ -161,6 +161,17 @@ export interface AgencyReportSummary {
   summary: string;
   audience: string;
   highlights: string[];
+  kind: 'portfolio' | 'client';
+  siteId: string | null;
+  siteName: string | null;
+  headline: string;
+  signalStatus: 'ready' | 'warming_up';
+  metrics: Array<{
+    label: string;
+    value: string;
+    tone: 'positive' | 'neutral' | 'warning';
+  }>;
+  recommendedNextSteps: string[];
 }
 
 export interface PortfolioOverview {

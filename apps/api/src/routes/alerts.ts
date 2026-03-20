@@ -4,9 +4,11 @@ import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getAlertAiBriefOrNull } from '../services/ai/index.js';
 import { sendTelegramAlert } from '../services/telegram.js';
+import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requirePlanFeature(BILLING_FEATURES.alerts));
 
 type AlertType = 'error' | 'performance' | 'frustration' | 'conversion';
 type AlertSeverity = 'low' | 'medium' | 'high' | 'critical';

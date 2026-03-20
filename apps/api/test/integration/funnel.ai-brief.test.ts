@@ -1,5 +1,6 @@
 import request, { type Response } from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
+import { setWorkspacePlan } from '../helpers/billing.js';
 import { createTestApp, type ApiTestContext } from '../helpers/testApp.js';
 
 interface SignupResult {
@@ -92,6 +93,7 @@ describe('funnel ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Disabled Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -130,6 +132,7 @@ describe('funnel ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -200,6 +203,7 @@ describe('funnel ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Cached Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -248,6 +252,7 @@ describe('funnel ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Refresh Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -324,6 +329,7 @@ describe('funnel ai brief', () => {
 
     const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Period Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -368,8 +374,9 @@ describe('funnel ai brief', () => {
   it('returns low-signal guidance when no sessions match the funnel', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Empty Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -390,8 +397,9 @@ describe('funnel ai brief', () => {
   it('uses conservative heuristic language for high drop-off funnels', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const siteResponse = await createSite(context.app, cookieHeader, 'Leak Funnel Client');
     expect(siteResponse.status).toBe(201);
@@ -431,8 +439,9 @@ describe('funnel ai brief', () => {
   it('preserves the existing 404 response for unknown funnels', async () => {
     context = await createTestApp();
 
-    const { cookieHeader, response } = await signupAndAuthenticate(context.app);
+    const { cookieHeader, response, workspace } = await signupAndAuthenticate(context.app);
     expect(response.status).toBe(201);
+    setWorkspacePlan(context.db, workspace.id, 'starter');
 
     const analysisResponse = await request(context.app)
       .get('/funnels/funnel_does_not_exist/analysis?period=7d')

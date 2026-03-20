@@ -16,9 +16,11 @@ import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFunnelAiBriefOrNull } from '../services/ai/index.js';
 import { nanoid } from 'nanoid';
+import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requirePlanFeature(BILLING_FEATURES.funnels));
 
 interface StoredFunnel {
   id: string;

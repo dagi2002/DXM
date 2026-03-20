@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import { ReplayPlayer } from './ReplayPlayer';
+import { UpgradeGate } from '../UpgradeGate';
+import { useAuth } from '../../context/AuthContext';
 import type { SessionRecording, SessionRecordingDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
+import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
+import { markJourneyMilestone } from '../../lib/workspaceSignals';
 
 // Toggle between rrweb DOM replay and the legacy event-dot view
 const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = ({ session }) => {
@@ -51,6 +55,7 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = (
 };
 
 export const SessionReplaysView: React.FC = () => {
+  const { workspace } = useAuth();
   const [sessions, setSessions] = useState<SessionRecording[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
   const [selectedSessionDetail, setSelectedSessionDetail] = useState<SessionRecordingDetail | null>(null);
@@ -60,6 +65,7 @@ export const SessionReplaysView: React.FC = () => {
   const [detailError, setDetailError] = useState<string | null>(null);
   const selectedSessionId = selectedSession?.id ?? null;
   const selectedSessionUpdatedAt = selectedSession?.updatedAt ?? null;
+  const canReplay = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.replay);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,7 +113,7 @@ export const SessionReplaysView: React.FC = () => {
   }, [selectedSessionId]);
 
   useEffect(() => {
-    if (!selectedSessionId) {
+    if (!selectedSessionId || !canReplay) {
       return;
     }
 
@@ -119,6 +125,7 @@ export const SessionReplaysView: React.FC = () => {
       .then((detail) => {
         if (!isMounted) return;
         setSelectedSessionDetail(detail);
+        void markJourneyMilestone('replay_viewed').catch(() => {});
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -133,7 +140,7 @@ export const SessionReplaysView: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedSessionId, selectedSessionUpdatedAt]);
+  }, [canReplay, selectedSessionId, selectedSessionUpdatedAt]);
 
   return (
     <div className="p-6 h-full">
@@ -156,7 +163,17 @@ export const SessionReplaysView: React.FC = () => {
         </div>
 
         <div className="lg:col-span-2">
-          {selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
+          {selectedSession && !canReplay ? (
+            <UpgradeGate
+              source="replay"
+              title="Unlock replay to show clients exactly what happened."
+              description="Free workspaces can review the session list, but replay playback lives on the paid DXM bundle where agencies start turning evidence into client-ready explanations."
+              bullets={[
+                'Keep the session list on Free',
+                'Unlock DOM replay, alerts, funnels, and reports together',
+              ]}
+            />
+          ) : selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
             <SessionPlayerWithToggle session={selectedSessionDetail} />
           ) : selectedSession && isDetailLoading ? (
             <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">

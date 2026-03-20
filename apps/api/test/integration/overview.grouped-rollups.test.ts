@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { signupAndAuthenticate } from '../helpers/auth.js';
+import { setWorkspacePlan } from '../helpers/billing.js';
 import { createTestApp, type ApiTestContext } from '../helpers/testApp.js';
 
 describe('overview grouped rollups', () => {
@@ -15,6 +16,7 @@ describe('overview grouped rollups', () => {
 
     const { agent, response: signupResponse } = await signupAndAuthenticate(context.app);
     expect(signupResponse.status).toBe(201);
+    setWorkspacePlan(context.db, signupResponse.body.workspace.id, 'starter');
 
     const firstSiteResponse = await agent.post('/sites').send({
       name: 'First Client',
