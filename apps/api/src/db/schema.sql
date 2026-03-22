@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
   digest_enabled      INTEGER NOT NULL DEFAULT 0,
   digest_language     TEXT NOT NULL DEFAULT 'en',
   chapa_customer_id   TEXT,
+  email_notifications_enabled INTEGER NOT NULL DEFAULT 1,
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS sites (
   name         TEXT NOT NULL,
   domain       TEXT NOT NULL,
   site_key     TEXT NOT NULL UNIQUE,   -- data-site-id used in SDK script tag
+  first_session_at DATETIME,
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -171,6 +173,15 @@ CREATE TABLE IF NOT EXISTS ai_artifacts (
   expires_at     DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  TEXT NOT NULL,
+  expires_at  DATETIME NOT NULL,
+  used_at     DATETIME,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_sessions_workspace ON sessions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_site      ON sessions(site_id);
@@ -197,3 +208,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_ai_artifacts_scope
   ON ai_artifacts(workspace_id, entity_type, entity_id, artifact_kind, period_key);
 CREATE INDEX IF NOT EXISTS idx_ai_artifacts_workspace_kind_expiry
   ON ai_artifacts(workspace_id, artifact_kind, expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user
+  ON password_reset_tokens(user_id, created_at DESC);

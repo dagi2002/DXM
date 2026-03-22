@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes, createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
 import { db } from '../db/index.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
-import { signupSchema, loginSchema } from '../schemas/authSchemas.js';
+import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/authSchemas.js';
 import { upsertWorkspaceFitProfile } from '../lib/workspaceSignals.js';
+import { sendMail, sendWelcomeEmail } from '../lib/mailer.js';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production_32chars';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_32chars';
+const resolveSecret = (key: string, devFallback: string): string => {
+  const val = process.env[key]?.trim();
+  if (process.env.NODE_ENV === 'production') return val ?? '';
+  return val ?? devFallback;
+};
+const JWT_SECRET         = resolveSecret('JWT_SECRET',         'dev_secret_change_in_production_32chars');
+const JWT_REFRESH_SECRET = resolveSecret('JWT_REFRESH_SECRET', 'dev_refresh_secret_32chars');
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'localhost';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -88,6 +95,8 @@ router.post('/signup', authLimiter, validate(signupSchema), async (req, res) => 
     const refreshHash = await bcrypt.hash(refresh, 6);
     db.prepare('UPDATE users SET refresh_token_hash = ? WHERE id = ?').run(refreshHash, userId);
     setTokenCookies(res, access, refresh);
+
+    sendWelcomeEmail(email, name).catch(err => console.error('[mailer] welcome email failed:', err));
 
     if (
       typeof agencyType !== 'undefined' ||
@@ -175,6 +184,71 @@ router.get('/me', requireAuth, (req, res) => {
       plan: user.plan, billingStatus: user.billing_status,
     } : null,
   });
+});
+
+// POST /auth/forgot-password
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
+    if (!user) return res.json({ ok: true });
+
+    // Delete existing tokens for this user before creating a new one
+    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+
+    const rawToken = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const tokenId = 'prt_' + nanoid(16);
+
+    db.prepare(`
+      INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
+      VALUES (?, ?, ?, datetime('now', '+1 hour'))
+    `).run(tokenId, user.id, tokenHash);
+
+    const resetUrl = `${process.env.WEB_ORIGIN || 'http://localhost:5173'}/reset-password?token=${rawToken}`;
+    await sendMail({
+      to: email,
+      subject: 'DXM Pulse — Reset your password',
+      text: `Reset your password using this link (expires in 1 hour):\n\n${resetUrl}`,
+      type: 'password_reset',
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth/forgot-password]', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /auth/reset-password
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), async (req, res) => {
+  const { token, password } = req.body;
+  try {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    const row = db.prepare(`
+      SELECT id, user_id FROM password_reset_tokens
+      WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')
+      LIMIT 1
+    `).get(tokenHash) as { id: string; user_id: string } | undefined;
+
+    if (!row) return res.status(400).json({ error: 'Invalid or expired reset token' });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    db.transaction(() => {
+      db.prepare('UPDATE users SET password_hash = ?, refresh_token_hash = NULL WHERE id = ?')
+        .run(passwordHash, row.user_id);
+      db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+        .run(row.user_id);
+    })();
+
+    clearTokenCookies(res);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth/reset-password]', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 export default router;

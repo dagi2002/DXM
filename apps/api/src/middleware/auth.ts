@@ -1,7 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production_32chars';
+const JWT_SECRET = (() => {
+  const val = process.env.JWT_SECRET?.trim();
+  if (process.env.NODE_ENV === 'production') return val ?? '';
+  return val ?? 'dev_secret_change_in_production_32chars';
+})();
 
 interface JwtPayload {
   userId: string;

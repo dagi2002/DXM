@@ -41,6 +41,7 @@ const workspaceSettingsSchema = z
     managedSitesBand: z.enum(managedSitesBandValues).nullable().optional(),
     reportingWorkflow: z.enum(reportingWorkflowValues).nullable().optional(),
     evaluationReason: z.string().trim().max(240).nullable().optional(),
+    emailNotificationsEnabled: z.boolean().optional(),
   })
   .refine(
     (value) =>
@@ -50,7 +51,8 @@ const workspaceSettingsSchema = z
       typeof value.agencyType !== 'undefined' ||
       typeof value.managedSitesBand !== 'undefined' ||
       typeof value.reportingWorkflow !== 'undefined' ||
-      typeof value.evaluationReason !== 'undefined',
+      typeof value.evaluationReason !== 'undefined' ||
+      typeof value.emailNotificationsEnabled !== 'undefined',
     {
       message: 'At least one setting is required',
     }
@@ -59,7 +61,8 @@ const workspaceSettingsSchema = z
 // GET /settings
 router.get('/', (req, res) => {
   const workspace = db.prepare(`
-    SELECT id, name, plan, billing_status, telegram_chat_id, digest_enabled, digest_language, created_at,
+    SELECT id, name, plan, billing_status, telegram_chat_id, digest_enabled, digest_language,
+           email_notifications_enabled, created_at,
            CASE WHEN telegram_bot_token IS NOT NULL THEN true ELSE false END as telegram_configured
     FROM workspaces WHERE id = ?
   `).get(req.user!.workspaceId) as any;
@@ -92,6 +95,7 @@ router.get('/', (req, res) => {
       telegramConfigured: Boolean(workspace.telegram_configured),
       digestEnabled: Boolean(workspace.digest_enabled),
       digestLanguage: workspace.digest_language,
+      emailNotificationsEnabled: Boolean(workspace.email_notifications_enabled),
       createdAt: workspace.created_at,
     },
     team: team.map((member) => ({
@@ -118,6 +122,7 @@ router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
     managedSitesBand,
     reportingWorkflow,
     evaluationReason,
+    emailNotificationsEnabled,
   } = req.body;
   const planState = getWorkspacePlanState(req.user!.workspaceId);
   const touchesPaidDigestSetting =
@@ -137,12 +142,14 @@ router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
     SET
       name = COALESCE(?, name),
       digest_enabled = COALESCE(?, digest_enabled),
-      digest_language = COALESCE(?, digest_language)
+      digest_language = COALESCE(?, digest_language),
+      email_notifications_enabled = COALESCE(?, email_notifications_enabled)
     WHERE id = ?
   `).run(
     typeof name === 'string' ? name.slice(0, 80) : null,
     typeof digestEnabled === 'boolean' ? Number(digestEnabled) : null,
     typeof digestLanguage === 'string' ? digestLanguage : null,
+    typeof emailNotificationsEnabled === 'boolean' ? Number(emailNotificationsEnabled) : null,
     req.user!.workspaceId
   );
 

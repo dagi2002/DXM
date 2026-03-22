@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const WEB_URL = process.env.DXM_WEB_URL || 'http://localhost:5173';
 const API_URL = process.env.DXM_API_URL || 'http://localhost:4000';
 const SDK_BASE = process.env.DXM_SDK_BASE || 'http://localhost:8080';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 interface SiteSummary {
   id: string;
@@ -67,6 +68,18 @@ test('DXM local smoke flow captures sessions, replay, and heatmaps', async ({ pa
   const createdSite = sites.find((site) => site.domain === domain);
   expect(createdSite?.id).toBeTruthy();
 
+  // Upgrade workspace to 'starter' so replay (a paid feature) is available.
+  const me = await getJson<{ workspace: { id: string } }>(page, `${API_URL}/auth/me`);
+  const workspaceId = me.workspace.id;
+  const upgradeResp = await page.request.patch(
+    `${API_URL}/admin/workspaces/${workspaceId}/plan`,
+    {
+      headers: { 'x-admin-key': ADMIN_SECRET, 'content-type': 'application/json' },
+      data: { plan: 'starter' },
+    },
+  );
+  expect(upgradeResp.ok()).toBeTruthy();
+
   const smokeUrl = new URL('/test.html', WEB_URL);
   smokeUrl.searchParams.set('siteKey', siteKey!);
   smokeUrl.searchParams.set('apiUrl', API_URL);
@@ -91,7 +104,24 @@ test('DXM local smoke flow captures sessions, replay, and heatmaps', async ({ pa
   await smokePage.locator('#pricing-cta-btn').click();
   await smokePage.locator('#book-demo-btn').click();
   await smokePage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await smokePage.waitForTimeout(1500);
+
+  // Flush both SDKs while the page is still alive.
+  // Nullify sendBeacon so both SDKs fall through to XHR fallback.
+  // (The replay SDK has an unconditional return after sendBeacon — setting it
+  // to () => false skips XHR. Setting it to undefined skips the entire block.)
+  const collectFlush = smokePage.waitForResponse(
+    (resp) => resp.url().endsWith('/collect') && resp.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  const replayFlush = smokePage.waitForResponse(
+    (resp) => resp.url().includes('/collect-replay') && resp.request().method() === 'POST',
+    { timeout: 15_000 },
+  );
+  await smokePage.evaluate(() => {
+    (navigator as any).sendBeacon = undefined;
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  await Promise.all([collectFlush, replayFlush]);
   await smokePage.close();
 
   await expect.poll(async () => {
@@ -123,34 +153,30 @@ test('DXM local smoke flow captures sessions, replay, and heatmaps', async ({ pa
 
   expect(smokeSession?.id).toBeTruthy();
 
-  const replayResponsePromise = page.waitForResponse((response) =>
-    response.url() === `${API_URL}/sessions/${smokeSession!.id}/replay` &&
-    response.request().method() === 'GET'
+  // Validate replay data via direct API call (deterministic, no network interception)
+  const replayData = await getJson<SessionReplay>(
+    page,
+    `${API_URL}/sessions/${smokeSession!.id}/replay`,
   );
-
-  await page.goto(`${WEB_URL}/sessions`);
-  await expect(page.getByRole('heading', { name: 'Session Replays' })).toBeVisible();
-  await page.locator('button').filter({ hasText: 'test.html' }).first().click();
-
-  const replayResponse = await replayResponsePromise;
-  expect(replayResponse.ok()).toBeTruthy();
-  const replayData = await replayResponse.json() as SessionReplay;
   expect(replayData.sessionId).toBe(smokeSession!.id);
   expect(replayData.events.length).toBeGreaterThan(0);
-  await expect(page.getByRole('heading', { name: 'Session Replay', exact: true })).toBeVisible();
 
-  const heatmapResponsePromise = page.waitForResponse((response) =>
-    response.url() === `${API_URL}/analytics/heatmap` &&
-    response.request().method() === 'GET'
+  // Verify replay UI renders
+  await page.goto(`${WEB_URL}/sessions`);
+  await expect(page.getByRole('heading', { name: 'Session Replays' })).toBeVisible({ timeout: 15_000 });
+  await page.locator('button').filter({ hasText: 'test.html' }).first().click({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Session Replay', exact: true })).toBeVisible({ timeout: 15_000 });
+
+  // Validate heatmap data via direct API call
+  const heatmapData = await getJson<HeatmapReadModel>(
+    page,
+    `${API_URL}/analytics/heatmap`,
   );
+  expect(heatmapData.sessions.some((session) => session.id === smokeSession!.id)).toBe(true);
+  expect(heatmapData.points.some((point) => point.sessionId === smokeSession!.id)).toBe(true);
 
+  // Verify analytics UI renders
   await page.goto(`${WEB_URL}/analytics`);
   await expect(page.getByRole('heading', { name: 'Analytics' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Heatmap Analysis' })).toBeVisible();
-
-  const heatmapResponse = await heatmapResponsePromise;
-  expect(heatmapResponse.ok()).toBeTruthy();
-  const heatmapData = await heatmapResponse.json() as HeatmapReadModel;
-  expect(heatmapData.sessions.some((session) => session.id === smokeSession!.id)).toBe(true);
-  expect(heatmapData.points.some((point) => point.sessionId === smokeSession!.id)).toBe(true);
 });

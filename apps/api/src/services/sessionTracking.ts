@@ -6,6 +6,7 @@ import type {
 } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
 import { recordJourneyMilestone } from '../lib/workspaceSignals.js';
+import { sendSiteVerifiedEmail } from '../lib/mailer.js';
 
 export interface CollectionSite {
   id: string;
@@ -126,6 +127,8 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       .filter((url): url is string => Boolean(url)),
   );
 
+  let siteVerifiedEmail: { email: string; domain: string } | null = null;
+
   db.transaction(() => {
     const existing = db
       .prepare(`
@@ -179,6 +182,26 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
         0,
         payload.completed ? 1 : 0,
       );
+
+      // Check if this is the first session for this site
+      const siteRow = db.prepare('SELECT first_session_at FROM sites WHERE id = ?')
+        .get(site.id) as { first_session_at: string | null } | undefined;
+
+      if (siteRow && !siteRow.first_session_at) {
+        db.prepare('UPDATE sites SET first_session_at = CURRENT_TIMESTAMP WHERE id = ?').run(site.id);
+
+        const ownerInfo = db.prepare(`
+          SELECT u.email, s.domain, w.email_notifications_enabled
+          FROM sites s
+          JOIN workspaces w ON w.id = s.workspace_id
+          JOIN users u ON u.workspace_id = w.id AND u.role = 'owner'
+          WHERE s.id = ?
+        `).get(site.id) as { email: string; domain: string; email_notifications_enabled: number } | undefined;
+
+        if (ownerInfo?.email_notifications_enabled) {
+          siteVerifiedEmail = { email: ownerInfo.email, domain: ownerInfo.domain };
+        }
+      }
     }
 
     if (payload.events.length) {
@@ -269,6 +292,11 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       payload.sessionId,
     );
   })();
+
+  if (siteVerifiedEmail) {
+    sendSiteVerifiedEmail(siteVerifiedEmail.email, siteVerifiedEmail.domain)
+      .catch(err => console.error('[mailer] site-verified email failed:', err));
+  }
 
   if (payload.events.length > 0) {
     recordJourneyMilestone(site.workspaceId, 'site_live');

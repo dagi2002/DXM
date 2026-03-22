@@ -1,6 +1,7 @@
 import type { RequestHandler, Response } from 'express';
 import {
   BILLING_FEATURES,
+  DXM_PLAN_CATALOG,
   getNextPlanId,
   getPlanCatalogEntry,
   getPlanSiteLimit,
@@ -117,3 +118,49 @@ export const requirePlanFeature = (feature: BillingFeatureId): RequestHandler =>
 };
 
 export { BILLING_FEATURES, planSupportsFeature };
+
+// ── Billing helpers used by admin, webhook, and collect routes ────────────────
+
+/**
+ * Numeric rank of a plan in the upgrade hierarchy.
+ * free=0, starter=1, pro=2. Returns -1 for unknown plan IDs.
+ * Uses DXM_PLAN_CATALOG array order as the single source of truth.
+ */
+export const planRank = (plan: string): number =>
+  DXM_PLAN_CATALOG.findIndex(p => p.id === plan);
+
+/**
+ * Monthly session limit for a given plan ID.
+ * Delegates to getPlanCatalogEntry — no hardcoded numbers here.
+ */
+export const getWorkspaceSessionLimit = (plan: string): number =>
+  getPlanCatalogEntry(plan as WorkspacePlanId).sessions;
+
+/**
+ * Count sessions created in the last 30 days for a workspace.
+ * Uses idx_sessions_workspace_created for fast indexed lookup.
+ */
+export const countWorkspaceSessionsLast30Days = (workspaceId: string): number => {
+  const row = db
+    .prepare<[string], { count: number }>(
+      `SELECT COUNT(*) as count FROM sessions
+       WHERE workspace_id = ?
+         AND created_at >= datetime('now', '-30 days')`
+    )
+    .get(workspaceId);
+  return row?.count ?? 0;
+};
+
+/**
+ * Set a workspace's plan and mark billing_status as active.
+ * Intentionally narrow — callers must call reconcileUpgradeRequests() afterwards
+ * to avoid a circular import with workspaceSignals.ts.
+ */
+export const activateWorkspacePlan = (
+  workspaceId: string,
+  plan: 'starter' | 'pro',
+): void => {
+  db.prepare(
+    "UPDATE workspaces SET plan = ?, billing_status = 'active' WHERE id = ?"
+  ).run(plan, workspaceId);
+};
