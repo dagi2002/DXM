@@ -14,7 +14,7 @@
     "lint": "npm run lint -w apps/web",
     "check": "npm run build && npm run lint",
     "dev:sdk:serve": "npx serve packages/sdk/dist -l 8080 --cors",
-    "test:e2e:smoke": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers playwright test tests/e2e/dxm-local-smoke.spec.ts"
+    "test:e2e:smoke": "PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers node --env-file-if-exists=.env ./node_modules/.bin/playwright test tests/e2e/dxm-local-smoke.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
