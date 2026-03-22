@@ -19,6 +19,7 @@ import auditRoutes from './routes/audit.js';
 import digestRoutes from './routes/digest.js';
 import sitesRoutes from './routes/sites.js';
 import overviewRoutes from './routes/overview.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -44,6 +45,8 @@ const dashboardCors = cors({
   credentials: true,
 });
 
+// Capture raw body for Chapa webhook HMAC verification — must come before express.json
+app.use('/billing/chapa/webhook', express.raw({ type: 'application/json', limit: '64kb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -56,6 +59,9 @@ app.options('/collect-replay/replay', publicIngestCors);
 
 app.use('/collect', publicIngestCors, collectRoutes);
 app.use('/collect-replay', publicIngestCors, collectRoutes);   // collect router handles /replay sub-path
+
+// Admin routes — no CORS, curl-only, must sit before dashboardCors
+app.use('/admin/workspaces', adminRoutes);
 
 app.use(dashboardCors);
 

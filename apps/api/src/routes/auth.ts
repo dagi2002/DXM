@@ -11,8 +11,13 @@ import { upsertWorkspaceFitProfile } from '../lib/workspaceSignals.js';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production_32chars';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_32chars';
+const resolveSecret = (key: string, devFallback: string): string => {
+  const val = process.env[key]?.trim();
+  if (process.env.NODE_ENV === 'production') return val ?? '';
+  return val ?? devFallback;
+};
+const JWT_SECRET         = resolveSecret('JWT_SECRET',         'dev_secret_change_in_production_32chars');
+const JWT_REFRESH_SECRET = resolveSecret('JWT_REFRESH_SECRET', 'dev_refresh_secret_32chars');
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'localhost';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
