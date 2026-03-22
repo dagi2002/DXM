@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import { ReplayPlayer } from './ReplayPlayer';
@@ -10,7 +11,10 @@ import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
 import { markJourneyMilestone } from '../../lib/workspaceSignals';
 
 // Toggle between rrweb DOM replay and the legacy event-dot view
-const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = ({ session }) => {
+const SessionPlayerWithToggle: React.FC<{
+  session: SessionRecordingDetail;
+  insightContext?: { title: string; severity: 'info' | 'warning' | 'critical' } | null;
+}> = ({ session, insightContext }) => {
   const [mode, setMode] = useState<'rrweb' | 'events'>('rrweb');
   return (
     <div>
@@ -46,6 +50,8 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = (
             browser: session.metadata.browser ?? '',
             startedAt: session.startedAt,
           }}
+          sessionEvents={session.events}
+          insightContext={insightContext}
         />
       ) : (
         <SessionPlayer session={session} />
@@ -56,6 +62,7 @@ const SessionPlayerWithToggle: React.FC<{ session: SessionRecordingDetail }> = (
 
 export const SessionReplaysView: React.FC = () => {
   const { workspace } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sessions, setSessions] = useState<SessionRecording[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionRecording | null>(null);
   const [selectedSessionDetail, setSelectedSessionDetail] = useState<SessionRecordingDetail | null>(null);
@@ -66,6 +73,16 @@ export const SessionReplaysView: React.FC = () => {
   const selectedSessionId = selectedSession?.id ?? null;
   const selectedSessionUpdatedAt = selectedSession?.updatedAt ?? null;
   const canReplay = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.replay);
+
+  // Insight context from URL params (when navigated from InsightsPanel)
+  const insightTitle = searchParams.get('insightTitle');
+  const insightSeverity = searchParams.get('insightSeverity') as 'info' | 'warning' | 'critical' | null;
+  const insightContext = insightTitle && insightSeverity
+    ? { title: insightTitle, severity: insightSeverity }
+    : null;
+
+  // Deep-link: auto-select session from URL param
+  const deepLinkSessionId = searchParams.get('sessionId');
 
   useEffect(() => {
     let isMounted = true;
@@ -79,6 +96,20 @@ export const SessionReplaysView: React.FC = () => {
         setSessions(data);
         setIsLoading(false);
         setError(null);
+
+        // Auto-select from deep link on first load
+        if (deepLinkSessionId && !selectedSession) {
+          const match = data.find(s => s.id === deepLinkSessionId);
+          if (match) {
+            setSelectedSession(match);
+            // Clear the param so it doesn't re-trigger
+            setSearchParams(prev => {
+              const next = new URLSearchParams(prev);
+              next.delete('sessionId');
+              return next;
+            }, { replace: true });
+          }
+        }
 
         // Preserve selection after refresh
         setSelectedSession(prev =>
@@ -98,7 +129,7 @@ export const SessionReplaysView: React.FC = () => {
       isMounted = false;
       if (refreshTimer) window.clearInterval(refreshTimer);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -174,7 +205,7 @@ export const SessionReplaysView: React.FC = () => {
               ]}
             />
           ) : selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
-            <SessionPlayerWithToggle session={selectedSessionDetail} />
+            <SessionPlayerWithToggle session={selectedSessionDetail} insightContext={insightContext} />
           ) : selectedSession && isDetailLoading ? (
             <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading session detail</h3>

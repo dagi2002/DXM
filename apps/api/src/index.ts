@@ -38,6 +38,26 @@ try {
   } catch {}
   try { db.prepare('ALTER TABLE workspaces ADD COLUMN email_notifications_enabled INTEGER NOT NULL DEFAULT 1').run(); } catch {}
   try { db.prepare('ALTER TABLE sites ADD COLUMN first_session_at DATETIME').run(); } catch {}
+  try {
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS insights (
+        id            TEXT PRIMARY KEY,
+        workspace_id  TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        site_id       TEXT REFERENCES sites(id) ON DELETE CASCADE,
+        type          TEXT NOT NULL,
+        severity      TEXT NOT NULL,
+        title         TEXT NOT NULL,
+        description   TEXT NOT NULL,
+        recommendation TEXT,
+        data          TEXT,
+        active        INTEGER NOT NULL DEFAULT 1,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at   DATETIME
+      )
+    `).run();
+  } catch {}
+  try { db.prepare('CREATE INDEX IF NOT EXISTS idx_insights_workspace_active ON insights(workspace_id, active, created_at DESC)').run(); } catch {}
+  try { db.prepare('CREATE INDEX IF NOT EXISTS idx_insights_workspace_site_type ON insights(workspace_id, site_id, type, active)').run(); } catch {}
   console.log('✅ Database schema is up to date.');
 } catch (err) {
   console.warn('⚠️  Could not auto-migrate:', err);

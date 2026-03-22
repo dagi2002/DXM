@@ -64,6 +64,7 @@ export const ClientDetailPage: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteBlockers, setDeleteBlockers] = useState<DeleteBlockers | null>(null);
   const [editForm, setEditForm] = useState({ name: '', domain: '' });
+  const [pollVerified, setPollVerified] = useState(false);
 
   const vitalsEntries = useMemo(() => Object.entries(client?.vitals || {}), [client?.vitals]);
   const hasPendingChanges =
@@ -92,6 +93,25 @@ export const ClientDetailPage: React.FC = () => {
     if (!client || isEditing) return;
     setEditForm({ name: client.name, domain: client.domain });
   }, [client, isEditing]);
+
+  // Poll for verification when site is not yet verified
+  useEffect(() => {
+    if (!id || !client || client.verified || pollVerified) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(getApiUrl(`/sites/${id}/verify`), { credentials: 'include' });
+        const data = await res.json();
+        if (data.verified) {
+          setPollVerified(true);
+          void loadClient(); // refresh full client data
+        }
+      } catch {}
+    };
+    void poll();
+    const intervalId = setInterval(poll, 3000);
+    const timeoutId = setTimeout(() => clearInterval(intervalId), 3 * 60 * 1000);
+    return () => { clearInterval(intervalId); clearTimeout(timeoutId); };
+  }, [id, client, pollVerified, loadClient]);
 
   const handleVerify = async () => {
     if (!id) return;
@@ -250,6 +270,27 @@ export const ClientDetailPage: React.FC = () => {
         Back to clients
       </Link>
 
+      {/* Verification status banner — only shown for unverified sites */}
+      {!client.verified && !pollVerified && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border-2 border-dashed border-primary-200 bg-primary-50 px-5 py-4">
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-primary-500" />
+          </span>
+          <p className="text-sm font-medium text-primary-700">
+            Waiting for first session… <span className="font-normal text-primary-500">Open your site and interact with it to start tracking.</span>
+          </p>
+        </div>
+      )}
+      {pollVerified && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border-2 border-green-200 bg-green-50 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
+          <p className="text-sm font-semibold text-green-700">
+            Tracking live ✅ <span className="font-normal text-green-600">First session detected — data is flowing.</span>
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 text-white shadow-xl md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -270,7 +311,7 @@ export const ClientDetailPage: React.FC = () => {
             <div className="rounded-3xl border border-white/10 bg-white/10 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-primary-100">Tracking status</p>
               <p className="mt-2 text-xl font-semibold">
-                {client.verified ? 'Live and verified' : 'Waiting for installation'}
+                {client.verified || pollVerified ? 'Live and verified' : 'Waiting for installation'}
               </p>
             </div>
           </div>
@@ -520,7 +561,7 @@ export const ClientDetailPage: React.FC = () => {
 
           <div className="mt-4 rounded-3xl border border-surface-200 bg-surface-50 p-4">
             <p className="text-sm font-semibold text-surface-900">
-              {client.verified ? 'Tracking is live.' : 'Still waiting for the first tracked session.'}
+              {client.verified || pollVerified ? 'Tracking is live.' : 'Still waiting for the first tracked session.'}
             </p>
             <p className="mt-1 text-sm text-surface-600">
               Last activity: {formatDateTime(client.lastActivityAt)}

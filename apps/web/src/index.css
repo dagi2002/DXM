@@ -14,11 +14,28 @@
   .dxm-report-page {
     max-width: none !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
 
   .dxm-report-panel {
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+  }
+
+  .dxm-report-panel > * {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .dxm-report-panel section {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0.5rem !important;
+    padding: 1rem !important;
+  }
+
+  /* Hide sidebar/navigation in print */
+  nav, aside, [role="navigation"] {
+    display: none !important;
   }
 }

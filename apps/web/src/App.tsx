@@ -10,6 +10,8 @@ import { SignupPage } from './pages/SignupPage';
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const DemoPage = lazy(() => import('./pages/DemoPage').then(m => ({ default: m.DemoPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
 const PageLoader: React.FC = () => (
   <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -27,6 +29,8 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/demo" element={<DemoPage />} />
 
             {/* Onboarding — auth required but workspace not yet created */}

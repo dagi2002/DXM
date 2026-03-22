@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Copy, ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { CheckCircle, Copy, ArrowRight, Zap } from 'lucide-react';
 import { getApiUrl } from '../lib/api';
 import { UpgradeGate } from '../components/UpgradeGate';
 import { useAuth } from '../context/AuthContext';
@@ -25,13 +25,14 @@ export const OnboardingPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
 
   // Poll for verification in step 3
   useEffect(() => {
     const siteId = site?.id ?? site?.siteId;
-    if (step !== 3 || !siteId || verified) return;
+    if (step !== 3 || !siteId || verified || timedOut) return;
     setVerifying(true);
     const poll = async () => {
       try {
@@ -42,9 +43,13 @@ export const OnboardingPage: React.FC = () => {
     };
     void poll();
     const id = setInterval(poll, 3000);
-    const timeout = setTimeout(() => clearInterval(id), 3 * 60 * 1000); // 3 min max
+    const timeout = setTimeout(() => {
+      clearInterval(id);
+      setVerifying(false);
+      setTimedOut(true);
+    }, 3 * 60 * 1000); // 3 min max
     return () => { clearInterval(id); clearTimeout(timeout); };
-  }, [step, site, verified]);
+  }, [step, site, verified, timedOut]);
 
   const handleAddSite = async () => {
     if (!domain || !siteName) return;
@@ -242,26 +247,52 @@ export const OnboardingPage: React.FC = () => {
               </button>
             </div>
 
-            <div className={`rounded-xl border-2 p-4 text-center ${
-              verified ? 'border-green-200 bg-green-50' : 'border-dashed border-gray-200'
+            <div className={`rounded-xl border-2 p-5 text-center ${
+              verified
+                ? 'border-green-200 bg-green-50'
+                : timedOut
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-dashed border-gray-200'
             }`}>
               {verified ? (
                 <>
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-green-700">Tracking is live for this client site.</p>
+                  <p className="text-sm font-semibold text-green-700">Tracking live ✅</p>
+                  <p className="text-xs text-green-600 mt-1">First session detected — you're all set.</p>
                   <button
                     onClick={() => navigate('/overview')}
-                    className="mt-4 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"
                   >
-                    Go to overview
+                    Go to Dashboard <ArrowRight className="h-4 w-4" />
+                  </button>
+                </>
+              ) : timedOut ? (
+                <>
+                  <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                    <span className="text-amber-600 text-lg">!</span>
+                  </div>
+                  <p className="text-sm font-semibold text-amber-700">No session detected yet</p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Double-check that the snippet is in your site's {'<head>'} tag and the page is published.
+                  </p>
+                  <button
+                    onClick={() => { setTimedOut(false); setVerifying(false); }}
+                    className="mt-3 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50"
+                  >
+                    Retry verification
                   </button>
                 </>
               ) : (
                 <>
-                  <Loader2 className="h-6 w-6 text-gray-400 mx-auto mb-2 animate-spin" />
-                  <p className="text-sm text-gray-500">Waiting for the first tracked session…</p>
+                  <div className="mx-auto mb-2 flex items-center justify-center">
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-primary-500" />
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">Waiting for first session…</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {verifying ? 'Checking every 3 seconds' : 'Waiting to start verification'}
+                    Open your site in another tab and interact with it.
                   </p>
                 </>
               )}

@@ -17,6 +17,10 @@ Migrations are **idempotent** (safe to re-run) — all DDL uses `IF NOT EXISTS`.
 workspaces
     │
     ├── users (N)
+    │       └── password_reset_tokens (N)
+    ├── workspace_profiles (1)
+    ├── workspace_milestones (1)
+    ├── upgrade_requests (N)
     ├── sites (N)
     │       │
     │       ├── sessions (N)
@@ -48,6 +52,7 @@ The top-level tenant. Every piece of data belongs to a workspace.
 | `telegram_bot_token` | TEXT | Optional — workspace-specific bot token |
 | `digest_enabled` | INTEGER | `0` or `1` — enables weekly digest delivery |
 | `digest_language` | TEXT | `en` \| `am` |
+| `email_notifications_enabled` | INTEGER | `0` or `1` — opt-out for transactional emails (default `1`) |
 | `chapa_customer_id` | TEXT | Optional — Chapa customer reference |
 | `created_at` | DATETIME | Auto-set on insert |
 
@@ -85,6 +90,7 @@ A website being tracked by DXM Pulse. One workspace can have multiple sites.
 | `name` | TEXT | Human-readable site name (e.g. "Marketing Site") |
 | `domain` | TEXT | Base domain (e.g. `example.com`) |
 | `site_key` | TEXT UNIQUE | The value passed as `data-site-id` in the SDK script tag |
+| `first_session_at` | DATETIME | Set when the first session is ingested; used for site-verified email trigger |
 | `created_at` | DATETIME | Auto-set on insert |
 
 **Indexes:** `idx_sites_key` on `(site_key)`
@@ -268,6 +274,80 @@ Important notes:
 
 ---
 
+### `workspace_profiles`
+
+Onboarding profile data for the workspace (agency type, evaluation context).
+
+| Column | Type | Description |
+|---|---|---|
+| `workspace_id` | TEXT PK | References `workspaces.id` (CASCADE DELETE) |
+| `agency_type` | TEXT | Type of agency |
+| `managed_sites_band` | TEXT | Number of sites managed |
+| `reporting_workflow` | TEXT | Reporting approach |
+| `evaluation_reason` | TEXT | Why the workspace is evaluating DXM Pulse |
+| `created_at` | DATETIME | Auto-set on insert |
+| `updated_at` | DATETIME | Auto-set, updated on change |
+
+---
+
+### `workspace_milestones`
+
+Tracks first-time usage milestones for onboarding progress and activation signals.
+
+| Column | Type | Description |
+|---|---|---|
+| `workspace_id` | TEXT PK | References `workspaces.id` (CASCADE DELETE) |
+| `first_site_live_at` | DATETIME | First site started receiving traffic |
+| `first_replay_viewed_at` | DATETIME | First session replay viewed |
+| `first_alert_reviewed_at` | DATETIME | First alert reviewed |
+| `first_report_exported_at` | DATETIME | First report exported |
+| `first_upgrade_request_at` | DATETIME | First upgrade request submitted |
+| `created_at` | DATETIME | Auto-set on insert |
+| `updated_at` | DATETIME | Auto-set, updated on change |
+
+---
+
+### `upgrade_requests`
+
+Records upgrade requests from plan-gated feature prompts and billing flows.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `workspace_id` | TEXT FK | References `workspaces.id` (CASCADE DELETE) |
+| `requested_by_user_id` | TEXT FK | References `users.id` (SET NULL on delete) |
+| `current_plan` | TEXT | Plan at time of request |
+| `requested_plan` | TEXT | Target plan (`starter` \| `pro`) |
+| `source` | TEXT | Feature gate that triggered the request |
+| `site_count_at_request` | INTEGER | Workspace site count snapshot |
+| `site_limit_at_request` | INTEGER | Plan site limit snapshot |
+| `notes` | TEXT | Optional user notes (max 280 chars) |
+| `chapa_tx_ref` | TEXT | Chapa transaction reference (set by `/billing/chapa/initiate`) |
+| `status` | TEXT | `requested` \| `activated` |
+| `created_at` | DATETIME | Auto-set on insert |
+| `activated_at` | DATETIME | Set when plan is activated |
+
+**Indexes:** `idx_upgrade_requests_workspace_created`, `idx_upgrade_requests_workspace_status`, `ux_upgrade_requests_chapa_tx_ref` (unique partial index on non-null `chapa_tx_ref`)
+
+---
+
+### `password_reset_tokens`
+
+Stores hashed password reset tokens with expiry and single-use tracking.
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `user_id` | TEXT FK | References `users.id` (CASCADE DELETE) |
+| `token_hash` | TEXT | SHA-256 hash of the raw token (raw token is never stored) |
+| `expires_at` | DATETIME | Token expiry (1 hour from creation) |
+| `used_at` | DATETIME | Set when token is consumed (single-use enforcement) |
+| `created_at` | DATETIME | Auto-set on insert |
+
+**Indexes:** `idx_password_reset_tokens_user` on `(user_id, created_at DESC)`
+
+---
+
 ## Indexes Summary
 
 | Index | Table | Columns | Purpose |
@@ -283,3 +363,7 @@ Important notes:
 | `idx_sites_key` | sites | site_key | SDK event validation |
 | `ux_ai_artifacts_scope` | ai_artifacts | workspace_id, entity_type, entity_id, artifact_kind, period_key | Prevent duplicate AI artifacts for the same scope |
 | `idx_ai_artifacts_workspace_kind_expiry` | ai_artifacts | workspace_id, artifact_kind, expires_at | Fast AI cache lookup and expiry checks |
+| `idx_upgrade_requests_workspace_created` | upgrade_requests | workspace_id, created_at DESC | List requests by workspace |
+| `idx_upgrade_requests_workspace_status` | upgrade_requests | workspace_id, status, created_at DESC | Filter by status |
+| `ux_upgrade_requests_chapa_tx_ref` | upgrade_requests | chapa_tx_ref (partial, non-null) | Webhook tx_ref lookup |
+| `idx_password_reset_tokens_user` | password_reset_tokens | user_id, created_at DESC | Token lookup by user |

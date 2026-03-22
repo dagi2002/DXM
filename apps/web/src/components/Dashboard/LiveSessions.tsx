@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Eye, MapPin, Smartphone, Monitor, Tablet } from 'lucide-react';
 import type { SessionRecording } from '../../types';
 
@@ -81,19 +82,19 @@ export const LiveSessions: React.FC<LiveSessionsProps> = ({ sessions, isLoading 
               </div>
             </div>
             
-            <button className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 text-primary-600 hover:text-primary-800 transition-all">
+            <Link to={`/sessions/${session.id}`} className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 text-primary-600 hover:text-primary-800 transition-all">
               <Eye className="h-4 w-4" />
               <span className="text-sm">Watch</span>
-            </button>
+            </Link>
           </div>
           );
         })}
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-        <button className="text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors">
+        <Link to="/sessions" className="text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors">
           View all sessions →
-        </button>
+        </Link>
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import auditRoutes from './routes/audit.js';
 import digestRoutes from './routes/digest.js';
 import sitesRoutes from './routes/sites.js';
 import overviewRoutes from './routes/overview.js';
+import insightsRoutes from './routes/insights.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
@@ -76,6 +77,7 @@ app.use('/users', usersRoutes);
 app.use('/overview', overviewRoutes);
 app.use('/sites', sitesRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/insights', insightsRoutes);
 app.use('/billing', billingRoutes);
 app.use('/onboarding', onboardingRoutes);
 app.use('/funnels', funnelsRoutes);

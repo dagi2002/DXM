@@ -30,7 +30,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'overview',  label: 'Overview',  icon: LayoutDashboard, path: '/overview'  },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { id: 'overview',  label: 'Overview',  icon: Globe,           path: '/overview'  },
   { id: 'clients',   label: 'Clients',   icon: Building2,       path: '/clients'   },
   { id: 'sessions',  label: 'Sessions',  icon: Play,            path: '/sessions'  },
   { id: 'analytics', label: 'Analytics', icon: BarChart3,       path: '/analytics' },

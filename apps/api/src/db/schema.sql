@@ -210,3 +210,24 @@ CREATE INDEX IF NOT EXISTS idx_ai_artifacts_workspace_kind_expiry
   ON ai_artifacts(workspace_id, artifact_kind, expires_at);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user
   ON password_reset_tokens(user_id, created_at DESC);
+
+-- Insights — computed at ingestion time, read by GET /insights
+CREATE TABLE IF NOT EXISTS insights (
+  id            TEXT PRIMARY KEY,
+  workspace_id  TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  site_id       TEXT REFERENCES sites(id) ON DELETE CASCADE,
+  type          TEXT NOT NULL,       -- bounce_rate | low_duration | no_activity | traffic_drop | traffic_growth
+  severity      TEXT NOT NULL,       -- info | warning | critical
+  title         TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  recommendation TEXT,
+  data          TEXT,                -- JSON: { currentValue, threshold, baseline }
+  active        INTEGER NOT NULL DEFAULT 1,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at   DATETIME
+);
+
+CREATE INDEX IF NOT EXISTS idx_insights_workspace_active
+  ON insights(workspace_id, active, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_workspace_site_type
+  ON insights(workspace_id, site_id, type, active);

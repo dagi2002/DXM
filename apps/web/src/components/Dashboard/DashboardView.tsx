@@ -8,12 +8,14 @@ import { RecommendedActions } from './RecommendedActions';
 import { MetricCard } from './MetricCard';
 import { ActivityChart } from './ActivityChart';
 import { LiveSessions } from './LiveSessions';
+import { InsightsPanel, type Insight } from './InsightsPanel';
 import type { Alert, Metric, SessionRecording } from '../../types';
 
 interface DashboardViewProps {
   sessions: SessionRecording[];
   metrics: Metric[];
   alerts: Alert[];
+  insights: Insight[];
   isLoading: boolean;
   error?: string | null;
 }
@@ -70,6 +72,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   sessions,
   metrics,
   alerts,
+  insights,
   isLoading,
   error,
 }) => {
@@ -100,7 +103,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 1. Site Health Score */}
+      {/* 1. Insights Panel — top of dashboard, collapsible */}
+      <InsightsPanel insights={insights} isLoading={isLoading} />
+
+      {/* 2. Site Health Score */}
       <SiteHealthScore metrics={metrics} alerts={alerts} />
 
       {/* 2. Problems Detected (alerts hero) */}

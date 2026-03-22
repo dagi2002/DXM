@@ -37,16 +37,18 @@ npm run seed -w apps/api
 | Group | Routes |
 |---|---|
 | Health | `GET /health` |
-| Auth | `/auth/signup`, `/auth/login`, `/auth/logout`, `/auth/me` |
+| Auth | `/auth/signup`, `/auth/login`, `/auth/logout`, `/auth/me`, `/auth/forgot-password`, `/auth/reset-password` |
 | Sites | `GET /sites`, `POST /sites`, `PATCH /sites/:id`, `DELETE /sites/:id`, `GET /sites/:id`, `GET /sites/:id/verify`, `GET /sites/:id/overview` |
 | Collection | `POST /collect`, `POST /collect-replay/replay` |
 | Sessions | `GET /sessions`, `GET /sessions/:id`, `GET /sessions/:id/replay` |
 | Analytics | `GET /analytics/metrics`, `GET /analytics/vitals`, `GET /analytics/userflow`, `GET /analytics/heatmap` |
 | Funnels | `GET /funnels`, `POST /funnels`, `DELETE /funnels/:id`, `GET /funnels/:id/analysis` |
 | Alerts | `GET /alerts`, `GET /alerts/:id`, `POST /alerts`, `PATCH /alerts/:id/resolve` |
+| Insights | `GET /insights` |
 | Users | `GET /users` |
 | Settings | `GET /settings`, `PATCH /settings`, `PUT /settings/telegram`, `POST /settings/telegram/test` |
-| Billing | `GET /billing/plans`, `GET /billing/current`, `POST /billing/chapa/webhook` |
+| Billing | `GET /billing/plans`, `GET /billing/current`, `GET /billing/upgrade-requests`, `POST /billing/upgrade-requests`, `POST /billing/chapa/initiate`, `POST /billing/chapa/webhook` |
+| Admin | `PATCH /admin/workspaces/:id/plan` |
 | Public audit | `GET /audit?url=` |
 | Weekly digest | `POST /digest/send-all` |
 
@@ -69,6 +71,7 @@ Optional:
 - `TELEGRAM_DEFAULT_BOT_TOKEN`
 - `CHAPA_SECRET_KEY`
 - `CHAPA_WEBHOOK_SECRET`
+- `ADMIN_SECRET`
 - `SDK_CDN_URL`
 - `DIGEST_CRON_SECRET`
 
@@ -78,17 +81,23 @@ See [../../docs/environment-variables.md](../../docs/environment-variables.md) f
 
 Fully live:
 - Auth and workspace isolation
+- Password reset (crypto.randomBytes token, SHA-256 hashing, 1-hour expiry, single-use, session invalidation)
+- Email notifications: welcome email on signup, site-verified email on first session, critical alert email — all respecting opt-out flag
 - `/sites` as the primary client-site contract, including conservative clean-site deletion
-- Session/event ingestion
+- Session/event ingestion (with first-session detection for site-verified emails)
 - Replay storage
 - Shared session DTO/read-model contract
-- Alerts and Telegram delivery
+- Alerts and Telegram delivery, plus critical alert emails
+- Insights engine: 5 rule-based detectors computed at ingestion time with deduplication, auto-resolution, and cooldown
 - Metrics, funnels, user flow, users endpoint
 - Site audit and weekly digest plumbing
+- Billing backbone: Chapa payment initiation, HMAC-verified webhook, upgrade requests, admin plan activation
 - `/onboarding/sites*` as a thin compatibility alias for create/list/verify only
+- Integration test suite: 28 files, 98 tests
 
 Still partial:
-- Billing webhook is a stub for future Chapa automation
+- Email delivery uses dev-mode console logger; production SMTP integration is deferred
+- Billing UI is not yet wired end-to-end on the frontend
 - Digest triggering is protected by `x-digest-key`, uses `DIGEST_CRON_SECRET` in production, and falls back to `JWT_SECRET` only outside production when the digest secret is unset
 - The API is SQLite-first and optimized for MVP/self-hosted simplicity, not multi-region scale
 - Deterministic AI currently enhances `GET /overview`, `GET /sites/:id`, `GET /alerts/:id`, and `GET /funnels/:id/analysis` only

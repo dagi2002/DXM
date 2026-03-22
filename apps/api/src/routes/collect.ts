@@ -15,6 +15,7 @@ import { validate } from '../middleware/validate.js';
 import { collectLimiter } from '../middleware/rateLimiter.js';
 import { collectSchema, collectReplaySchema } from '../schemas/collectSchema.js';
 import { runAlertChecks } from '../services/alertEngine.js';
+import { runInsightChecks } from '../services/insightsEngine.js';
 import {
   findCollectionSite,
   ingestReplayChunk,
@@ -59,8 +60,9 @@ router.post('/', collectLimiter, validate(collectSchema), (req, res) => {
 
   ingestSessionBatch(site, payload);
 
-  // Fire alert checks asynchronously — do not await
+  // Fire alert + insight checks asynchronously — do not await
   void runAlertChecks(site.workspaceId, site.id);
+  void runInsightChecks(site.workspaceId, site.id);
 
   return res.json({ ok: true });
 });

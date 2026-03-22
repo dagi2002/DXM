@@ -98,7 +98,11 @@ export const SessionList: React.FC<SessionListProps> = ({
           )}
 
           {!isLoading && !error && filteredSessions.length === 0 && (
-            <div className="px-3 py-4 text-sm text-gray-500">No sessions found. Interact with the app to record a session.</div>
+            <div className="mx-1 my-2 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-6 text-center">
+              <p className="text-sm font-semibold text-gray-700">📊 No sessions yet</p>
+              <p className="mt-1 text-sm text-gray-500">Sessions appear here when visitors interact with your site.</p>
+              <p className="mt-2 text-xs text-gray-400">Make sure your tracking snippet is installed and visit your site.</p>
+            </div>
           )}
 
           {filteredSessions.map(session => {

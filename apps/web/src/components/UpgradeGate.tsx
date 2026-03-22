@@ -57,7 +57,7 @@ export const UpgradeGate: React.FC<UpgradeGateProps> = ({
         </Link>
         <span className="inline-flex items-center gap-2 rounded-full bg-surface-100 px-3 py-2 text-xs font-medium text-surface-600">
           <Sparkles className="h-3.5 w-3.5" />
-          Manual upgrade, activated after confirmation
+          Upgrade takes effect immediately after payment
         </span>
       </div>
     </div>

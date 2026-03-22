@@ -181,6 +181,20 @@ DIGEST_CRON_SECRET=change_this_digest_secret_in_production
 
 ---
 
+### `ADMIN_SECRET`
+**Optional in local/dev/test** | **Required for admin endpoints in production**
+
+Dedicated secret for authenticating `PATCH /admin/workspaces/:id/plan`. The admin route validates the `x-admin-key` request header against this value using a timing-safe comparison.
+
+- returns `503` if not configured
+- returns `401` if the header is missing or does not match
+
+```bash
+ADMIN_SECRET=change_this_admin_secret_in_production
+```
+
+---
+
 ## Optional Integrations
 
 ### `TELEGRAM_DEFAULT_BOT_TOKEN`
@@ -241,6 +255,9 @@ TELEGRAM_DEFAULT_BOT_TOKEN=
 # ── Chapa Payments (optional — enables billing features) ──────────────────────
 CHAPA_SECRET_KEY=
 CHAPA_WEBHOOK_SECRET=
+
+# ── Admin (optional — enables admin plan activation endpoint) ─────────────
+ADMIN_SECRET=
 
 # ── SDK / Frontend ────────────────────────────────────────────────────────────
 SDK_CDN_URL=http://localhost:5173/sdk/dxm.js

@@ -10,6 +10,7 @@ import { OverviewPage } from '../pages/OverviewPage';
 import { ClientsPage } from '../pages/ClientsPage';
 import { ClientDetailPage } from '../pages/ClientDetailPage';
 import { ReportsPage } from '../pages/ReportsPage';
+import { DashboardPage } from '../pages/DashboardPage';
 import { useAuth } from '../context/AuthContext';
 
 export const AppShell: React.FC = () => {
@@ -17,7 +18,9 @@ export const AppShell: React.FC = () => {
   const location = useLocation();
 
   // Derive active nav item from current route
-  const activeView = location.pathname.startsWith('/overview') || location.pathname.startsWith('/dashboard')
+  const activeView = location.pathname.startsWith('/dashboard')
+    ? 'dashboard'
+    : location.pathname.startsWith('/overview')
     ? 'overview'
     : location.pathname.startsWith('/clients')
     ? 'clients'
@@ -37,8 +40,8 @@ export const AppShell: React.FC = () => {
       <main className="flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(22,101,52,0.05),_transparent_42%),linear-gradient(to_bottom,_#f8faf8,_#f5f5f4)] pb-16 md:pb-0">
           <Routes>
-            <Route path="/" element={<Navigate to="/overview" replace />} />
-            <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/overview" element={<OverviewPage />} />
             <Route path="/clients" element={<ClientsPage />} />
             <Route path="/clients/:id" element={<ClientDetailPage />} />
@@ -49,7 +52,8 @@ export const AppShell: React.FC = () => {
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/billing" element={<BillingPage />} />
-            <Route path="*" element={<Navigate to="/overview" replace />} />
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </main>

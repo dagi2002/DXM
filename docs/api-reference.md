@@ -41,6 +41,38 @@ Creates a workspace and owner account.
 }
 ```
 
+### `POST /auth/forgot-password`
+
+Initiates a password reset. Always returns `{ ok: true }` regardless of whether the email exists (no email enumeration leak).
+
+```json
+{
+  "email": "abebe@example.com"
+}
+```
+
+On success, a reset token is generated using `crypto.randomBytes(32)`, hashed with SHA-256 before storage, and a password reset email is sent (dev mode: console log only). Tokens expire after 1 hour and are single-use.
+
+### `POST /auth/reset-password`
+
+Completes the password reset. Requires the raw token from the email and a new password.
+
+```json
+{
+  "token": "base64url-encoded-token",
+  "password": "newSecurePassword"
+}
+```
+
+On success:
+- Password is updated (bcrypt hashed)
+- All reset tokens for the user are marked as used
+- All active sessions are invalidated (refresh tokens cleared)
+- Returns `{ ok: true }`
+
+Error cases:
+- Invalid/expired/used token → `400`
+
 ### `POST /auth/logout`
 
 Clears auth cookies.
@@ -403,7 +435,7 @@ Contracts:
 
 ### `POST /alerts`
 
-Creates an alert manually and attempts Telegram delivery if the workspace is configured.
+Creates an alert manually and attempts Telegram delivery if the workspace is configured. When severity is `critical` and the workspace has `email_notifications_enabled`, a critical alert email is also sent to the workspace owner.
 
 ### `PATCH /alerts/:id/resolve`
 
@@ -434,19 +466,20 @@ Returns workspace members in the web app’s current read-only shape:
 Returns the full settings payload used by the agency settings screen:
 
 - `profile`
-- `workspace`
+- `workspace` (includes `emailNotificationsEnabled`)
 - `team`
 - `sites`
 
 ### `PATCH /settings`
 
-Updates workspace name and weekly digest preferences.
+Updates workspace name, weekly digest preferences, and email notification opt-out.
 
 ```json
 {
   "name": "New Workspace Name",
   "digestEnabled": true,
-  "digestLanguage": "am"
+  "digestLanguage": "am",
+  "emailNotificationsEnabled": true
 }
 ```
 
@@ -486,9 +519,102 @@ Public plan catalog for the current MVP.
 
 Returns the authenticated workspace plan and billing status.
 
+### `GET /billing/upgrade-requests`
+
+Returns upgrade request history for the authenticated workspace.
+
+### `POST /billing/upgrade-requests`
+
+Creates a manual upgrade request (e.g. from a plan-gated feature prompt).
+
+```json
+{
+  "requestedPlan": "starter",
+  "source": "alerts",
+  "notes": "Need alerts for my agency clients"
+}
+```
+
+Valid sources: `site_limit`, `replay`, `funnels`, `user_flow`, `alerts`, `reports`, `telegram`, `digest`, `direct_billing`.
+
+Returns `400` if the workspace is already on the requested plan or higher.
+
+### `POST /billing/chapa/initiate`
+
+Creates a Chapa payment transaction and returns a checkout URL. Requires `CHAPA_SECRET_KEY` to be configured.
+
+```json
+{
+  "requestedPlan": "starter"
+}
+```
+
+Response:
+
+```json
+{
+  "checkoutUrl": "https://checkout.chapa.co/...",
+  "txRef": "dxmAbCdEfGhIjKlMnO"
+}
+```
+
+Returns `503` if Chapa is not configured, `502` if the payment provider is unreachable.
+
 ### `POST /billing/chapa/webhook`
 
-Placeholder webhook receiver for future Chapa automation.
+Receives Chapa payment notifications. Verifies HMAC signature using `CHAPA_WEBHOOK_SECRET`, looks up the upgrade request by `tx_ref`, and activates the workspace plan if payment succeeded. Idempotent — a workspace already on the target plan or higher is not downgraded.
+
+## Admin
+
+### `PATCH /admin/workspaces/:id/plan`
+
+Operator-only route for manual plan activation (e.g. after Telegram/offline payments). Protected by `x-admin-key` header validated against `ADMIN_SECRET`.
+
+```bash
+curl -X PATCH /admin/workspaces/<id>/plan \
+  -H "x-admin-key: $ADMIN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"plan":"starter"}'
+```
+
+Valid plans: `starter`, `pro`.
+
+Returns `503` if `ADMIN_SECRET` is not configured, `401` if the key is missing or invalid, `404` if the workspace does not exist.
+
+## Insights
+
+### `GET /insights`
+
+Returns active insights for the authenticated workspace. Insights are computed at ingestion time and stored in the database.
+
+Query params:
+
+- `siteId` (optional): filter insights to a specific site
+- `includeResolved` (optional, `true`/`false`): include recently resolved insights (last 24h)
+
+```json
+[
+  {
+    "id": "ins_abc123",
+    "siteId": "site_123",
+    "type": "bounce_rate",
+    "severity": "warning",
+    "title": "High bounce rate",
+    "description": "78% of visitors left without engaging (39/50 sessions in the last 2 hours).",
+    "recommendation": "Check your landing page load speed and ensure key content is visible above the fold.",
+    "data": { "currentValue": 78, "threshold": 70, "total": 50, "bounced": 39 },
+    "active": true,
+    "createdAt": "2026-03-22T10:00:00.000Z",
+    "resolvedAt": null
+  }
+]
+```
+
+Insight types: `bounce_rate`, `low_duration`, `no_activity`, `traffic_drop`, `traffic_growth`.
+
+Severity levels: `info`, `warning`, `critical`.
+
+Insights are deduplicated (one active insight per type per site), auto-resolve when conditions clear, and have a 6-hour cooldown before re-triggering after resolution.
 
 ## Public Site Audit
 

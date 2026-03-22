@@ -46,3 +46,19 @@ export const fetchJson = async <T>(path: string, init?: RequestInit): Promise<T>
 
   return response.json() as Promise<T>;
 };
+
+export const requestPasswordReset = async (email: string) => {
+  return fetchJson<{ ok: boolean }>('auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+};
+
+export const submitPasswordReset = async (token: string, password: string) => {
+  return fetchJson<{ ok: boolean }>('auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+};

@@ -311,7 +311,9 @@ export const HeatmapView: React.FC = () => {
             ? 'Loading recent session recordings…'
             : filteredSessions.length
             ? `${filteredSessions.length} session${filteredSessions.length === 1 ? '' : 's'} loaded`
-            : 'No sessions available for this filter'}
+            : sessions.length === 0
+              ? '🔥 No heatmap data yet — heatmaps populate as sessions are recorded.'
+              : 'No sessions match this filter. Try adjusting your selection.'}
         </div>
       </div>
 

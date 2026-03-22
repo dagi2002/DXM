@@ -114,7 +114,9 @@ If a matching open alert exists, no new alert is created. This prevents alert st
 
 ---
 
-## Telegram Notifications
+## Notifications
+
+### Telegram
 
 When an alert is created, the engine optionally sends a Telegram message.
 
@@ -133,6 +135,14 @@ Severity: medium
 The `telegram_sent` flag is set on the alert row to `1` after a successful notification.
 
 If no Telegram credentials are configured, alerts are still created in the database — only the push notification is skipped.
+
+### Email (critical alerts)
+
+When the alert engine creates an alert with `severity = 'critical'`, it also sends a critical alert email to the workspace owner — provided the workspace has `email_notifications_enabled = 1` (the default).
+
+The email is sent fire-and-forget after the database transaction commits, so it never blocks alert creation. The same pattern applies to manually created alerts via `POST /alerts`.
+
+Email delivery currently uses a dev-mode console logger. Production SMTP integration is deferred.
 
 ---
 

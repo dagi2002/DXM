@@ -48,6 +48,7 @@ interface SettingsPayload {
     telegramConfigured: boolean;
     digestEnabled: boolean;
     digestLanguage: 'en' | 'am';
+    emailNotificationsEnabled: boolean;
     createdAt: string;
   };
   team: Array<{
@@ -81,6 +82,7 @@ export const SettingsPage: React.FC = () => {
   const [chatId, setChatId] = useState('');
   const [digestEnabled, setDigestEnabled] = useState(false);
   const [digestLanguage, setDigestLanguage] = useState<'en' | 'am'>('en');
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [agencyType, setAgencyType] = useState('');
   const [managedSitesBand, setManagedSitesBand] = useState('');
   const [reportingWorkflow, setReportingWorkflow] = useState('');
@@ -105,6 +107,7 @@ export const SettingsPage: React.FC = () => {
       setChatId(data.workspace.telegramChatId || '');
       setDigestEnabled(Boolean(data.workspace.digestEnabled));
       setDigestLanguage(data.workspace.digestLanguage === 'am' ? 'am' : 'en');
+      setEmailNotificationsEnabled(data.workspace.emailNotificationsEnabled !== false);
       setAgencyType(data.fitProfile.agencyType || '');
       setManagedSitesBand(data.fitProfile.managedSitesBand || '');
       setReportingWorkflow(data.fitProfile.reportingWorkflow || '');
@@ -150,6 +153,7 @@ export const SettingsPage: React.FC = () => {
                 evaluationReason: evaluationReason.trim() || null,
                 digestEnabled,
                 digestLanguage,
+                emailNotificationsEnabled,
               }
             : {
                 name: workspaceName,
@@ -157,6 +161,7 @@ export const SettingsPage: React.FC = () => {
                 managedSitesBand: managedSitesBand || null,
                 reportingWorkflow: reportingWorkflow || null,
                 evaluationReason: evaluationReason.trim() || null,
+                emailNotificationsEnabled,
               },
         ),
       });
@@ -340,6 +345,21 @@ export const SettingsPage: React.FC = () => {
               onChange={(event) => setWorkspaceName(event.target.value)}
               className="w-full rounded-2xl border border-surface-200 px-4 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
             />
+          </div>
+
+          <div className="mt-5 rounded-3xl border border-surface-200 bg-surface-50 p-4">
+            <label className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-surface-900">Email notifications</p>
+                <p className="mt-1 text-sm text-surface-500">Receive welcome, site-verified, and critical alert emails.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={emailNotificationsEnabled}
+                onChange={(event) => setEmailNotificationsEnabled(event.target.checked)}
+                className="h-5 w-5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+              />
+            </label>
           </div>
 
           <div className="mt-6 space-y-3">

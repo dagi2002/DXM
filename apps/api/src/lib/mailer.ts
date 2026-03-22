@@ -13,8 +13,11 @@ export function resetSentMails(): void {
 }
 
 export async function sendMail(payload: MailPayload): Promise<void> {
+  console.log(`[mailer] To: ${payload.to}`);
+  console.log(`[mailer] Subject: ${payload.subject}`);
+  console.log(`[mailer] Body:\n${payload.text}`); // ✅ ADD THIS LINE
+
   sentMails.push(payload);
-  console.log(`[mailer] To: ${payload.to} | Subject: ${payload.subject}`);
 }
 
 export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
