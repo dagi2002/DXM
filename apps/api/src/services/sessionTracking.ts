@@ -127,9 +127,8 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       .filter((url): url is string => Boolean(url)),
   );
 
-  let siteVerifiedEmail: { email: string; domain: string } | null = null;
-
-  db.transaction(() => {
+  const siteVerifiedEmail = db.transaction(() => {
+    let emailToReturn: { email: string; domain: string } | null = null;
     const existing = db
       .prepare(`
         SELECT
@@ -199,7 +198,7 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
         `).get(site.id) as { email: string; domain: string; email_notifications_enabled: number } | undefined;
 
         if (ownerInfo?.email_notifications_enabled) {
-          siteVerifiedEmail = { email: ownerInfo.email, domain: ownerInfo.domain };
+          emailToReturn = { email: ownerInfo.email, domain: ownerInfo.domain };
         }
       }
     }
@@ -291,6 +290,7 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
       completed,
       payload.sessionId,
     );
+    return emailToReturn;
   })();
 
   if (siteVerifiedEmail) {

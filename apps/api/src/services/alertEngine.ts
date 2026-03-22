@@ -184,10 +184,10 @@ interface Workspace {
   plan?: string;
   telegram_bot_token: string | null;
   telegram_chat_id:   string | null;
+  email_notifications_enabled: number;
 }
 
 async function createAlertIfNew(alert: DetectedAlert, workspace: Workspace): Promise<void> {
-  // Deduplicate: skip if an unresolved alert of the same type for the same site exists
   const existing = db.prepare(`
     SELECT id FROM alerts
     WHERE workspace_id = ?
@@ -195,7 +195,7 @@ async function createAlertIfNew(alert: DetectedAlert, workspace: Workspace): Pro
       AND type         = ?
       AND resolved     = 0
     LIMIT 1
-  `).get(alert.workspaceId, alert.siteId, alert.type);
+  `).get(alert.workspaceId, alert.siteId, alert.type) as { id: string } | undefined;
 
   if (existing) return; // already open — don't flood
 
