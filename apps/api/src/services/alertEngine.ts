@@ -13,6 +13,7 @@ import { db } from '../db/index.js';
 import { sendTelegramAlert } from './telegram.js';
 import { nanoid } from 'nanoid';
 import { BILLING_FEATURES, planSupportsFeature } from '../lib/billing.js';
+import { sendCriticalAlertEmail } from '../lib/mailer.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,12 +47,13 @@ export async function runAlertChecks(workspaceId: string, siteId: string): Promi
     if (detected.length === 0) return;
 
     const workspace = db.prepare(
-      'SELECT id, plan, telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?'
+      'SELECT id, plan, telegram_bot_token, telegram_chat_id, email_notifications_enabled FROM workspaces WHERE id = ?'
     ).get(workspaceId) as {
       id: string;
       plan: string;
       telegram_bot_token: string | null;
       telegram_chat_id: string | null;
+      email_notifications_enabled: number;
     } | undefined;
 
     if (!workspace) return;
@@ -203,6 +205,21 @@ async function createAlertIfNew(alert: DetectedAlert, workspace: Workspace): Pro
     INSERT INTO alerts (id, workspace_id, site_id, type, severity, title, description)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(alertId, alert.workspaceId, alert.siteId, alert.type, alert.severity, alert.title, alert.description);
+
+  // Fire critical alert email if applicable
+  if (alert.severity === 'critical' && workspace.email_notifications_enabled) {
+    const owner = db.prepare(
+      "SELECT email FROM users WHERE workspace_id = ? AND role = 'owner'"
+    ).get(alert.workspaceId) as { email: string } | undefined;
+
+    if (owner) {
+      const siteDomain = alert.siteId
+        ? (db.prepare('SELECT domain FROM sites WHERE id = ?').get(alert.siteId) as { domain: string } | undefined)?.domain ?? null
+        : null;
+      sendCriticalAlertEmail(owner.email, alert.title, siteDomain)
+        .catch(err => console.error('[mailer] critical alert email failed:', err));
+    }
+  }
 
   // Fire Telegram if credentials are configured
   if (workspace.telegram_bot_token && workspace.telegram_chat_id) {

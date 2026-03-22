@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getAlertAiBriefOrNull } from '../services/ai/index.js';
 import { sendTelegramAlert } from '../services/telegram.js';
 import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
+import { sendCriticalAlertEmail } from '../lib/mailer.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -125,6 +126,23 @@ router.post('/', async (req, res) => {
     INSERT INTO alerts (id, workspace_id, site_id, type, severity, title, description, affected_sessions)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(alertId, workspaceId, siteId || null, type, severity, title, description || '', affectedSessions || 0);
+
+  // Fire critical alert email if applicable
+  if (severity === 'critical') {
+    const ownerInfo = db.prepare(`
+      SELECT u.email, w.email_notifications_enabled
+      FROM users u JOIN workspaces w ON w.id = u.workspace_id
+      WHERE u.workspace_id = ? AND u.role = 'owner'
+    `).get(workspaceId) as { email: string; email_notifications_enabled: number } | undefined;
+
+    if (ownerInfo?.email_notifications_enabled) {
+      const siteDomain = siteId
+        ? (db.prepare('SELECT domain FROM sites WHERE id = ?').get(siteId) as { domain: string } | undefined)?.domain ?? null
+        : null;
+      sendCriticalAlertEmail(ownerInfo.email, title, siteDomain)
+        .catch(err => console.error('[mailer] critical alert email failed:', err));
+    }
+  }
 
   // Fire Telegram if workspace has credentials configured
   const workspace = db.prepare('SELECT telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?')

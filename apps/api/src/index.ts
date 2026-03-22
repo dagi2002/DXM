@@ -19,6 +19,25 @@ try {
       'CREATE UNIQUE INDEX ux_upgrade_requests_chapa_tx_ref ON upgrade_requests(chapa_tx_ref) WHERE chapa_tx_ref IS NOT NULL'
     ).run();
   } catch {}
+  try {
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash  TEXT NOT NULL,
+        expires_at  DATETIME NOT NULL,
+        used_at     DATETIME,
+        created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+  } catch {}
+  try {
+    db.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id, created_at DESC)'
+    ).run();
+  } catch {}
+  try { db.prepare('ALTER TABLE workspaces ADD COLUMN email_notifications_enabled INTEGER NOT NULL DEFAULT 1').run(); } catch {}
+  try { db.prepare('ALTER TABLE sites ADD COLUMN first_session_at DATETIME').run(); } catch {}
   console.log('✅ Database schema is up to date.');
 } catch (err) {
   console.warn('⚠️  Could not auto-migrate:', err);
