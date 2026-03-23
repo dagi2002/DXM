@@ -6,6 +6,7 @@ import { getAlertAiBriefOrNull } from '../services/ai/index.js';
 import { sendTelegramAlert } from '../services/telegram.js';
 import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 import { sendCriticalAlertEmail } from '../lib/mailer.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -140,7 +141,7 @@ router.post('/', async (req, res) => {
         ? (db.prepare('SELECT domain FROM sites WHERE id = ?').get(siteId) as { domain: string } | undefined)?.domain ?? null
         : null;
       sendCriticalAlertEmail(ownerInfo.email, title, siteDomain)
-        .catch(err => console.error('[mailer] critical alert email failed:', err));
+        .catch(err => logger.error('Critical alert email failed', { route: 'alerts', error: err instanceof Error ? err.message : String(err) }));
     }
   }
 
@@ -155,7 +156,7 @@ router.post('/', async (req, res) => {
       if (sent) {
         db.prepare('UPDATE alerts SET telegram_sent = 1 WHERE id = ?').run(alertId);
       }
-    }).catch(console.error);
+    }).catch(err => logger.error('Telegram alert send failed', { route: 'alerts', alertId, error: err instanceof Error ? err.message : String(err) }));
   }
 
   return res.status(201).json({ id: alertId });

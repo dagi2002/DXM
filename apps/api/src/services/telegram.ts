@@ -4,6 +4,8 @@
  * Messages are sent in Markdown with severity emoji and a dashboard deep-link.
  */
 
+import { logger } from '../lib/logger.js';
+
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 
 type Severity = 'critical' | 'high' | 'medium' | 'low';
@@ -55,12 +57,12 @@ export async function sendTelegramAlert(
 
     if (!resp.ok) {
       const body = await resp.text();
-      console.warn(`[telegram] Delivery failed (${resp.status}): ${body}`);
+      logger.warn('Telegram delivery failed', { service: 'telegram', status: resp.status, body });
       return false;
     }
     return true;
   } catch (err) {
-    console.error('[telegram] Network error:', err);
+    logger.error('Telegram network error', { service: 'telegram', error: err instanceof Error ? err.message : String(err) });
     return false;
   }
 }

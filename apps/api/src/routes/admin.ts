@@ -17,6 +17,7 @@ import { db }                       from '../db/index.js';
 import { validate }                 from '../middleware/validate.js';
 import { activateWorkspacePlan }    from '../lib/billing.js';
 import { reconcileUpgradeRequests } from '../lib/workspaceSignals.js';
+import { logger }                   from '../lib/logger.js';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.patch('/:id/plan', validate(activatePlanSchema), (req, res) => {
   activateWorkspacePlan(workspaceId, plan);
   reconcileUpgradeRequests(workspaceId);
 
-  console.info(`[admin] Plan activated: workspace=${workspaceId} plan=${plan}`);
+  logger.info('Admin plan activated', { route: 'admin', workspaceId, plan });
   return res.json({ ok: true, workspaceId, plan });
 });
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/AppShell';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 
@@ -21,6 +22,7 @@ const PageLoader: React.FC = () => (
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
         <Suspense fallback={<PageLoader />}>
@@ -59,6 +61,7 @@ function App() {
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

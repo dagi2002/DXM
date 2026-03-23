@@ -1,5 +1,17 @@
+import * as Sentry from '@sentry/node';
+
+// Sentry must init before other imports so it can patch modules
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.2,
+  });
+}
+
 import app from './app.js';
 import { db } from './db/index.js';
+import { logger } from './lib/logger.js';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -58,21 +70,36 @@ try {
   } catch {}
   try { db.prepare('CREATE INDEX IF NOT EXISTS idx_insights_workspace_active ON insights(workspace_id, active, created_at DESC)').run(); } catch {}
   try { db.prepare('CREATE INDEX IF NOT EXISTS idx_insights_workspace_site_type ON insights(workspace_id, site_id, type, active)').run(); } catch {}
-  console.log('✅ Database schema is up to date.');
+  logger.info('Database schema is up to date');
 } catch (err) {
-  console.warn('⚠️  Could not auto-migrate:', err);
+  logger.warn('Could not auto-migrate', { error: err instanceof Error ? err.message : String(err) });
 }
 
 if (process.env.NODE_ENV === 'production') {
   const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_SECRET', 'CHAPA_WEBHOOK_SECRET'];
   const missing  = required.filter(v => !process.env[v]?.trim());
   if (missing.length > 0) {
-    console.error(`[startup] FATAL: Missing required env vars: ${missing.join(', ')}`);
+    logger.error('Missing required env vars', { vars: missing });
     process.exit(1);
   }
 }
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 DXM Pulse API running on http://localhost:${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info('DXM Pulse API started', { port: PORT, env: process.env.NODE_ENV || 'development' });
+});
+
+// ── Global error handlers ───────────────────────────────────────────────────
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', { error: reason instanceof Error ? reason.message : String(reason) });
+  if (process.env.SENTRY_DSN) Sentry.captureException(reason);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(err);
+    Sentry.flush(2000).then(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
 });

@@ -11,6 +11,7 @@ import { ClientsPage } from '../pages/ClientsPage';
 import { ClientDetailPage } from '../pages/ClientDetailPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
 import { useAuth } from '../context/AuthContext';
 
 export const AppShell: React.FC = () => {
@@ -53,7 +54,7 @@ export const AppShell: React.FC = () => {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/billing" element={<BillingPage />} />
             <Route path="/billing" element={<BillingPage />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
       </main>

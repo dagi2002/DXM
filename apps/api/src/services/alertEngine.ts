@@ -14,6 +14,7 @@ import { sendTelegramAlert } from './telegram.js';
 import { nanoid } from 'nanoid';
 import { BILLING_FEATURES, planSupportsFeature } from '../lib/billing.js';
 import { sendCriticalAlertEmail } from '../lib/mailer.js';
+import { logger } from '../lib/logger.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ export async function runAlertChecks(workspaceId: string, siteId: string): Promi
       await createAlertIfNew(alert, workspace);
     }
   } catch (err) {
-    console.error('[alertEngine] Uncaught error:', err);
+    logger.error('Alert engine uncaught error', { service: 'alertEngine', error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -217,7 +218,7 @@ async function createAlertIfNew(alert: DetectedAlert, workspace: Workspace): Pro
         ? (db.prepare('SELECT domain FROM sites WHERE id = ?').get(alert.siteId) as { domain: string } | undefined)?.domain ?? null
         : null;
       sendCriticalAlertEmail(owner.email, alert.title, siteDomain)
-        .catch(err => console.error('[mailer] critical alert email failed:', err));
+        .catch(err => logger.error('Critical alert email failed', { service: 'alertEngine', error: err instanceof Error ? err.message : String(err) }));
     }
   }
 

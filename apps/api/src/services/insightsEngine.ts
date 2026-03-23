@@ -18,6 +18,7 @@
 
 import { db } from '../db/index.js';
 import { nanoid } from 'nanoid';
+import { logger } from '../lib/logger.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ export async function runInsightChecks(workspaceId: string, siteId: string): Pro
       }
     }
   } catch (err) {
-    console.error('[insightsEngine] Uncaught error:', err);
+    logger.error('Insights engine uncaught error', { service: 'insightsEngine', error: err instanceof Error ? err.message : String(err) });
   }
 }
 

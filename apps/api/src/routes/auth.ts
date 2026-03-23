@@ -10,6 +10,7 @@ import { authLimiter } from '../middleware/rateLimiter.js';
 import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/authSchemas.js';
 import { upsertWorkspaceFitProfile } from '../lib/workspaceSignals.js';
 import { sendMail, sendWelcomeEmail } from '../lib/mailer.js';
+import { logger } from '../lib/logger.js';
 
 const router = Router();
 
@@ -96,7 +97,7 @@ router.post('/signup', authLimiter, validate(signupSchema), async (req, res) => 
     db.prepare('UPDATE users SET refresh_token_hash = ? WHERE id = ?').run(refreshHash, userId);
     setTokenCookies(res, access, refresh);
 
-    sendWelcomeEmail(email, name).catch(err => console.error('[mailer] welcome email failed:', err));
+    sendWelcomeEmail(email, name).catch(err => logger.error('Welcome email failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) }));
 
     if (
       typeof agencyType !== 'undefined' ||
@@ -120,7 +121,7 @@ router.post('/signup', authLimiter, validate(signupSchema), async (req, res) => 
       workspace: { id: workspaceId, name: workspaceName, plan: 'free', billingStatus: 'active' },
     });
   } catch (err) {
-    console.error('[auth/signup]', err);
+    logger.error('Signup failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: 'Server error during signup' });
   }
 });
@@ -155,7 +156,7 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res) => {
       } : null,
     });
   } catch (err) {
-    console.error('[auth/login]', err);
+    logger.error('Login failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: 'Server error during login' });
   }
 });
@@ -215,7 +216,7 @@ router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), asy
 
     return res.json({ ok: true });
   } catch (err) {
-    console.error('[auth/forgot-password]', err);
+    logger.error('Forgot password failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: 'Server error' });
   }
 });
@@ -246,7 +247,7 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), async
     clearTokenCookies(res);
     return res.json({ ok: true });
   } catch (err) {
-    console.error('[auth/reset-password]', err);
+    logger.error('Reset password failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: 'Server error' });
   }
 });

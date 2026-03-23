@@ -7,6 +7,7 @@ import type {
 import { db } from '../db/index.js';
 import { recordJourneyMilestone } from '../lib/workspaceSignals.js';
 import { sendSiteVerifiedEmail } from '../lib/mailer.js';
+import { logger } from '../lib/logger.js';
 
 export interface CollectionSite {
   id: string;
@@ -295,7 +296,7 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
 
   if (siteVerifiedEmail) {
     sendSiteVerifiedEmail(siteVerifiedEmail.email, siteVerifiedEmail.domain)
-      .catch(err => console.error('[mailer] site-verified email failed:', err));
+      .catch(err => logger.error('Site-verified email failed', { service: 'sessionTracking', error: err instanceof Error ? err.message : String(err) }));
   }
 
   if (payload.events.length > 0) {

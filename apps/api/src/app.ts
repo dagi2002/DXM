@@ -1,8 +1,13 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
 import { apiLimiter } from './middleware/rateLimiter.js';
+import { securityHeaders } from './middleware/securityHeaders.js';
+import { requestId } from './middleware/requestId.js';
+import { requestLogger } from './middleware/requestLogger.js';
+import { db } from './db/index.js';
+import { logger } from './lib/logger.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -50,10 +55,22 @@ const dashboardCors = cors({
 app.use('/billing/chapa/webhook', express.raw({ type: 'application/json', limit: '64kb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(requestId);
+app.use(requestLogger);
+app.use(securityHeaders);
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+app.get('/health', (_req, res) => {
+  let dbOk = false;
+  try { db.prepare('SELECT 1').get(); dbOk = true; } catch {}
+  const status = dbOk ? 'ok' : 'degraded';
+  res.status(dbOk ? 200 : 503).json({
+    status,
+    db: dbOk ? 'ok' : 'error',
+    uptime: process.uptime(),
+    ts: new Date().toISOString(),
+  });
+});
 
 app.options('/collect', publicIngestCors);
 app.options('/collect-replay/replay', publicIngestCors);
@@ -84,10 +101,19 @@ app.use('/funnels', funnelsRoutes);
 app.use('/audit', auditRoutes);
 app.use('/digest', digestRoutes);
 
+// ── Sentry error handler (captures before custom handler swallows) ───────────
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 // ── Fallback error handler ───────────────────────────────────────────────────
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[api error]', err);
-  res.status(500).json({ error: 'Internal server error' });
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error('Unhandled error', {
+    message: err?.message,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err?.stack,
+    requestId: req.id,
+  });
+  res.status(500).json({ error: 'Something went wrong', requestId: req.id });
 });
 
 export default app;

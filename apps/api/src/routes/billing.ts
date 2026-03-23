@@ -21,6 +21,7 @@ import {
   reconcileUpgradeRequests,
 }                                from '../lib/workspaceSignals.js';
 import { db }                    from '../db/index.js';
+import { logger }                from '../lib/logger.js';
 
 const router = Router();
 
@@ -150,13 +151,13 @@ router.post('/chapa/initiate', requireAuth, validate(chapaInitiateSchema), async
       }),
     });
   } catch (err) {
-    console.error('[billing] Chapa API unreachable:', err);
+    logger.error('Chapa API unreachable', { route: 'billing', error: err instanceof Error ? err.message : String(err) });
     return res.status(502).json({ error: 'Payment provider unreachable' });
   }
 
   if (!chapaResp.ok) {
     const body = await chapaResp.text();
-    console.error('[billing] Chapa init error:', chapaResp.status, body);
+    logger.error('Chapa init error', { route: 'billing', status: chapaResp.status, body });
     return res.status(502).json({ error: 'Payment provider returned an error' });
   }
 
@@ -178,13 +179,13 @@ router.post('/chapa/initiate', requireAuth, validate(chapaInitiateSchema), async
 router.post('/chapa/webhook', (req, res) => {
   const CHAPA_WEBHOOK_SECRET = process.env.CHAPA_WEBHOOK_SECRET?.trim();
   if (!CHAPA_WEBHOOK_SECRET) {
-    console.error('[billing] CHAPA_WEBHOOK_SECRET not configured');
+    logger.error('CHAPA_WEBHOOK_SECRET not configured', { route: 'billing' });
     return res.sendStatus(500);
   }
 
   // express.raw() is mounted first in app.ts for this exact path — req.body is a Buffer here
   if (!Buffer.isBuffer(req.body)) {
-    console.error('[billing] Webhook body is not a Buffer — check app.ts middleware order');
+    logger.error('Webhook body is not a Buffer — check app.ts middleware order', { route: 'billing' });
     return res.sendStatus(400);
   }
 
@@ -197,7 +198,7 @@ router.post('/chapa/webhook', (req, res) => {
 
   // Both headers present but different → possible injection/tampering, reject
   if (rawChapa && rawXChapa && rawChapa !== rawXChapa) {
-    console.warn('[billing] Webhook: conflicting chapa-signature and x-chapa-signature headers');
+    logger.warn('Webhook conflicting signature headers', { route: 'billing' });
     return res.sendStatus(401);
   }
 
@@ -208,7 +209,7 @@ router.post('/chapa/webhook', (req, res) => {
   const expectedBuf = Buffer.from(expected, 'utf8');
   const providedBuf = Buffer.from(rawSig,   'utf8');
   if (expectedBuf.length !== providedBuf.length || !timingSafeEqual(expectedBuf, providedBuf)) {
-    console.warn('[billing] Webhook HMAC mismatch — possible spoofed request');
+    logger.warn('Webhook HMAC mismatch — possible spoofed request', { route: 'billing' });
     return res.sendStatus(401);
   }
 
@@ -226,7 +227,7 @@ router.post('/chapa/webhook', (req, res) => {
   }
 
   if (typeof tx_ref !== 'string' || !tx_ref) {
-    console.warn('[billing] Webhook: missing or invalid tx_ref');
+    logger.warn('Webhook missing or invalid tx_ref', { route: 'billing' });
     return res.sendStatus(400);
   }
 
@@ -237,7 +238,7 @@ router.post('/chapa/webhook', (req, res) => {
     .get(tx_ref);
 
   if (!upgradeRow) {
-    console.warn('[billing] Webhook: tx_ref not found in upgrade_requests:', tx_ref);
+    logger.warn('Webhook tx_ref not found in upgrade_requests', { route: 'billing', txRef: tx_ref });
     return res.sendStatus(200); // unknown ref — return 200 to stop Chapa retries
   }
 
@@ -248,9 +249,9 @@ router.post('/chapa/webhook', (req, res) => {
   if (planRank(currentPlan) < planRank(targetPlan)) {
     activateWorkspacePlan(upgradeRow.workspace_id, targetPlan);
     reconcileUpgradeRequests(upgradeRow.workspace_id);
-    console.info(`[billing] Chapa webhook activated workspace=${upgradeRow.workspace_id} plan=${targetPlan}`);
+    logger.info('Chapa webhook activated plan', { route: 'billing', workspaceId: upgradeRow.workspace_id, plan: targetPlan });
   } else {
-    console.info(`[billing] Chapa webhook: workspace=${upgradeRow.workspace_id} already on ${currentPlan} — no-op`);
+    logger.info('Chapa webhook no-op — already on plan', { route: 'billing', workspaceId: upgradeRow.workspace_id, currentPlan });
   }
 
   return res.sendStatus(200);

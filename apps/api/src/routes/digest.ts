@@ -6,6 +6,7 @@
 import { timingSafeEqual } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { db } from '../db/index.js';
+import { logger } from '../lib/logger.js';
 import { compileDigest, formatDigestEN, formatDigestAM } from '../services/weeklyDigest.js';
 import { BILLING_FEATURES, planSupportsFeature } from '../lib/billing.js';
 
@@ -66,12 +67,12 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
 
     if (!resp.ok) {
       const body = await resp.text();
-      console.warn(`[digest] Telegram delivery failed (${resp.status}): ${body}`);
+      logger.warn('Telegram delivery failed', { route: 'digest', status: resp.status, body });
       return false;
     }
     return true;
   } catch (err) {
-    console.error('[digest] Telegram network error:', err);
+    logger.error('Telegram network error', { route: 'digest', error: err instanceof Error ? err.message : String(err) });
     return false;
   }
 }
@@ -104,7 +105,7 @@ router.post('/send-all', async (req: Request, res: Response) => {
       planSupportsFeature(workspace.plan, BILLING_FEATURES.digest),
     );
 
-    console.info(`[digest] Starting digest run for ${eligibleWorkspaces.length} eligible workspaces`);
+    logger.info('Starting digest run', { route: 'digest', eligible: eligibleWorkspaces.length });
 
     let sent = 0;
     let failed = 0;
@@ -121,14 +122,14 @@ router.post('/send-all', async (req: Request, res: Response) => {
       }
 
       failed++;
-      console.warn(`[digest] Delivery failed for workspace ${ws.id}`);
+      logger.warn('Digest delivery failed', { route: 'digest', workspaceId: ws.id });
     }
 
-    console.info(`[digest] Completed digest run: eligible=${eligibleWorkspaces.length} sent=${sent} failed=${failed}`);
+    logger.info('Digest run completed', { route: 'digest', eligible: eligibleWorkspaces.length, sent, failed });
 
     return res.json({ sent });
   } catch (err) {
-    console.error('[digest] Error sending digests:', err);
+    logger.error('Digest run failed', { route: 'digest', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Failed to send digests' });
   }
 });
