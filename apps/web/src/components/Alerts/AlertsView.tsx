@@ -257,84 +257,74 @@ export const AlertsView: React.FC = () => {
   /* ── Render ────────────────────────────────────────────────────── */
 
   return (
-    <div className="p-6">
+    <div className="mx-auto max-w-7xl p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Alerts</h1>
-          <p className="text-gray-600">Stay ahead of client issues before they become uncomfortable status-call surprises.</p>
+      <div className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-500">Alert feed</p>
+            <h1 className="mt-1.5 text-2xl font-bold text-surface-900">Client alerts</h1>
+            <p className="mt-2 text-sm leading-6 text-surface-600">Stay ahead of client issues before they become uncomfortable status-call surprises.</p>
+          </div>
+          {stats.active > 0 && (
+            <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-semibold text-red-700">{stats.active} active {stats.active === 1 ? 'alert' : 'alerts'}</span>
+            </div>
+          )}
         </div>
-        <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-medium text-surface-600">
-          Agency alert feed
-        </span>
+
+        {/* Stats row */}
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Total', value: stats.total, tone: 'text-primary-700 bg-primary-50' },
+            { label: 'Active', value: stats.active, tone: 'text-amber-700 bg-amber-50' },
+            { label: 'Critical', value: alerts.filter(a => a.severity === 'critical').length, tone: 'text-red-700 bg-red-50' },
+            { label: 'Resolved', value: stats.resolved, tone: 'text-emerald-700 bg-emerald-50' },
+          ].map(({ label, value, tone }) => (
+            <div key={label} className={`rounded-2xl p-4 ${tone}`}>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] opacity-70">{label}</p>
+              <p className="mt-2 text-2xl font-bold text-surface-900">{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {/* Resolve toast */}
       {resolveToast && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 animate-in fade-in">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
           <CheckCircle className="h-4 w-4" />
-          Alert resolved
+          Alert resolved — good work staying ahead of it.
         </div>
       )}
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-primary-600">{stats.total}</div>
-          <div className="text-sm text-gray-600">Total Alerts</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-orange-600">{stats.active}</div>
-          <div className="text-sm text-gray-600">Active</div>
-          {stats.active > 0 && (
-            <div className="mt-1 flex items-center justify-center gap-2 text-xs text-gray-500">
-              {stats.critical > 0 && <span className="text-red-600 font-medium">{stats.critical} critical</span>}
-              {stats.high > 0 && <span className="text-orange-600 font-medium">{stats.high} high</span>}
-              {stats.medium > 0 && <span className="text-yellow-600 font-medium">{stats.medium} medium</span>}
-            </div>
-          )}
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {alerts.filter(a => a.severity === 'critical').length}
-          </div>
-          <div className="text-sm text-gray-600">Critical</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.resolved}</div>
-          <div className="text-sm text-gray-600">Resolved</div>
-        </div>
-      </div>
-
-      {/* Filter bar: tabs + site dropdown */}
-      <div className="bg-white border border-gray-200 rounded-lg mb-6">
-        <div className="flex flex-wrap items-center justify-between border-b border-gray-200">
+      {/* Filter bar */}
+      <div className="rounded-[28px] border border-surface-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between border-b border-surface-100 px-2">
           <div className="flex">
             {[
-              { id: 'all', label: 'All Alerts', count: alerts.length },
+              { id: 'all', label: 'All alerts', count: alerts.length },
               { id: 'active', label: 'Active', count: alerts.filter(a => !a.resolved).length },
               { id: 'resolved', label: 'Resolved', count: alerts.filter(a => a.resolved).length },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setFilter(tab.id)}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors ${
                   filter === tab.id
-                    ? 'text-primary-600 border-b-2 border-primary-500 bg-primary-50'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'text-primary-600 border-b-2 border-primary-500'
+                    : 'text-surface-500 hover:text-surface-900'
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  filter === tab.id
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600'
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  filter === tab.id ? 'bg-primary-100 text-primary-700' : 'bg-surface-100 text-surface-600'
                 }`}>
                   {tab.count}
                 </span>
@@ -342,13 +332,12 @@ export const AlertsView: React.FC = () => {
             ))}
           </div>
 
-          {/* Site filter */}
           {siteOptions.length > 0 && (
             <div className="px-4 py-2">
               <select
                 value={siteFilter}
                 onChange={(e) => setSiteFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm"
+                className="rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-sm text-surface-700"
               >
                 <option value="all">All sites</option>
                 {siteOptions.map(site => (
@@ -358,24 +347,29 @@ export const AlertsView: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Alerts list */}
-      <div className="space-y-4">
-        {isLoading && (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading alerts...
-          </div>
-        )}
+        {/* Alerts list */}
+        <div className="divide-y divide-surface-100">
+          {isLoading && (
+            <div className="flex items-center gap-3 p-6 text-sm text-surface-500">
+              <Loader2 className="h-4 w-4 animate-spin text-primary-500" />
+              Loading alerts…
+            </div>
+          )}
 
-        {filteredAlerts.map((alert) => (
-          <div
-            key={alert.id}
-            className={`bg-white border rounded-lg p-6 transition-all hover:shadow-md ${
-              alert.resolved ? 'opacity-75' : ''
-            } ${getSeverityColor(alert.severity)}`}
-          >
+          {!isLoading && filteredAlerts.length === 0 && (
+            <div className="p-10 text-center">
+              <CheckCircle className="mx-auto h-8 w-8 text-emerald-400" />
+              <p className="mt-3 text-sm font-medium text-surface-600">No alerts match the current filter.</p>
+              <p className="mt-1 text-xs text-surface-400">The portfolio looks quiet from here.</p>
+            </div>
+          )}
+
+          {filteredAlerts.map((alert) => (
+            <div
+              key={alert.id}
+              className={`p-5 transition-colors hover:bg-surface-50 ${alert.resolved ? 'opacity-60' : ''}`}
+            >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start space-x-4 min-w-0 flex-1">
                 <div className={`flex-shrink-0 p-2 rounded-lg ${getSeverityColor(alert.severity)}`}>
@@ -564,38 +558,8 @@ export const AlertsView: React.FC = () => {
             )}
           </div>
         ))}
-      </div>
-
-      {/* Empty states */}
-      {!isLoading && filteredAlerts.length === 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-          {filter === 'active' ? (
-            <>
-              <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No active alerts</h3>
-              <p className="text-gray-600">
-                Your sites are running clean. Alerts will appear here when the engine detects issues.
-              </p>
-            </>
-          ) : filter === 'resolved' ? (
-            <>
-              <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No resolved alerts</h3>
-              <p className="text-gray-600">
-                Resolved alerts will appear here once you start resolving active alerts.
-              </p>
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No alerts yet</h3>
-              <p className="text-gray-600">
-                Alerts will appear here when the engine detects issues like rage clicks, slow page loads, or high bounce rates on your client sites.
-              </p>
-            </>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, BarChart3 } from 'lucide-react';
+import { Settings, BarChart3, Zap } from 'lucide-react';
 import { SiteHealthScore } from './SiteHealthScore';
 import { ProblemsSection } from './ProblemsSection';
 import { RecommendedActions } from './RecommendedActions';
@@ -81,17 +81,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const completionData = useMemo(() => buildCompletionActivity(sessions), [sessions]);
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="mx-auto max-w-7xl p-4 md:p-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-surface-900">{t('dashboard.title')}</h1>
-          <p className="text-surface-500 text-sm">{t('dashboard.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-surface-500">
-            <div className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-pulse" />
-            <span className="hidden sm:inline">Live</span>
+      <div className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-100">
+                <Zap className="h-4 w-4 text-primary-700" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Live</span>
+              </div>
+            </div>
+            <h1 className="mt-3 text-2xl font-bold text-surface-900">{t('dashboard.title')}</h1>
+            <p className="mt-1 text-sm text-surface-500">{t('dashboard.subtitle')}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-2.5 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-surface-500">Today's sessions</p>
+              <p className="mt-1 text-xl font-bold text-surface-900">
+                {sessions.filter(s => {
+                  const d = new Date(s.startedAt);
+                  const now = new Date();
+                  return d.toDateString() === now.toDateString();
+                }).length}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-2.5 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-surface-500">Active alerts</p>
+              <p className={`mt-1 text-xl font-bold ${alerts.filter(a => !a.resolved).length > 0 ? 'text-red-600' : 'text-surface-900'}`}>
+                {alerts.filter(a => !a.resolved).length}
+              </p>
+            </div>
           </div>
         </div>
       </div>

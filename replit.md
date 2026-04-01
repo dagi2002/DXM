@@ -61,13 +61,27 @@ Optional:
 - `apps/api/src/db/schema.sql` — SQLite schema
 - `start.sh` — Combined startup script
 
+## Design System
+
+- `surface-*` color scale (50-950) for backgrounds/text
+- `primary-*` green scale (50-950) for CTAs and active states
+- `accent-*` amber scale for warnings/secondary highlights
+- `rounded-[28px]` / `rounded-2xl` / `rounded-xl` card hierarchy
+- `shadow-sm` on cards, `shadow-md` on hover
+- Split-screen auth pages (dark green left panel + clean right form)
+- Uniform page pattern: `mx-auto max-w-7xl p-6 md:p-8 space-y-6`
+
 ## Features
 
-- Public landing page with ETB pricing and site audit
+- Public landing page with ETB pricing, site audit, and proper footer
+- Premium split-screen login and signup with glassmorphism left panel
 - Email/password auth with workspace isolation
-- Client site management with install snippets
+- Client site management with install snippets (HTML/WordPress/React)
 - Session replay, heatmaps, funnels, user flow
-- Alerts with Telegram delivery
-- Weekly digest reports
+- Alerts view with polished stats cards and divide-based list
+- Weekly digest reports with AI narrative
 - Demo mode for offline walkthroughs
-- Agency-first overview dashboard
+- Agency-first portfolio overview with AI Portfolio Brief panel
+- Rule-based AI engine in `apps/api/src/services/ai/overviewBrief.ts`
+- Navigation redesigned: 64-wide sidebar, AI Features section with NEW badge
+- Dashboard upgraded: live stats header, polished MetricCard with tone bars
