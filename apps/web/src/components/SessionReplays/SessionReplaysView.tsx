@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Play, MonitorPlay } from 'lucide-react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import { ReplayPlayer } from './ReplayPlayer';
@@ -10,35 +11,42 @@ import { fetchJson } from '../../lib/api';
 import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
 import { markJourneyMilestone } from '../../lib/workspaceSignals';
 
-// Toggle between rrweb DOM replay and the legacy event-dot view
+// Toggle between rrweb DOM replay and the event timeline view
 const SessionPlayerWithToggle: React.FC<{
   session: SessionRecordingDetail;
   insightContext?: { title: string; severity: 'info' | 'warning' | 'critical' } | null;
 }> = ({ session, insightContext }) => {
   const [mode, setMode] = useState<'rrweb' | 'events'>('rrweb');
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+    <div className="space-y-3">
+      {/* Mode toggle — styled to match the rest of the app */}
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-2xl border border-surface-200 bg-surface-50 p-1 gap-1">
           <button
             onClick={() => setMode('rrweb')}
-            className={`px-4 py-1.5 font-medium transition-colors ${
-              mode === 'rrweb' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+              mode === 'rrweb'
+                ? 'bg-white text-primary-700 shadow-sm border border-surface-200'
+                : 'text-surface-500 hover:text-surface-800'
             }`}
           >
+            <MonitorPlay className="h-3.5 w-3.5" />
             DOM Replay
           </button>
           <button
             onClick={() => setMode('events')}
-            className={`px-4 py-1.5 font-medium transition-colors ${
-              mode === 'events' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+              mode === 'events'
+                ? 'bg-white text-primary-700 shadow-sm border border-surface-200'
+                : 'text-surface-500 hover:text-surface-800'
             }`}
           >
+            <Play className="h-3.5 w-3.5" />
             Event Timeline
           </button>
         </div>
-        <span className="text-xs text-gray-400">
-          {mode === 'rrweb' ? 'Full DOM replay via rrweb' : 'Click & scroll event overlay'}
+        <span className="text-xs text-surface-400">
+          {mode === 'rrweb' ? 'Full page reconstruction via rrweb' : 'Click, scroll & navigation events'}
         </span>
       </div>
       {mode === 'rrweb' ? (
@@ -174,15 +182,30 @@ export const SessionReplaysView: React.FC = () => {
   }, [canReplay, selectedSessionId, selectedSessionUpdatedAt]);
 
   return (
-    <div className="p-6 h-full">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Session Replays</h1>
-          <p className="text-gray-600">Use replay to explain what happened on client sites, not just what the metrics say.</p>
+    <div className="mx-auto max-w-7xl p-4 md:p-6 space-y-5">
+      {/* Header */}
+      <div className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-100">
+                <MonitorPlay className="h-4 w-4 text-primary-700" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Session Replays</span>
+            </div>
+            <h1 className="text-2xl font-bold text-surface-900">Watch how visitors experience your clients' sites</h1>
+            <p className="mt-1 text-sm text-surface-500">Use replay to explain what happened — not just what the metrics say.</p>
+          </div>
+          {sessions.length > 0 && (
+            <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-2.5 text-center shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-surface-500">Recorded sessions</p>
+              <p className="mt-1 text-xl font-bold text-surface-900">{sessions.length}</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <SessionList
             sessions={sessions}
@@ -207,28 +230,33 @@ export const SessionReplaysView: React.FC = () => {
           ) : selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
             <SessionPlayerWithToggle session={selectedSessionDetail} insightContext={insightContext} />
           ) : selectedSession && isDetailLoading ? (
-            <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading session detail</h3>
-              <p className="text-gray-600 max-w-md">
-                Pulling the full event timeline for this session so replay and event playback stay in sync.
+            <div className="rounded-2xl border border-surface-200 bg-white p-12 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-50">
+                <span className="relative flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-primary-500" />
+                </span>
+              </div>
+              <h3 className="text-base font-semibold text-surface-900 mb-1">Loading session detail</h3>
+              <p className="text-sm text-surface-500 max-w-sm">
+                Pulling the full event timeline so DOM replay and event playback stay in sync.
               </p>
             </div>
           ) : selectedSession && detailError ? (
-            <div className="bg-white rounded-lg border border-red-200 p-12 flex flex-col items-center justify-center text-center">
-              <h3 className="text-lg font-semibold text-red-700 mb-2">Session detail unavailable</h3>
-              <p className="text-red-600 max-w-md">{detailError}</p>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-12 flex flex-col items-center justify-center text-center shadow-sm">
+              <h3 className="text-base font-semibold text-red-700 mb-1">Session detail unavailable</h3>
+              <p className="text-sm text-red-600 max-w-sm">{detailError}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <span className="text-2xl">🎬</span>
+            <div className="rounded-2xl border border-surface-200 bg-white p-12 flex flex-col items-center justify-center text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50">
+                <MonitorPlay className="h-7 w-7 text-primary-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-base font-semibold text-surface-900 mb-1">
                 Select a session to replay
               </h3>
-              <p className="text-gray-600 max-w-md">
-                Choose a session from the list to watch how users interacted with your website.
-                See their clicks, scrolls, and journey through your pages.
+              <p className="text-sm text-surface-500 max-w-sm">
+                Choose a session from the list to watch exactly how a visitor moved through the site — clicks, scrolls, and page navigation included.
               </p>
             </div>
           )}

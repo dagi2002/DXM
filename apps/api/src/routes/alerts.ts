@@ -107,12 +107,12 @@ router.get('/', (req, res) => {
   return res.json(rows.map(toAlertListItem));
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const row = getAlertRow(req.user!.workspaceId, req.params.id);
   if (!row) return res.status(404).json({ error: 'Alert not found' });
 
   const detail: AlertDetail = { ...toAlertListItem(row) };
-  const ai = getAlertAiBriefOrNull(req.user!.workspaceId, detail);
+  const ai = await getAlertAiBriefOrNull(req.user!.workspaceId, detail);
   return res.json(ai ? { ...detail, ai } : detail);
 });
 

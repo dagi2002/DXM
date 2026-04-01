@@ -20,6 +20,7 @@ import {
   SITE_AI_TTL_HOURS,
   SITE_AI_VERSION,
   isAiEnabled,
+  isLlmEnabled,
 } from './config.js';
 import { addHours, getAiArtifact, hashAiInput, isArtifactFresh, upsertAiArtifact } from './artifactStore.js';
 import { buildAlertAiBrief } from './alertBrief.js';
@@ -30,6 +31,7 @@ import { buildOverviewAiBrief } from './overviewBrief.js';
 import { buildOverviewAiContext, type OverviewAiContext } from './overviewContext.js';
 import { buildSiteAiBrief } from './siteBrief.js';
 import { buildSiteAiContext, type SiteAiContext } from './siteContext.js';
+import { generateBriefWithLLM } from './llm.js';
 
 const OVERVIEW_ARTIFACT_KIND = 'overview_brief';
 const OVERVIEW_ENTITY_TYPE = 'workspace';
@@ -40,10 +42,79 @@ const ALERT_ENTITY_TYPE = 'alert';
 const FUNNEL_ARTIFACT_KIND = 'funnel_brief';
 const FUNNEL_ENTITY_TYPE = 'funnel';
 
-export const getOverviewAiBriefOrNull = (
+// ─── Schema descriptions passed to the LLM ──────────────────────────────────
+
+const OVERVIEW_BRIEF_SCHEMA = `{
+  "period": "7d",
+  "mode": "llm",
+  "generatedAt": "<ISO 8601 timestamp>",
+  "headline": "<one sentence, max 12 words, describing the portfolio state right now>",
+  "summary": "<1-2 sentences of operational intelligence>",
+  "topRisk": "<the single biggest risk signal, or null if none>",
+  "topOpportunity": "<the single biggest opportunity, or null if none>",
+  "recommendations": [
+    { "id": "string", "title": "string", "detail": "string", "href": "/alerts", "priority": "high|medium|low", "rationale": "string" }
+  ],
+  "evidence": [
+    { "id": "string", "label": "string", "value": "string", "tone": "positive|warning|neutral" }
+  ]
+}`;
+
+const SITE_BRIEF_SCHEMA = `{
+  "period": "7d",
+  "mode": "llm",
+  "generatedAt": "<ISO 8601 timestamp>",
+  "headline": "<one sentence, max 12 words, describing this site's state>",
+  "summary": "<1-2 sentences of operational intelligence for this site>",
+  "topRisk": "<the single biggest risk signal for this site, or null>",
+  "topOpportunity": "<the single biggest opportunity for this site, or null>",
+  "recommendations": [
+    { "id": "string", "title": "string", "detail": "string", "href": "/sessions", "priority": "high|medium|low", "rationale": "string" }
+  ],
+  "evidence": [
+    { "id": "string", "label": "string", "value": "string", "tone": "positive|warning|neutral" }
+  ]
+}`;
+
+const ALERT_BRIEF_SCHEMA = `{
+  "period": "current",
+  "mode": "llm",
+  "generatedAt": "<ISO 8601 timestamp>",
+  "state": "active|resolved",
+  "headline": "<one sentence explaining what this alert means>",
+  "summary": "<1-2 sentences of context and impact>",
+  "whyFired": "<why this alert was triggered — specific and technical>",
+  "impact": "<what effect this has on the site's visitors or conversion>",
+  "recommendations": [
+    { "id": "string", "title": "string", "detail": "string", "href": "/sessions", "priority": "high|medium|low", "rationale": "string" }
+  ],
+  "evidence": [
+    { "id": "string", "label": "string", "value": "string", "tone": "positive|warning|neutral" }
+  ]
+}`;
+
+const FUNNEL_BRIEF_SCHEMA = `{
+  "period": "<the funnel analysis period>",
+  "mode": "llm",
+  "generatedAt": "<ISO 8601 timestamp>",
+  "headline": "<one sentence describing the funnel performance>",
+  "summary": "<1-2 sentences of insight about conversion and drop-off>",
+  "biggestDropoff": "<the step with the biggest drop-off, or null>",
+  "likelyReason": "<why that drop-off is happening, or null>",
+  "recommendations": [
+    { "id": "string", "title": "string", "detail": "string", "href": "/analytics/funnels", "priority": "high|medium|low", "rationale": "string" }
+  ],
+  "evidence": [
+    { "id": "string", "label": "string", "value": "string", "tone": "positive|warning|neutral" }
+  ]
+}`;
+
+// ─── Exported async brief functions ─────────────────────────────────────────
+
+export const getOverviewAiBriefOrNull = async (
   workspaceId: string,
   overview: PortfolioOverview,
-): OverviewAiBrief | null => {
+): Promise<OverviewAiBrief | null> => {
   if (!isAiEnabled()) return null;
 
   try {
@@ -70,11 +141,24 @@ export const getOverviewAiBriefOrNull = (
       return cachedArtifact.output;
     }
 
-    // `building` is intentionally reserved for future async refresh flows.
-    // Phase 1 still behaves synchronously and only reuses fully ready artifacts.
-
     const now = new Date();
-    const brief = buildOverviewAiBrief(context, now.toISOString());
+
+    // Try LLM first; fall back to deterministic on failure or when key is absent
+    let brief: OverviewAiBrief;
+    let generatorType: 'llm' | 'deterministic';
+
+    const llmBrief = isLlmEnabled()
+      ? await generateBriefWithLLM<OverviewAiBrief>(OVERVIEW_BRIEF_SCHEMA, context)
+      : null;
+
+    if (llmBrief) {
+      llmBrief.generatedAt = now.toISOString();
+      brief = llmBrief;
+      generatorType = 'llm';
+    } else {
+      brief = buildOverviewAiBrief(context, now.toISOString());
+      generatorType = 'deterministic';
+    }
 
     upsertAiArtifact({
       workspaceId,
@@ -84,7 +168,7 @@ export const getOverviewAiBriefOrNull = (
       artifactKind: OVERVIEW_ARTIFACT_KIND,
       periodKey: OVERVIEW_AI_PERIOD,
       status: 'ready',
-      generatorType: 'deterministic',
+      generatorType,
       inputHash,
       evidence: context,
       output: brief,
@@ -98,10 +182,10 @@ export const getOverviewAiBriefOrNull = (
   }
 };
 
-export const getSiteAiBriefOrNull = (
+export const getSiteAiBriefOrNull = async (
   workspaceId: string,
   detail: ClientSiteDetail,
-): SiteAiBrief | null => {
+): Promise<SiteAiBrief | null> => {
   if (!isAiEnabled()) return null;
 
   try {
@@ -130,7 +214,22 @@ export const getSiteAiBriefOrNull = (
     }
 
     const now = new Date();
-    const brief = buildSiteAiBrief(context, now.toISOString());
+
+    let brief: SiteAiBrief;
+    let generatorType: 'llm' | 'deterministic';
+
+    const llmBrief = isLlmEnabled()
+      ? await generateBriefWithLLM<SiteAiBrief>(SITE_BRIEF_SCHEMA, context)
+      : null;
+
+    if (llmBrief) {
+      llmBrief.generatedAt = now.toISOString();
+      brief = llmBrief;
+      generatorType = 'llm';
+    } else {
+      brief = buildSiteAiBrief(context, now.toISOString());
+      generatorType = 'deterministic';
+    }
 
     upsertAiArtifact({
       workspaceId,
@@ -140,7 +239,7 @@ export const getSiteAiBriefOrNull = (
       artifactKind: SITE_ARTIFACT_KIND,
       periodKey: SITE_AI_PERIOD,
       status: 'ready',
-      generatorType: 'deterministic',
+      generatorType,
       inputHash,
       evidence: context,
       output: brief,
@@ -154,10 +253,10 @@ export const getSiteAiBriefOrNull = (
   }
 };
 
-export const getAlertAiBriefOrNull = (
+export const getAlertAiBriefOrNull = async (
   workspaceId: string,
   alert: AlertDetail,
-): AlertAiBrief | null => {
+): Promise<AlertAiBrief | null> => {
   if (!isAiEnabled()) return null;
 
   try {
@@ -186,7 +285,22 @@ export const getAlertAiBriefOrNull = (
     }
 
     const now = new Date();
-    const brief = buildAlertAiBrief(context, now.toISOString());
+
+    let brief: AlertAiBrief;
+    let generatorType: 'llm' | 'deterministic';
+
+    const llmBrief = isLlmEnabled()
+      ? await generateBriefWithLLM<AlertAiBrief>(ALERT_BRIEF_SCHEMA, context)
+      : null;
+
+    if (llmBrief) {
+      llmBrief.generatedAt = now.toISOString();
+      brief = llmBrief;
+      generatorType = 'llm';
+    } else {
+      brief = buildAlertAiBrief(context, now.toISOString());
+      generatorType = 'deterministic';
+    }
 
     upsertAiArtifact({
       workspaceId,
@@ -196,7 +310,7 @@ export const getAlertAiBriefOrNull = (
       artifactKind: ALERT_ARTIFACT_KIND,
       periodKey: ALERT_AI_PERIOD,
       status: 'ready',
-      generatorType: 'deterministic',
+      generatorType,
       inputHash,
       evidence: context,
       output: brief,
@@ -210,11 +324,11 @@ export const getAlertAiBriefOrNull = (
   }
 };
 
-export const getFunnelAiBriefOrNull = (
+export const getFunnelAiBriefOrNull = async (
   workspaceId: string,
   analysis: FunnelAnalysisDetail,
   siteId: string | null,
-): FunnelAiBrief | null => {
+): Promise<FunnelAiBrief | null> => {
   if (!isAiEnabled()) return null;
 
   try {
@@ -243,7 +357,22 @@ export const getFunnelAiBriefOrNull = (
     }
 
     const now = new Date();
-    const brief = buildFunnelAiBrief(context, now.toISOString());
+
+    let brief: FunnelAiBrief;
+    let generatorType: 'llm' | 'deterministic';
+
+    const llmBrief = isLlmEnabled()
+      ? await generateBriefWithLLM<FunnelAiBrief>(FUNNEL_BRIEF_SCHEMA, context)
+      : null;
+
+    if (llmBrief) {
+      llmBrief.generatedAt = now.toISOString();
+      brief = llmBrief;
+      generatorType = 'llm';
+    } else {
+      brief = buildFunnelAiBrief(context, now.toISOString());
+      generatorType = 'deterministic';
+    }
 
     upsertAiArtifact({
       workspaceId,
@@ -253,7 +382,7 @@ export const getFunnelAiBriefOrNull = (
       artifactKind: FUNNEL_ARTIFACT_KIND,
       periodKey: analysis.period,
       status: 'ready',
-      generatorType: 'deterministic',
+      generatorType,
       inputHash,
       evidence: context,
       output: brief,

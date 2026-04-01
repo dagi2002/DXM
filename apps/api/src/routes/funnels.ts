@@ -180,7 +180,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // GET /funnels/:id/analysis — run funnel analysis against real session events
-router.get('/:id/analysis', (req, res) => {
+router.get('/:id/analysis', async (req, res) => {
   const workspaceId = req.user!.workspaceId;
   const funnel = getStoredFunnel(workspaceId, req.params.id);
 
@@ -188,7 +188,7 @@ router.get('/:id/analysis', (req, res) => {
 
   const period = normalizePeriod(req.query.period as string | undefined);
   const analysis = buildFunnelAnalysisDetail(workspaceId, funnel, period);
-  const ai = getFunnelAiBriefOrNull(workspaceId, analysis, funnel.site_id);
+  const ai = await getFunnelAiBriefOrNull(workspaceId, analysis, funnel.site_id);
 
   return res.json(ai ? { ...analysis, ai } : analysis);
 });

@@ -11,6 +11,8 @@ import {
   AlertCircle,
   RotateCcw,
   ExternalLink,
+  Key,
+  Info,
 } from 'lucide-react';
 import { getApiUrl } from '../lib/api';
 import { UpgradeGate } from '../components/UpgradeGate';
@@ -275,40 +277,43 @@ export const OnboardingPage: React.FC = () => {
             <div className="rounded-2xl border border-surface-200 bg-white shadow-sm overflow-hidden">
               {/* Header */}
               <div className="border-b border-surface-200 px-8 py-6">
-                <h2 className="text-xl font-bold text-surface-900">Install the tracking snippet</h2>
-                <p className="mt-1.5 text-sm text-surface-500">
-                  Add the snippet to <strong className="text-surface-700">{site.siteKey}</strong> and we'll automatically confirm when traffic comes through.
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+                    <Code2 className="h-4 w-4 text-primary-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-surface-900">Install the tracking snippet</h2>
+                </div>
+                <p className="mt-1 text-sm text-surface-500 ml-11">
+                  Copy the snippet below and paste it into your site's <code className="rounded bg-surface-100 px-1.5 py-0.5 text-xs font-mono text-surface-800">&lt;head&gt;</code> tag. DXM Pulse will automatically detect when it goes live.
                 </p>
               </div>
 
               <div className="px-8 py-6 space-y-6">
-                {/* How-to steps */}
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">How to install</p>
-                  {[
-                    { n: '1', text: 'Choose your platform below' },
-                    { n: '2', text: 'Copy the generated snippet' },
-                    { n: '3', text: 'Paste it inside the <head> tag of your site and publish' },
-                  ].map(({ n, text }) => (
-                    <div key={n} className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">{n}</div>
-                      <p className="text-sm leading-6 text-surface-700">{text}</p>
-                    </div>
-                  ))}
+
+                {/* Site key callout */}
+                <div className="flex items-start gap-4 rounded-2xl border border-primary-100 bg-primary-50 p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-100">
+                    <Key className="h-4 w-4 text-primary-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary-600 mb-1">Your site key</p>
+                    <p className="font-mono text-sm font-semibold text-surface-900 break-all">{site.siteKey}</p>
+                    <p className="mt-1 text-xs text-primary-700">This unique ID tells DXM Pulse which site is sending data. It's embedded in the snippet below.</p>
+                  </div>
                 </div>
 
                 {/* Platform tabs */}
                 <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Choose your platform</p>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">1 — Choose your platform</p>
                   <div className="flex gap-2 flex-wrap">
                     {platformTabs.map(({ id, label, icon }) => (
                       <button
                         key={id}
                         onClick={() => setPlatform(id)}
-                        className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
                           platform === id
-                            ? 'border-primary-300 bg-primary-50 text-primary-700'
-                            : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300'
+                            ? 'border-primary-400 bg-primary-600 text-white shadow-sm'
+                            : 'border-surface-200 bg-white text-surface-600 hover:border-primary-200 hover:text-primary-700'
                         }`}
                       >
                         {icon}
@@ -316,47 +321,78 @@ export const OnboardingPage: React.FC = () => {
                       </button>
                     ))}
                   </div>
+
+                  {/* Platform-specific install tip */}
+                  {platform === 'html' && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3">
+                      <Info className="h-3.5 w-3.5 text-surface-400 mt-0.5 shrink-0" />
+                      <p className="text-xs text-surface-600">Open your HTML file, find the <code className="rounded bg-surface-200 px-1 font-mono text-xs">&lt;head&gt;</code> section, and paste the snippet before the closing <code className="rounded bg-surface-200 px-1 font-mono text-xs">&lt;/head&gt;</code> tag.</p>
+                    </div>
+                  )}
+                  {platform === 'wordpress' && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3">
+                      <Info className="h-3.5 w-3.5 text-surface-400 mt-0.5 shrink-0" />
+                      <p className="text-xs text-surface-600">In your WordPress dashboard go to <strong>Appearance → Theme Editor → functions.php</strong>, or install the <strong>"Insert Headers and Footers"</strong> plugin and paste into the Head section.</p>
+                    </div>
+                  )}
+                  {platform === 'react' && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3">
+                      <Info className="h-3.5 w-3.5 text-surface-400 mt-0.5 shrink-0" />
+                      <p className="text-xs text-surface-600">For Next.js add the snippet to <code className="rounded bg-surface-200 px-1 font-mono text-xs">pages/_document.tsx</code>. For a plain React app with Vite or CRA, paste it into <code className="rounded bg-surface-200 px-1 font-mono text-xs">index.html</code> inside <code className="rounded bg-surface-200 px-1 font-mono text-xs">&lt;head&gt;</code>.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Code block */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Your tracking snippet</p>
-                    <button
-                      onClick={copySnippet}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                        copied
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-surface-900 text-white hover:bg-surface-800'
-                      }`}
-                    >
-                      {copied ? (
-                        <>
-                          <CheckCircle className="h-3.5 w-3.5" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy snippet
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="relative rounded-xl bg-surface-950 overflow-hidden">
-                    <div className="flex items-center gap-1.5 px-4 py-3 border-b border-white/5">
-                      <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-                      <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-                      <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
-                      <span className="ml-2 text-[11px] text-surface-500">{platform === 'html' ? 'index.html' : platform === 'wordpress' ? 'functions.php' : '_document.tsx'}</span>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">2 — Copy your snippet</p>
+                  <div className="relative rounded-xl bg-surface-950 overflow-hidden border border-surface-800">
+                    {/* Window chrome */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                        <span className="ml-2 text-[11px] text-surface-500 font-mono">
+                          {platform === 'html' ? 'index.html' : platform === 'wordpress' ? 'functions.php' : '_document.tsx'}
+                        </span>
+                      </div>
                     </div>
-                    <pre className="overflow-x-auto p-5 text-xs leading-6 text-emerald-300 font-mono whitespace-pre-wrap break-all">
+                    <pre className="overflow-x-auto px-5 py-4 text-xs leading-6 text-emerald-300 font-mono whitespace-pre-wrap break-all">
                       {buildSnippet(site.snippet, platform)}
                     </pre>
                   </div>
-                  <p className="mt-2 text-xs text-surface-400">
-                    The snippet is only {site.snippet.length} characters — lightweight and async, no impact on page speed.
+
+                  {/* Prominent copy button */}
+                  <button
+                    onClick={copySnippet}
+                    className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition ${
+                      copied
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-surface-900 text-white hover:bg-surface-800 active:scale-[0.99]'
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        Snippet copied to clipboard!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy snippet
+                      </>
+                    )}
+                  </button>
+                  <p className="mt-2 text-center text-xs text-surface-400">
+                    {site.snippet.length} characters · async · zero impact on page speed
                   </p>
+                </div>
+
+                {/* Step 3 — paste & publish callout */}
+                <div className="flex items-start gap-3 rounded-xl border border-dashed border-surface-300 bg-surface-50 px-4 py-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-200 text-xs font-bold text-surface-600 mt-0.5">3</div>
+                  <p className="text-sm text-surface-700">Paste the snippet inside the <code className="rounded bg-surface-200 px-1.5 py-0.5 font-mono text-xs">&lt;head&gt;</code> tag of your site, save, and publish. Then open the site in a new browser tab and browse around — DXM Pulse will detect the first session within seconds.</p>
                 </div>
 
                 {/* Verification status */}
@@ -386,7 +422,7 @@ export const OnboardingPage: React.FC = () => {
                       </div>
                       <p className="text-base font-bold text-amber-800">No session detected yet</p>
                       <p className="mt-1 text-sm text-amber-600">
-                        Make sure the snippet is inside the <code className="rounded bg-amber-100 px-1 text-xs">&lt;head&gt;</code> tag and the page is published live.
+                        Make sure the snippet is inside the <code className="rounded bg-amber-100 px-1 text-xs">&lt;head&gt;</code> tag and the page is published and live.
                       </p>
                       <div className="mt-4 flex items-center justify-center gap-3">
                         <button
@@ -418,7 +454,7 @@ export const OnboardingPage: React.FC = () => {
                         {verifying ? 'Listening for first session…' : 'Waiting for deployment…'}
                       </p>
                       <p className="mt-1 text-sm text-surface-500">
-                        After publishing, open the site in a new tab and browse around to trigger tracking.
+                        After publishing, open the site in a new tab and click around to trigger the first tracked session.
                       </p>
                     </>
                   )}

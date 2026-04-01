@@ -226,7 +226,7 @@ export interface AiRecommendation {
 
 export interface OverviewAiBrief {
   period: '7d';
-  mode: 'deterministic';
+  mode: 'deterministic' | 'llm';
   generatedAt: string;
   headline: string;
   summary: string;
@@ -238,7 +238,7 @@ export interface OverviewAiBrief {
 
 export interface SiteAiBrief {
   period: '7d';
-  mode: 'deterministic';
+  mode: 'deterministic' | 'llm';
   generatedAt: string;
   headline: string;
   summary: string;
@@ -250,7 +250,7 @@ export interface SiteAiBrief {
 
 export interface AlertAiBrief {
   period: 'current';
-  mode: 'deterministic';
+  mode: 'deterministic' | 'llm';
   generatedAt: string;
   state: 'active' | 'resolved';
   headline: string;
@@ -281,7 +281,7 @@ export interface AlertDetail extends AlertListItem {
 
 export interface FunnelAiBrief {
   period: FunnelAnalysisPeriod;
-  mode: 'deterministic';
+  mode: 'deterministic' | 'llm';
   generatedAt: string;
   headline: string;
   summary: string;

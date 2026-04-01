@@ -5,12 +5,9 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  Info,
   Lightbulb,
-  TrendingDown,
   TrendingUp,
   XCircle,
-  Zap,
 } from 'lucide-react';
 
 export interface Insight {

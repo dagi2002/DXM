@@ -153,10 +153,10 @@ router.get('/:id/overview', (req, res) => {
   return res.json(detail);
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const detail = getSiteDetail(req.user!.workspaceId, req.params.id);
   if (!detail) return res.status(404).json({ error: 'Client site not found' });
-  const ai = getSiteAiBriefOrNull(req.user!.workspaceId, detail);
+  const ai = await getSiteAiBriefOrNull(req.user!.workspaceId, detail);
   return res.json(ai ? { ...detail, ai } : detail);
 });
 

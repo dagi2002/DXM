@@ -17,3 +17,7 @@ export const isAiEnabled = () => {
   if (!rawValue) return true;
   return !DISABLED_VALUES.has(rawValue.trim().toLowerCase());
 };
+
+/** Returns true when a valid Anthropic API key is present and AI is enabled. */
+export const isLlmEnabled = () =>
+  isAiEnabled() && Boolean(process.env.ANTHROPIC_API_KEY?.trim());

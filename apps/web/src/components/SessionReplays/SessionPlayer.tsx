@@ -12,6 +12,7 @@ import {
   ArrowDownUp,
   Navigation,
   Globe,
+  FastForward,
 } from "lucide-react";
 
 import type { SessionRecordingDetail, SessionRecordingEvent } from "../../types";
@@ -118,10 +119,13 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [skipIdle, setSkipIdle] = useState(false);
 
   const playbackContainerRef = useRef<HTMLDivElement>(null);
   const eventLogRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLButtonElement>(null);
+  const skipIdleRef = useRef(false);
+  const logEventsRef = useRef<SessionRecordingEvent[]>([]);
 
   const screenWidth = session.metadata.screen?.width ?? 1;
   const screenHeight = session.metadata.screen?.height ?? 1;
@@ -165,6 +169,10 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
     return types;
   }, [logEvents]);
 
+  // Keep refs in sync so the rAF loop can read current values without stale closures
+  skipIdleRef.current = skipIdle;
+  logEventsRef.current = logEvents;
+
   /* ── Reset on session change ──────────────────────────────────── */
 
   useEffect(() => {
@@ -181,13 +189,24 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
     let animationFrame: number;
     let start: number | null = null;
 
+    const IDLE_THRESHOLD_MS = 2000;
+
     const step = (timestamp: number) => {
       if (start === null) start = timestamp;
 
       const elapsed = (timestamp - start) * playbackSpeed;
 
       setCurrentTime((prev) => {
-        const next = prev + elapsed;
+        let next = prev + elapsed;
+
+        // Skip idle: jump over gaps > 2s to the next event
+        if (skipIdleRef.current) {
+          const nextEvt = logEventsRef.current.find((e) => e.timestamp > next);
+          if (nextEvt && nextEvt.timestamp - next > IDLE_THRESHOLD_MS) {
+            next = nextEvt.timestamp;
+          }
+        }
+
         if (next >= durationMs) {
           setIsPlaying(false);
           return durationMs;
@@ -594,7 +613,7 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
             <span className="w-10 font-mono text-xs text-slate-500">{formatTime(durationMs)}</span>
           </div>
 
-          {/* Speed + fullscreen */}
+          {/* Speed + skip idle + fullscreen */}
           <div className="flex items-center gap-2">
             <select
               value={playbackSpeed}
@@ -606,6 +625,17 @@ export const SessionPlayer: React.FC<SessionPlayerProps> = ({ session }) => {
               <option value={1.5}>1.5x</option>
               <option value={2}>2x</option>
             </select>
+
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={skipIdle}
+                onChange={(e) => setSkipIdle(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              />
+              <FastForward className="h-3 w-3" />
+              Skip idle
+            </label>
 
             <button
               onClick={handleFullscreen}

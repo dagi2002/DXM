@@ -6,9 +6,9 @@ import { buildWorkspaceOverview } from '../services/siteAnalytics.js';
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const overview = buildWorkspaceOverview(req.user!.workspaceId);
-  const ai = getOverviewAiBriefOrNull(req.user!.workspaceId, overview);
+  const ai = await getOverviewAiBriefOrNull(req.user!.workspaceId, overview);
 
   return res.json(ai ? { ...overview, ai } : overview);
 });

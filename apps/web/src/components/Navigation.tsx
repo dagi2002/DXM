@@ -128,7 +128,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user, works
           <Link
             to="/overview"
             className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${
-              false
+              currentView === 'overview'
                 ? 'border-primary-300 bg-primary-50 text-primary-700'
                 : 'border-transparent text-surface-600 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700'
             }`}
