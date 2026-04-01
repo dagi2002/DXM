@@ -41,11 +41,19 @@ const publicIngestCors = cors({
 
 const dashboardCors = cors({
   origin(origin, callback) {
-    if (!origin || origin === WEB_ORIGIN) {
+    if (!origin) {
       callback(null, true);
       return;
     }
-
+    // In development, allow all origins (Replit proxy uses dynamic hostnames)
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+    if (origin === WEB_ORIGIN) {
+      callback(null, true);
+      return;
+    }
     callback(null, false);
   },
   credentials: true,
