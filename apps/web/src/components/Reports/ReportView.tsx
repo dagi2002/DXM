@@ -20,9 +20,11 @@ import {
   Lightbulb,
   Minus,
   Shield,
+  Sparkles,
   Target,
   TrendingDown,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import type { Report, ReportMetric } from '../../lib/reportBuilder';
 
@@ -97,15 +99,24 @@ function TrendBadge({ metric }: { metric: ReportMetric }) {
 
 /* ── Props ────────────────────────────────────────────────────────── */
 
+interface FrictionAlert {
+  id: string;
+  title: string;
+  severity: string;
+  affectedSessions: number;
+}
+
 interface ReportViewProps {
   report: Report;
   siteDomain: string;
   dateRange: string;
+  aiSummary?: string | null;
+  frictionAlerts?: FrictionAlert[];
 }
 
 /* ── Component ────────────────────────────────────────────────────── */
 
-export const ReportView: React.FC<ReportViewProps> = ({ report, siteDomain, dateRange }) => {
+export const ReportView: React.FC<ReportViewProps> = ({ report, siteDomain, dateRange, aiSummary, frictionAlerts = [] }) => {
   const conf = confidenceConfig[report.confidence];
 
   return (
@@ -191,12 +202,46 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, siteDomain, date
 
       {/* ── 4. Executive Summary ─────────────────────────────────── */}
       <section className="rounded-[28px] border border-surface-200 bg-surface-50 p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-surface-600" />
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-600">Executive Summary</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {aiSummary ? (
+              <Sparkles className="h-4 w-4 text-primary-600" />
+            ) : (
+              <Lightbulb className="h-4 w-4 text-surface-600" />
+            )}
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-600">Executive Summary</h2>
+          </div>
+          {aiSummary && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">AI</span>
+          )}
         </div>
-        <p className="mt-4 text-sm leading-7 text-surface-700">{report.summary}</p>
+        <p className="mt-4 text-sm leading-7 text-surface-700">{aiSummary ?? report.summary}</p>
       </section>
+
+      {/* ── 4b. Friction Signals ─────────────────────────────────── */}
+      {frictionAlerts.length > 0 && (
+        <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-600" />
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Friction Signals</h2>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              {frictionAlerts.length} active
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {frictionAlerts.map((alert) => (
+              <div key={alert.id} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3">
+                <span className="text-sm font-medium text-surface-800">{alert.title}</span>
+                {alert.affectedSessions > 0 && (
+                  <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                    {alert.affectedSessions} session{alert.affectedSessions !== 1 ? 's' : ''} affected
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── 5. KPI Summary with trends + GOOD/BAD labels ─────────── */}
       <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">

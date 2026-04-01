@@ -139,6 +139,16 @@ export const ReportsPage: React.FC = () => {
         recommendation: i.recommendation,
       }));
 
+    // Heuristic: if no active insights but sessions exist, surface a positive signal
+    if (reportInsights.length === 0 && siteDetail.sessionCount7d > 0) {
+      reportInsights.push({
+        title: 'No issues detected this week',
+        severity: 'info',
+        description: 'All sessions completed without triggering alerts — a positive signal for this site.',
+        recommendation: 'Continue monitoring. As session volume grows, check for emerging patterns.',
+      });
+    }
+
     return buildReport({ site: siteDetail, insights: reportInsights });
   }, [siteDetail, insights]);
 
@@ -313,6 +323,8 @@ export const ReportsPage: React.FC = () => {
             report={report}
             siteDomain={selectedSite.domain}
             dateRange={dateRangeLabel}
+            aiSummary={siteDetail?.ai?.summary ?? null}
+            frictionAlerts={siteDetail?.openAlertsList ?? []}
           />
         </div>
       )}

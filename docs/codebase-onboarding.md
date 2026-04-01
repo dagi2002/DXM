@@ -14,8 +14,9 @@ DXM Pulse is an agency-first digital experience monitoring product. It helps age
 - review portfolio health across all tracked client sites
 - investigate issues through session replay, heatmaps, funnels, user flow, and alerts
 - send Telegram alerts and weekly digest summaries when configured
+- generate AI-powered portfolio briefs using Claude (LLM mode) or deterministic templates (fallback)
 
-The current product includes a public landing page, public site audit, auth and onboarding, an agency dashboard, client-site management, analytics surfaces, reports, settings, a partial billing surface, and a demo route.
+The current product includes a public landing page with competitive comparison table, public site audit, auth and onboarding, an agency dashboard with Friction Index, client-site management, analytics surfaces including redesigned heatmap stats, reports with AI Executive Summary and Friction Signals, settings with sidebar navigation and sticky save bar, a partial billing surface, and a demo route with Telegram simulation and ROI widget.
 
 ## Current Architecture Overview
 
@@ -297,6 +298,7 @@ Common local defaults:
 
 Optional integrations:
 
+- `ANTHROPIC_API_KEY` — enables LLM-backed AI briefs via Claude; without it the AI layer falls back to deterministic mode (pre-written templates, no external call)
 - `TELEGRAM_DEFAULT_BOT_TOKEN`
 - `CHAPA_SECRET_KEY`
 - `CHAPA_WEBHOOK_SECRET`
@@ -310,14 +312,14 @@ Setup assumptions:
 
 ## Known Limitations And Follow-Up Areas
 
-- billing is still partial in the UI and manual operationally
-- the Chapa webhook endpoint exists, but billing automation is not complete
-- DXM Pulse AI is partially implemented in this branch with deterministic overview, site, alert, and funnel briefs layered onto existing read routes
+- billing is still partial in the UI and manual operationally; the Chapa webhook endpoint exists but end-to-end billing automation is not complete
+- DXM Pulse AI runs in LLM mode when `ANTHROPIC_API_KEY` is set and deterministic mode as fallback; digest AI and Amharic-first AI output are roadmap items
 - the API still runs on SQLite and does not yet use a job queue for heavier background work
-- weekly digest sending exists, but is intended to be triggered by a scheduler with `x-digest-key`
-- funnel analysis is live, still intentionally lightweight compared with a mature analytics product, and can now carry an optional deterministic AI brief layered on top of the existing analysis response
-- site deletion is intentionally conservative: there is no cascade delete or archive flow yet
+- weekly digest sending exists but is triggered by a scheduler or manual `POST /digest/send-all` with `x-digest-key`; a production cron setup is not documented yet
+- funnel analysis is intentionally lightweight and carries an optional AI brief layered on top
+- site deletion is intentionally conservative: no cascade delete or archive flow yet
 - `/onboarding/sites*` remains as compatibility-only routing and should be removed later once no callers depend on it
+- if you get `EADDRINUSE: address already in use :::4000` on startup, a previous API process is still running — run `lsof -ti :4000 | xargs kill -9` to clear it
 
 ## Related Docs
 

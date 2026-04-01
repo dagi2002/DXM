@@ -120,14 +120,26 @@ Still intentionally lightweight:
 
 ## AI Boundary
 
-Phase-1 AI lives inside `apps/api/src/services/ai` as an internal interpretation layer, not a separate service:
+The AI layer lives inside `apps/api/src/services/ai` as an internal interpretation layer, not a separate service. It operates in two modes:
 
-- it reads the existing overview rollups, site-detail payloads, alert-detail records, and funnel-analysis responses instead of bypassing product-truth services
-- it generates deterministic overview briefs, site briefs, alert explanations, and funnel briefs only
-- it caches results in `ai_artifacts`
-- it fails open, so `/overview`, the primary client detail route, `GET /alerts/:id`, and `GET /funnels/:id/analysis` still work when AI is disabled or the AI cache table is unavailable
+**LLM mode** — when `ANTHROPIC_API_KEY` is set in the environment:
+- calls `api.anthropic.com/v1/messages` (Claude) to generate natural-language briefs
+- artifacts cached in `ai_artifacts` for 24 hours per workspace
+- the `mode` field on the artifact is `'llm'`
 
-This keeps AI additive to the current DXM product rather than turning it into a separate analytics surface.
+**Deterministic mode** — fallback when no API key is present:
+- derives a brief from pre-written template strings using portfolio data
+- no external call, no cost, always available
+- the `mode` field on the artifact is `'deterministic'`
+
+In both cases:
+
+- AI reads the existing overview rollups, site-detail payloads, alert-detail records, and funnel-analysis responses instead of bypassing product-truth services
+- AI fails open — `/overview`, `/sites/:id`, `GET /alerts/:id`, and `GET /funnels/:id/analysis` all still work when AI is disabled or the cache table is unavailable
+- the frontend reads `artifact.mode` to show either an `AI` (blue) or `AUTO` (gray) badge on the portfolio brief
+- the Regenerate button on the overview page busts the 24-hour cache by adding `?refresh=1&t=<timestamp>` to the overview request
+
+This keeps AI additive to the DXM product rather than a separate surface.
 
 ## Session Boundary
 

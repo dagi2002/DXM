@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, MousePointer, Move } from 'lucide-react';
+import { MousePointer, MoveDown, Hand } from 'lucide-react';
 import type { HeatmapReadModel, SessionHeatmapPoint, SessionRecording } from '../../../types';
 import { fetchJson } from '../../../lib/api';
 import { HeatmapCanvas } from './HeatmapCanvas';
@@ -284,23 +284,25 @@ export const HeatmapView: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex bg-gray-100 rounded-lg p-1 w-full lg:w-auto">
+        <div className="flex rounded-2xl border border-surface-200 bg-surface-50 p-1 gap-1 w-full lg:w-auto">
           {(
             [
-              { type: 'click' as const, label: 'Clicks', icon: MousePointer },
-              { type: 'scroll' as const, label: 'Scrolls', icon: Move },
-              { type: 'hover' as const, label: 'Hovers', icon: Eye },
+              { type: 'click' as const, label: 'Click Map', icon: MousePointer },
+              { type: 'scroll' as const, label: 'Scroll Map', icon: MoveDown },
+              { type: 'hover' as const, label: 'Hover Map', icon: Hand },
             ]
           ).map(({ type, label, icon: Icon }) => (
             <button
               key={type}
               type="button"
               onClick={() => setActiveType(type)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeType === type ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                activeType === type
+                  ? 'bg-white text-primary-700 shadow-sm border border-surface-200'
+                  : 'text-surface-500 hover:text-surface-800'
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-3.5 w-3.5" />
               <span>{label}</span>
             </button>
           ))}

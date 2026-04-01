@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   ArrowRight,
@@ -10,7 +11,11 @@ import {
   Eye,
   FileText,
   Gauge,
+  Mail,
   PlayCircle,
+  Send,
+  TrendingUp,
+  X,
   Zap,
 } from 'lucide-react';
 
@@ -73,7 +78,27 @@ const reportCards = [
   },
 ];
 
+const mockEmailDraft = `Subject: Action Required — Habesha Legal Studio Mobile CTA Issue
+
+Hi Team,
+
+Our monitoring platform flagged an issue this week that needs your attention before the next client call.
+
+🔴 Issue: Rage-click detected on primary CTA (mobile)
+📍 Page: /contact (mobile)
+👥 Affected sessions: 3 in the past 48h
+
+Users are tapping the "Get Legal Advice" button repeatedly without getting a response. This is a strong signal of a broken interaction — possibly a z-index issue or a conflicting click handler on mobile.
+
+Recommended fix: Test the CTA on a real mobile device, check for any overlapping elements, and review the form submission handler.
+
+We can present this with session replay evidence in the next client review.
+
+— DXM Pulse AI Brief`;
+
 export const DemoPage: React.FC = () => {
+  const { t } = useTranslation();
+  const [showEmail, setShowEmail] = useState(false);
   return (
     <div className="min-h-screen bg-surface-50 text-surface-900">
       <nav className="border-b border-surface-200 bg-white/90 backdrop-blur">
@@ -89,7 +114,7 @@ export const DemoPage: React.FC = () => {
           </Link>
           <div className="flex items-center gap-3">
             <Link to="/signup" className="rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700">
-              Start free
+              {t('demo.cta')}
             </Link>
           </div>
         </div>
@@ -100,7 +125,7 @@ export const DemoPage: React.FC = () => {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary-100">
-                Demo agency workspace
+                {t('demo.banner')}
               </div>
               <h1 className="mt-4 text-4xl font-bold md:text-5xl">Addis Growth Studio portfolio overview</h1>
               <p className="mt-4 text-base leading-7 text-primary-100">
@@ -175,17 +200,46 @@ export const DemoPage: React.FC = () => {
               {demoAlerts.map((alert) => (
                 <div key={alert.title} className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-semibold text-surface-900">{alert.title}</p>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                    <p className="text-sm font-semibold text-surface-900">{alert.title}</p>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
                       {alert.severity}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-surface-700">{alert.detail}</p>
+                  <p className="mt-2 text-sm leading-6 text-surface-700">{alert.detail}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-700">
+                      📎 3 session replays
+                    </span>
+                    <button
+                      onClick={() => setShowEmail(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition hover:bg-primary-100"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Draft client email
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 rounded-3xl border border-surface-200 bg-surface-50 p-5">
+            {/* Telegram simulation panel */}
+            <div className="mt-6 rounded-3xl border border-[#2AABEE]/20 bg-[#EFF9FF] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Send className="h-4 w-4 text-[#2AABEE]" />
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2AABEE]">Telegram · Live notification</p>
+              </div>
+              <div className="rounded-2xl border border-[#2AABEE]/20 bg-white p-4 font-mono text-sm text-surface-800 shadow-sm">
+                <p>🔴 <strong>DXM Pulse Alert</strong></p>
+                <p className="mt-1 text-surface-600">Habesha Legal Studio — rage-click detected on mobile CTA</p>
+                <p className="mt-1 text-surface-500 text-xs">3 sessions affected · Habesha Legal Studio</p>
+                <p className="mt-2 text-[#2AABEE] text-xs cursor-pointer hover:underline">[View Replay →]</p>
+              </div>
+              <p className="mt-3 text-xs text-surface-500">
+                This fires automatically when the alert is detected — before the client calls you.
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-surface-200 bg-surface-50 p-5">
               <div className="flex items-center gap-2 text-surface-900">
                 <PlayCircle className="h-5 w-5 text-primary-600" />
                 <h3 className="text-lg font-semibold">Replay narrative</h3>
@@ -243,6 +297,21 @@ export const DemoPage: React.FC = () => {
           </section>
         </div>
 
+        {/* Agency ROI widget */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {[
+            { icon: TrendingUp, value: '4.5h', label: 'Saved on reporting this week', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { icon: AlertTriangle, value: '3', label: 'Billable UX fixes identified', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+            { icon: Eye, value: '428', label: 'Session replays available', color: 'text-primary-700', bg: 'bg-primary-50 border-primary-200' },
+          ].map(({ icon: Icon, value, label, color, bg }) => (
+            <div key={label} className={`rounded-[20px] border p-5 shadow-sm ${bg}`}>
+              <Icon className={`h-5 w-5 ${color}`} />
+              <p className={`mt-3 text-3xl font-bold ${color}`}>{value}</p>
+              <p className="mt-1 text-sm text-surface-600">{label}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="mt-6 rounded-[32px] border border-primary-200 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 p-6 text-white shadow-xl md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">
@@ -268,6 +337,36 @@ export const DemoPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Email draft modal */}
+      {showEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShowEmail(false)}>
+          <div className="w-full max-w-lg rounded-[24px] border border-surface-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-surface-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary-600" />
+                <h3 className="text-sm font-bold text-surface-900">AI-drafted client email</h3>
+              </div>
+              <button onClick={() => setShowEmail(false)} className="text-surface-400 hover:text-surface-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-surface-700">{mockEmailDraft}</pre>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-surface-100 px-5 py-4">
+              <p className="mr-auto text-xs text-surface-400">Generated by DXM Pulse AI from live session data</p>
+              <button onClick={() => setShowEmail(false)} className="rounded-xl border border-surface-200 px-3 py-2 text-xs font-semibold text-surface-600 hover:bg-surface-50">
+                Close
+              </button>
+              <button className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700">
+                <Send className="h-3 w-3" />
+                Copy to clipboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

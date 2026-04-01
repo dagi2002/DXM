@@ -6,6 +6,7 @@ import {
   Brain,
   Building2,
   Radar,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   TrendingDown,
@@ -68,26 +69,37 @@ export const OverviewPage: React.FC = () => {
   const [overview, setOverview] = useState<PortfolioOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const loadOverview = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchJson<PortfolioOverview>('/overview');
+      setOverview(data);
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load overview');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    const loadOverview = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchJson<PortfolioOverview>('/overview');
-        if (!isMounted) return;
-        setOverview(data);
-        setError(null);
-      } catch (loadError) {
-        if (!isMounted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load overview');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
     void loadOverview();
-    return () => { isMounted = false; };
   }, []);
+
+  const handleRegenerateBrief = async () => {
+    setIsRegenerating(true);
+    try {
+      // Bust the artifact cache by adding a cache-buster query param
+      const data = await fetchJson<PortfolioOverview>(`/overview?refresh=1&t=${Date.now()}`);
+      setOverview(data);
+    } catch {
+      // Silently fail on regenerate — original brief stays
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const bestSite = useMemo(
     () => overview?.siteRollups.slice().sort((a, b) => b.healthScore - a.healthScore)[0] || null,
@@ -235,10 +247,23 @@ export const OverviewPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-bold text-surface-900">AI Portfolio Brief</h2>
                     <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">LIVE</span>
+                    {(overview.ai as { mode?: string }).mode === 'llm' ? (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">AI</span>
+                    ) : (
+                      <span className="rounded-full bg-surface-100 px-2 py-0.5 text-[10px] font-bold text-surface-500">AUTO</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-surface-500">Generated {new Date(overview.ai.generatedAt).toLocaleString()}</p>
                 </div>
               </div>
+              <button
+                onClick={() => void handleRegenerateBrief()}
+                disabled={isRegenerating}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-semibold text-surface-600 transition hover:border-primary-300 hover:text-primary-700 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
+                {isRegenerating ? 'Regenerating…' : 'Regenerate'}
+              </button>
             </div>
           </div>
 
@@ -268,7 +293,7 @@ export const OverviewPage: React.FC = () => {
             </div>
 
             {overview.ai.evidence.length > 0 && (
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <div className="mt-5 grid gap-3 grid-cols-2 md:grid-cols-3">
                 {overview.ai.evidence.slice(0, 6).map((item) => (
                   <div key={item.id} className={`rounded-2xl border p-4 ${evidenceToneClasses[item.tone]}`}>
                     <div className="flex items-center justify-between gap-2">

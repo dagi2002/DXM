@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Monitor, Smartphone, Tablet, Timer, MousePointer, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { SessionRecording } from '../../types';
 
 interface SessionListProps {
@@ -35,6 +36,7 @@ export const SessionList: React.FC<SessionListProps> = ({
   isLoading,
   error,
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'desktop' | 'mobile' | 'tablet'>('all');
 
@@ -62,7 +64,7 @@ export const SessionList: React.FC<SessionListProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by URL or user agent"
+              placeholder={t('sessions.search')}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
@@ -99,7 +101,7 @@ export const SessionList: React.FC<SessionListProps> = ({
 
           {!isLoading && !error && filteredSessions.length === 0 && (
             <div className="mx-1 my-2 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-6 text-center">
-              <p className="text-sm font-semibold text-gray-700">📊 No sessions yet</p>
+              <p className="text-sm font-semibold text-gray-700">{t('sessions.noSessions')}</p>
               <p className="mt-1 text-sm text-gray-500">Sessions appear here when visitors interact with your site.</p>
               <p className="mt-2 text-xs text-gray-400">Make sure your tracking snippet is installed and visit your site.</p>
             </div>
@@ -138,7 +140,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                   <span className="truncate max-w-[200px]">{displayUser}</span>
                   <span>{new Date(session.startedAt).toLocaleString()}</span>
-                  {session.endedAt && <span>Duration {formatDuration(session.duration)}</span>}
+                  {session.endedAt && <span>{t('sessions.duration')} {formatDuration(session.duration)}</span>}
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-600">
@@ -148,7 +150,7 @@ export const SessionList: React.FC<SessionListProps> = ({
                   </span>
                   <span className="flex items-center space-x-1">
                     <MousePointer className="h-3 w-3" />
-                    <span>{session.stats.clicks} clicks</span>
+                    <span>{session.stats.clicks} {t('sessions.clicks')}</span>
                   </span>
                   <span className="flex items-center space-x-1">
                     <Activity className="h-3 w-3" />

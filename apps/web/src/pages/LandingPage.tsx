@@ -80,16 +80,19 @@ const workflow = [
     step: '01',
     title: 'Add client sites in minutes',
     body: 'Create a client record, choose your platform (HTML, WordPress, or React), copy the lightweight snippet, and verify installation without leaving the product.',
+    icon: Globe2,
   },
   {
     step: '02',
     title: 'Monitor the portfolio like an operator',
     body: 'Watch health, alerts, replay, funnels, and performance from one coherent agency command center — live, at a glance.',
+    icon: BarChart3,
   },
   {
     step: '03',
     title: 'Turn insight into client-facing proof',
     body: 'Use AI-generated summaries and weekly narratives that make your work visible, measurable, and worth renewing.',
+    icon: FileText,
   },
 ];
 
@@ -285,11 +288,22 @@ export const LandingPage: React.FC = () => {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">How it works</p>
             <h2 className="mt-3 text-3xl font-bold text-surface-900">From signup to client proof in three tight moves.</h2>
           </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-4 flex items-center gap-2">
+            <span className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+              ~12KB · async · 3G-ready
+            </span>
+            <span className="text-xs text-surface-400">Zero page-speed impact</span>
+          </div>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
             {workflow.map((item) => (
               <div key={item.step} className="rounded-[28px] border border-surface-200 bg-surface-50 p-6">
-                <div className="inline-flex rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                  {item.step}
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                    {item.step}
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm border border-surface-200 text-primary-600">
+                    <item.icon className="h-4 w-4" />
+                  </div>
                 </div>
                 <h3 className="mt-5 text-xl font-semibold text-surface-900">{item.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-surface-600">{item.body}</p>
@@ -393,13 +407,104 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* ── Comparison Table ── */}
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Why not just use free tools?</p>
+          <h2 className="mt-3 text-3xl font-bold text-surface-900">Built for agencies. Not adapted from analytics.</h2>
+          <p className="mt-3 text-sm leading-6 text-surface-600">
+            Google Analytics and Hotjar were designed for single-site product teams. DXM Pulse is designed around how agencies actually operate.
+          </p>
+        </div>
+        <div className="mt-10 overflow-x-auto rounded-[28px] border border-surface-200 bg-white shadow-sm">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-surface-100">
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-surface-500 w-2/5">Feature</th>
+                <th className="px-4 py-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-surface-400">Google Analytics</th>
+                <th className="px-4 py-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-surface-400">Hotjar / Clarity</th>
+                <th className="px-4 py-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary-700 bg-primary-50 rounded-t-xl">DXM Pulse</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  feature: 'Agency multi-site portfolio view',
+                  ga: { label: 'Fragmented', yes: false },
+                  hj: { label: 'Per-site only', yes: false },
+                  dx: { label: 'Command center', yes: true },
+                },
+                {
+                  feature: 'Telegram alerts & weekly digest',
+                  ga: { label: 'None', yes: false },
+                  hj: { label: 'Email only', yes: false },
+                  dx: { label: 'Native', yes: true },
+                },
+                {
+                  feature: 'AI reports in Amharic',
+                  ga: { label: 'No', yes: false },
+                  hj: { label: 'No', yes: false },
+                  dx: { label: 'Yes', yes: true },
+                },
+                {
+                  feature: 'Pay in ETB via Chapa',
+                  ga: { label: 'No', yes: false },
+                  hj: { label: 'No', yes: false },
+                  dx: { label: 'Yes', yes: true },
+                },
+                {
+                  feature: '3G-optimized tracking (~12KB)',
+                  ga: { label: 'Heavy SDK', yes: false },
+                  hj: { label: 'Heavy SDK', yes: false },
+                  dx: { label: '~12KB async', yes: true },
+                },
+                {
+                  feature: 'Session replay built-in',
+                  ga: { label: 'No', yes: false },
+                  hj: { label: 'Yes', yes: true },
+                  dx: { label: 'Yes', yes: true },
+                },
+              ].map((row, i) => (
+                <tr key={row.feature} className={i % 2 === 0 ? 'bg-surface-50/50' : 'bg-white'}>
+                  <td className="px-6 py-4 font-medium text-surface-800">{row.feature}</td>
+                  {[row.ga, row.hj].map((cell, ci) => (
+                    <td key={ci} className="px-4 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${cell.yes ? 'text-emerald-700' : 'text-surface-400'}`}>
+                        <span className={`text-base leading-none ${cell.yes ? 'text-emerald-500' : 'text-surface-300'}`}>{cell.yes ? '✓' : '✗'}</span>
+                        {cell.label}
+                      </span>
+                    </td>
+                  ))}
+                  <td className="px-4 py-4 text-center bg-primary-50/40">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700">
+                      <span className="text-base leading-none text-primary-500">{row.dx.yes ? '✓' : '✗'}</span>
+                      {row.dx.label}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* ── Pricing ── */}
       <section id="pricing" className="bg-surface-100 py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Pricing</p>
             <h2 className="mt-3 text-3xl font-bold text-surface-900">Per-agency pricing with client-site limits built in.</h2>
-            <p className="mt-3 text-sm text-surface-600">Priced in Ethiopian Birr. Includes AI portfolio briefs on all plans.</p>
+            <p className="mt-3 text-sm text-surface-600">Includes AI portfolio briefs on all plans.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Pay in Ethiopian Birr (ETB) via Chapa — no international card required
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 bg-white px-3 py-1.5 text-xs font-medium text-surface-600">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary-600" />
+                Cancel any time
+              </span>
+            </div>
           </div>
           <div className="mt-10 grid gap-5 xl:grid-cols-3">
             {PLAN_CATALOG.map((tier) => (

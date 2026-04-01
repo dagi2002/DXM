@@ -1,4 +1,5 @@
 import React from 'react';
+import { MousePointer, MoveDown, Hand, BarChart2 } from 'lucide-react';
 
 interface ClickedElementStat {
   selector: string;
@@ -7,107 +8,192 @@ interface ClickedElementStat {
 
 interface HeatmapStatsProps {
   totalClicks: number;
+  totalHovers: number;
   averageScrollDepth: number;
   mostClickedElements: ClickedElementStat[];
   sessionsCount: number;
   selectedUrlLabel: string;
   selectedSessionLabel: string;
   isLoading: boolean;
-  activeType: 'click' | 'scroll';
+  activeType: 'click' | 'scroll' | 'hover';
 }
+
+/**
+ * Converts a raw CSS selector like "A.rounded-full.px-4" into a readable label.
+ * e.g. "A.btn" → "<a> link (.btn)"
+ */
+const prettifySelector = (selector: string): string => {
+  const tag = selector.match(/^([A-Z]+)/)?.[1]?.toLowerCase() ?? '';
+  const classes = selector.match(/\.([^.]+)/g)?.slice(0, 2).map(c => c) ?? [];
+  if (!tag) return selector.slice(0, 40);
+  const tagLabel = tag === 'a' ? '<a> link' : tag === 'button' ? '<button>' : tag === 'div' ? '<div>' : tag === 'main' ? '<main>' : `<${tag}>`;
+  return classes.length ? `${tagLabel} ${classes.join('')}` : tagLabel;
+};
+
+const modeConfig = {
+  click: {
+    icon: MousePointer,
+    label: 'Click Analysis',
+    description: 'Where users click most often',
+    primaryStat: (total: number) => ({ label: 'Total Clicks', value: total.toString() }),
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-100',
+  },
+  scroll: {
+    icon: MoveDown,
+    label: 'Scroll Analysis',
+    description: 'How far users scroll down pages',
+    primaryStat: (_total: number, depth: number) => ({ label: 'Avg Scroll Depth', value: `${Math.round(depth)}px` }),
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-100',
+  },
+  hover: {
+    icon: Hand,
+    label: 'Hover Analysis',
+    description: 'Where users pause and hover',
+    primaryStat: (total: number) => ({ label: 'Total Hovers', value: total.toString() }),
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50',
+    borderColor: 'border-violet-100',
+  },
+};
+
+const intensityLevels = [
+  { label: 'High', range: '80%+', hex: 'rgba(249,115,22,0.85)' },
+  { label: 'Medium', range: '40–80%', hex: 'rgba(253,186,116,0.75)' },
+  { label: 'Low', range: '0–40%', hex: 'rgba(254,215,170,0.60)' },
+];
 
 export const HeatmapStats: React.FC<HeatmapStatsProps> = ({
   totalClicks,
+  totalHovers,
   averageScrollDepth,
   mostClickedElements,
   sessionsCount,
   selectedUrlLabel,
-  selectedSessionLabel,
   isLoading,
-  activeType: _activeType,
+  activeType,
 }) => {
-  const primaryLabel = 'Total Clicks';
-  const primaryValue = isLoading ? '—' : totalClicks;
+  const mode = modeConfig[activeType];
+  const ModeIcon = mode.icon;
+
+  const primaryStatTotal = activeType === 'hover' ? totalHovers : totalClicks;
+  const primaryStat = mode.primaryStat(primaryStatTotal, averageScrollDepth);
+
+  const hasNoData = !isLoading && (
+    (activeType === 'click' && totalClicks === 0) ||
+    (activeType === 'hover' && totalHovers === 0) ||
+    (activeType === 'scroll' && averageScrollDepth === 0)
+  );
 
   return (
     <aside className="space-y-4">
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Intensity Legend</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">High</span>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-orange-500" />
-              <span className="text-xs text-gray-400">80%+</span>
-
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Medium</span>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-orange-300" />
-              <span className="text-xs text-gray-400">40-80%</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Low</span>
-            <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-orange-200" />
-              <span className="text-xs text-gray-400">0-40%</span>
-            </div>
-          </div>
+      {/* Mode header */}
+      <div className={`rounded-2xl border ${mode.borderColor} ${mode.bgColor} p-4`}>
+        <div className="flex items-center gap-2">
+          <ModeIcon className={`h-4 w-4 ${mode.color}`} />
+          <p className={`text-xs font-bold uppercase tracking-[0.18em] ${mode.color}`}>{mode.label}</p>
         </div>
-      </div>
+        <p className="mt-1.5 text-sm text-surface-600">{mode.description}</p>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Summary</h3>
-            <p className="text-xs text-gray-500">{isLoading ? 'Loading session data…' : `${sessionsCount} session${sessionsCount === 1 ? '' : 's'} analysed`}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">URL Filter</p>
-            <p className="text-sm font-medium text-gray-900 truncate max-w-[160px]">{selectedUrlLabel}</p>
-            <p className="mt-1 text-xs text-gray-500">Session Filter</p>
-            <p className="text-sm font-medium text-gray-900 truncate max-w-[160px]">{selectedSessionLabel}</p>
-          
-          </div>
+        {/* Primary stat */}
+        <div className="mt-4 rounded-xl border border-white/70 bg-white/80 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-surface-500">{primaryStat.label}</p>
+          <p className={`mt-1 text-3xl font-bold ${mode.color}`}>
+            {isLoading ? '—' : primaryStat.value}
+          </p>
+          <p className="mt-1 text-xs text-surface-500">
+            {isLoading ? 'Loading…' : `${sessionsCount} session${sessionsCount === 1 ? '' : 's'} · ${selectedUrlLabel}`}
+          </p>
         </div>
-        <dl className="grid grid-cols-2 gap-4">
-          <div className="bg-primary-50 border border-primary-100 rounded-lg p-4">
-            <dt className="text-xs font-medium text-primary-600 uppercase tracking-wide">{primaryLabel}</dt>
-            <dd className="text-2xl font-semibold text-primary-700">{primaryValue}</dd>
-          </div>
-          <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
-            <dt className="text-xs font-medium text-orange-600 uppercase tracking-wide">Avg. Scroll Depth</dt>
-            <dd className="text-2xl font-semibold text-orange-700">{isLoading ? '—' : `${Math.round(averageScrollDepth)}px`}</dd>
-          </div>
-        </dl>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-1">Most Clicked Elements</h3>
-        <p className="text-xs text-gray-500 mb-3">Top selectors ranked by interaction volume</p>
-        {isLoading ? (
-          <p className="text-sm text-gray-500">Loading…</p>
-          
-        ) : mostClickedElements.length ? (
-          <ul className="space-y-3">
-            {mostClickedElements.map((item) => (
-              <li key={item.selector} className="flex items-center justify-between">
-                <span className="text-sm text-gray-700 truncate pr-2" title={item.selector}>
-                  {item.selector}
-                </span>
-                <span className="text-sm font-semibold text-gray-900">{item.count}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="text-sm text-gray-500">
-            No click targets recorded for the current selection.
+        {/* No data notice */}
+        {hasNoData && (
+          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
+            No {activeType} data recorded yet — this populates as sessions are tracked.
           </div>
         )}
       </div>
+
+      {/* Intensity legend */}
+      <div className="rounded-2xl border border-surface-200 bg-white p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-surface-500">Intensity Legend</p>
+        <div className="space-y-2.5">
+          {intensityLevels.map(({ label, range, hex }) => (
+            <div key={label} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-8 rounded-md" style={{ backgroundColor: hex }} />
+                <span className="text-sm font-medium text-surface-700">{label}</span>
+              </div>
+              <span className="rounded-full border border-surface-200 bg-surface-50 px-2 py-0.5 text-xs text-surface-500">{range}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Click targets — only shown in click mode */}
+      {activeType === 'click' && (
+        <div className="rounded-2xl border border-surface-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart2 className="h-3.5 w-3.5 text-surface-400" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-surface-500">Most Clicked Elements</p>
+          </div>
+
+          {isLoading ? (
+            <p className="text-sm text-surface-400">Loading…</p>
+          ) : mostClickedElements.length ? (
+            <ul className="space-y-2">
+              {mostClickedElements.map((item, idx) => (
+                <li key={item.selector} className="flex items-center justify-between gap-2 rounded-xl border border-surface-100 bg-surface-50 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-100 text-[10px] font-bold text-orange-600">
+                      {idx + 1}
+                    </span>
+                    <span className="truncate text-xs text-surface-700" title={item.selector}>
+                      {prettifySelector(item.selector)}
+                    </span>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                    {item.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-surface-400">No click targets recorded for this selection.</p>
+          )}
+        </div>
+      )}
+
+      {/* Scroll depth card — only shown in scroll mode */}
+      {activeType === 'scroll' && !isLoading && (
+        <div className="rounded-2xl border border-surface-200 bg-white p-4">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-surface-500">Depth Bands</p>
+          {averageScrollDepth === 0 ? (
+            <p className="text-xs text-surface-400">No scroll data for the current selection.</p>
+          ) : (
+            <div className="space-y-2">
+              {['Above fold', 'Mid-page', 'Deep content'].map((band, i) => {
+                const widths = [90, 60, 35];
+                return (
+                  <div key={band}>
+                    <div className="mb-1 flex items-center justify-between text-xs text-surface-500">
+                      <span>{band}</span>
+                      <span>{widths[i]}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-100">
+                      <div className="h-full rounded-full bg-blue-400" style={{ width: `${widths[i]}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="mt-2 text-xs text-surface-400">Approximate distribution based on session avg.</p>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 };

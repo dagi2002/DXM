@@ -74,6 +74,7 @@ Network behavior assumptions:
 
 Optional, not required for basic local boot:
 
+- `ANTHROPIC_API_KEY` — enables LLM-backed AI briefs via Claude; without it, AI falls back to deterministic templates automatically
 - `TELEGRAM_DEFAULT_BOT_TOKEN`
 - `CHAPA_SECRET_KEY`
 - `CHAPA_WEBHOOK_SECRET`
@@ -141,6 +142,54 @@ Expected results:
 - `http://localhost:8080/dxm-replay.js`
 
 This step matters because the SDK build watcher does not expose a local HTTP endpoint on its own.
+
+## Common Local Problems
+
+### Port 4000 already in use
+
+Symptom: `EADDRINUSE: address already in use :::4000` when running `npm run dev`.
+
+Cause: a previous `npm run dev` session left the API process running in the background.
+
+Fix:
+
+```bash
+lsof -ti :4000 | xargs kill -9
+```
+
+Then start `npm run dev` again.
+
+### Injecting a test alert (curl)
+
+Useful for verifying alert display and Telegram delivery without waiting for real traffic.
+
+First, get your auth token from the browser (DevTools → Application → Cookies → `token`), then:
+
+```bash
+curl -X POST http://localhost:4000/alerts \
+  -H "Content-Type: application/json" \
+  -H "Cookie: token=<YOUR_TOKEN>" \
+  -d '{
+    "type": "error",
+    "severity": "high",
+    "title": "Checkout button rage-clicked 8 times",
+    "description": "User repeatedly clicked the submit button with no response",
+    "affectedSessions": 3
+  }'
+```
+
+The alert appears immediately in the Alerts page. If Telegram is configured and severity is `critical`, it fires a Telegram message too.
+
+### Triggering the Telegram weekly digest (local)
+
+```bash
+curl -fsS -X POST http://localhost:4000/digest/send-all \
+  -H "x-digest-key: $DIGEST_CRON_SECRET"
+```
+
+Expected response: `{ "sent": 1 }`. The digest message will arrive in the configured Telegram chat.
+
+---
 
 ## Health Checks
 

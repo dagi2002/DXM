@@ -16,6 +16,7 @@ const benefits = [
   'Session replay and behavioral heatmaps',
   'AI-powered weekly agency narrative',
   'Telegram alerts for critical issues',
+  'Pay in ETB via Chapa — no USD card needed',
   'Free to start — no card required',
 ];
 
@@ -122,6 +123,18 @@ export const SignupPage: React.FC = () => {
               As soon as you install the snippet on one client site, DXM Pulse starts building your portfolio overview — sessions, health scores, alerts, and a weekly digest ready to share.
             </p>
           </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-300 mb-2">Lightweight by design</p>
+            <div className="flex flex-wrap gap-2">
+              {['~12KB snippet', 'async · non-blocking', '3G-ready', 'zero page-speed impact'].map(tag => (
+                <span key={tag} className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-primary-100">{tag}</span>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-primary-300">
+              "Caught a broken checkout 3 hours before the client noticed. Saved our reputation." — Addis Growth Studio, Bole
+            </p>
+          </div>
         </div>
 
         <div className="relative">
@@ -138,6 +151,25 @@ export const SignupPage: React.FC = () => {
               <Zap className="h-4 w-4 text-white" />
             </div>
             <span className="text-lg font-bold text-surface-900">DXM Pulse</span>
+          </div>
+
+          {/* 3-step onboarding progress bar */}
+          <div className="mb-6 flex items-center gap-0">
+            {[
+              { n: 1, label: 'Create account' },
+              { n: 2, label: 'Add client site' },
+              { n: 3, label: 'See live replay' },
+            ].map((step, idx) => (
+              <React.Fragment key={step.n}>
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${step.n === 1 ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-400'}`}>
+                    {step.n}
+                  </div>
+                  <span className={`text-[10px] font-medium whitespace-nowrap ${step.n === 1 ? 'text-primary-700' : 'text-surface-400'}`}>{step.label}</span>
+                </div>
+                {idx < 2 && <div className={`mb-4 h-px flex-1 mx-1 ${step.n < 1 ? 'bg-primary-300' : 'bg-surface-200'}`} />}
+              </React.Fragment>
+            ))}
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-surface-900">Create your agency workspace</h1>

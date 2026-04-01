@@ -90,14 +90,32 @@ WEB_ORIGIN=https://app.dxmpulse.et
 
 ---
 
+### `ANTHROPIC_API_KEY`
+**Optional** | Anthropic API key (`sk-ant-...`)
+
+Enables LLM-backed AI brief generation using Claude. When set, brief generation calls `api.anthropic.com/v1/messages` and produces richer, context-aware narratives. Results are cached in `ai_artifacts` for 24 hours.
+
+When absent, the AI layer falls back to deterministic mode (pre-written template strings derived from portfolio data — no external call, no cost).
+
+Get a key at [console.anthropic.com](https://console.anthropic.com).
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-api03-...
+```
+
+**Cost note:** Each brief generation costs approximately $0.003–$0.01 depending on portfolio size. The 24-hour cache means Claude is called at most once per workspace per day.
+
+---
+
 ### `DXM_AI_ENABLED`
 **Optional** | Default: enabled
 
-Controls the phase-1 deterministic overview AI brief.
+Master switch for the AI layer. Controls both deterministic and LLM AI brief generation.
 
 - AI is enabled by default when the variable is missing
-- set to `0`, `false`, or `off` to disable it
-- when disabled, `GET /overview` returns the existing non-AI payload and the API skips `ai_artifacts` reads and writes
+- set to `0`, `false`, or `off` to disable entirely
+- when disabled, `GET /overview` returns the non-AI payload and the API skips `ai_artifacts` reads and writes entirely
+- `ANTHROPIC_API_KEY` controls whether the enabled AI runs in LLM or deterministic mode
 
 ```bash
 DXM_AI_ENABLED=true
@@ -249,6 +267,10 @@ JWT_REFRESH_SECRET=different_secret_also_min_32_chars
 COOKIE_DOMAIN=localhost
 WEB_ORIGIN=http://localhost:5173
 
+# ── Anthropic AI (optional — enables LLM-backed briefs via Claude) ────────────
+# Without this key, AI briefs fall back to deterministic mode (no external call)
+ANTHROPIC_API_KEY=
+
 # ── Telegram (optional — enables push alert notifications) ────────────────────
 TELEGRAM_DEFAULT_BOT_TOKEN=
 
@@ -256,8 +278,11 @@ TELEGRAM_DEFAULT_BOT_TOKEN=
 CHAPA_SECRET_KEY=
 CHAPA_WEBHOOK_SECRET=
 
-# ── Admin (optional — enables admin plan activation endpoint) ─────────────
+# ── Admin (optional — enables admin plan activation endpoint) ─────────────────
 ADMIN_SECRET=
+
+# ── Digest (optional — required for production digest cron) ──────────────────
+DIGEST_CRON_SECRET=change_this_digest_secret_in_production
 
 # ── SDK / Frontend ────────────────────────────────────────────────────────────
 SDK_CDN_URL=http://localhost:5173/sdk/dxm.js

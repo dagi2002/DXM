@@ -96,6 +96,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const activeAlerts = alerts.filter((a) => !a.resolved).length;
 
+  // Friction Index: composite of alert pressure + bounce rate signal (0–100, lower is better)
+  const frictionIndex = useMemo(() => {
+    const alertPressure = Math.min(60, activeAlerts * 15);
+    const bounceMetric = metrics.find((m) => m.name.toLowerCase().includes('bounce'));
+    const bounceRate = bounceMetric ? parseFloat(String(bounceMetric.value)) : 0;
+    const bouncePressure = bounceRate > 60 ? 30 : bounceRate > 40 ? 15 : 0;
+    return Math.min(100, alertPressure + bouncePressure);
+  }, [activeAlerts, metrics]);
+
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6 space-y-5">
 
@@ -125,6 +134,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className={`mt-1 text-xl font-bold ${activeAlerts > 0 ? 'text-red-600' : 'text-surface-900'}`}>
                 {activeAlerts}
               </p>
+            </div>
+            <div className={`rounded-2xl border px-4 py-2.5 text-center ${
+              frictionIndex === 0
+                ? 'border-emerald-200 bg-emerald-50'
+                : frictionIndex < 30
+                ? 'border-amber-200 bg-amber-50'
+                : 'border-red-200 bg-red-50'
+            }`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                frictionIndex === 0 ? 'text-emerald-600' : frictionIndex < 30 ? 'text-amber-600' : 'text-red-600'
+              }`}>Friction index</p>
+              <p className={`mt-1 text-xl font-bold ${
+                frictionIndex === 0 ? 'text-emerald-700' : frictionIndex < 30 ? 'text-amber-700' : 'text-red-700'
+              }`}>{frictionIndex}</p>
             </div>
           </div>
         </div>
@@ -174,12 +197,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <SectionLabel label="Activity" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ActivityChart
-          title={t('dashboard.liveActivity')}
+          title="Session Activity (last 24h)"
           data={activityData}
           color="#166534"
         />
         <ActivityChart
-          title="Completed Sessions (7d)"
+          title="Weekly Completion Trend (7d)"
           data={completionData}
           color="#d97706"
         />

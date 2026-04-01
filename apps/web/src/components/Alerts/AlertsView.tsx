@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   CheckCircle,
@@ -48,6 +49,7 @@ interface SiteSummary {
 /* ── Component ───────────────────────────────────────────────────── */
 
 export const AlertsView: React.FC = () => {
+  const { t } = useTranslation();
   const { workspace } = useAuth();
   const [filter, setFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState<string>('all');
@@ -263,8 +265,8 @@ export const AlertsView: React.FC = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-500">Alert feed</p>
-            <h1 className="mt-1.5 text-2xl font-bold text-surface-900">Client alerts</h1>
-            <p className="mt-2 text-sm leading-6 text-surface-600">Stay ahead of client issues before they become uncomfortable status-call surprises.</p>
+            <h1 className="mt-1.5 text-2xl font-bold text-surface-900">{t('alerts.title')}</h1>
+            <p className="mt-2 text-sm leading-6 text-surface-600">{t('alerts.subtitle')}</p>
           </div>
           {stats.active > 0 && (
             <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5">
@@ -360,7 +362,7 @@ export const AlertsView: React.FC = () => {
           {!isLoading && filteredAlerts.length === 0 && (
             <div className="p-10 text-center">
               <CheckCircle className="mx-auto h-8 w-8 text-emerald-400" />
-              <p className="mt-3 text-sm font-medium text-surface-600">No alerts match the current filter.</p>
+              <p className="mt-3 text-sm font-medium text-surface-600">{t('alerts.noAlerts')}</p>
               <p className="mt-1 text-xs text-surface-400">The portfolio looks quiet from here.</p>
             </div>
           )}
@@ -380,7 +382,7 @@ export const AlertsView: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h3 className="text-lg font-semibold text-gray-900">{alert.title}</h3>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${getSeverityBadge(alert.severity)}`}>
-                      {alert.severity}
+                      {t(`alerts.severity.${alert.severity}`, alert.severity)}
                     </span>
                     {alert.resolved && (
                       <span className="flex items-center gap-1 text-xs text-green-600">
@@ -447,7 +449,7 @@ export const AlertsView: React.FC = () => {
                     ) : (
                       <CheckCircle className="h-3.5 w-3.5" />
                     )}
-                    Resolve
+                    {t('alerts.markResolved')}
                   </button>
                 )}
 

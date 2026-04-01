@@ -1,15 +1,59 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, ArrowRight, Zap, TrendingUp, Shield, Activity } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Zap, TrendingUp, Shield, Activity, Lock } from 'lucide-react';
 
-const stats = [
-  { value: '18+', label: 'Client sites monitored', icon: Activity },
-  { value: '81/100', label: 'Avg portfolio health', icon: TrendingUp },
-  { value: '< 2min', label: 'Issue detection time', icon: Shield },
+// Rotating stat sets — changes each day of the week so returning users see fresh context
+const statSets = [
+  // Sunday
+  [
+    { value: '18+', label: 'Client sites monitored', icon: Activity },
+    { value: '81/100', label: 'Avg portfolio health', icon: TrendingUp },
+    { value: '< 2min', label: 'Issue detection time', icon: Shield },
+  ],
+  // Monday
+  [
+    { value: '98%', label: 'Alert delivery rate', icon: Shield },
+    { value: '4.5h', label: 'Saved on reporting/week', icon: Activity },
+    { value: '24/7', label: 'Passive monitoring', icon: TrendingUp },
+  ],
+  // Tuesday
+  [
+    { value: '18+', label: 'Client sites active', icon: Activity },
+    { value: '3×', label: 'Faster issue detection', icon: Shield },
+    { value: '100%', label: 'Sessions captured', icon: TrendingUp },
+  ],
+  // Wednesday
+  [
+    { value: '81/100', label: 'Avg portfolio health', icon: TrendingUp },
+    { value: '0KB', label: 'Page-speed impact', icon: Shield },
+    { value: 'Live', label: 'Session replay', icon: Activity },
+  ],
+  // Thursday
+  [
+    { value: '12KB', label: 'Snippet size', icon: Shield },
+    { value: '7d', label: 'Weekly digest cadence', icon: Activity },
+    { value: 'ETB', label: 'Local payment support', icon: TrendingUp },
+  ],
+  // Friday
+  [
+    { value: '3+', label: 'Billable fixes found/week', icon: Activity },
+    { value: 'AI', label: 'Portfolio brief generation', icon: TrendingUp },
+    { value: '< 2min', label: 'Issue detection time', icon: Shield },
+  ],
+  // Saturday
+  [
+    { value: '18+', label: 'Client sites monitored', icon: Activity },
+    { value: 'Telegram', label: 'Native alert delivery', icon: Shield },
+    { value: 'Free', label: 'To start, no card needed', icon: TrendingUp },
+  ],
 ];
 
+const stats = statSets[new Date().getDay()];
+
 export const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -131,12 +175,12 @@ export const LoginPage: React.FC = () => {
             <span className="text-lg font-bold text-surface-900">DXM Pulse</span>
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-surface-900">Welcome back</h1>
-          <p className="mt-1.5 text-sm text-surface-500">Sign in to your agency workspace</p>
+          <h1 className="text-2xl font-bold tracking-tight text-surface-900">Enter your workspace</h1>
+          <p className="mt-1.5 text-sm text-surface-500">Sign in to your agency command center</p>
 
           {error && (
             <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
+              {error || t('common.error')}
             </div>
           )}
 
@@ -199,7 +243,7 @@ export const LoginPage: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Signing in…
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
@@ -227,6 +271,11 @@ export const LoginPage: React.FC = () => {
               <Zap className="h-3.5 w-3.5" />
               View live demo
             </Link>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-surface-400">
+            <Lock className="h-3 w-3" />
+            <span>256-bit SSL · Your session data is always encrypted</span>
           </div>
         </div>
       </div>

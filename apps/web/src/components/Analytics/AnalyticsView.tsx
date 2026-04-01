@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HeatmapView } from './HeatmapPage/HeatmapView.tsx';
 import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlowView } from './UserFlow/UserFlowView';
@@ -8,24 +9,25 @@ import { useAuth } from '../../context/AuthContext';
 import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
 
 export const AnalyticsView: React.FC = () => {
+  const { t } = useTranslation();
   const { workspace } = useAuth();
   const [activeTab, setActiveTab] = useState('heatmaps');
   const canUseFunnels = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.funnels);
   const canUseUserFlow = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.userFlow);
 
   const tabs = [
-    { id: 'heatmaps', label: 'Heatmaps', description: 'Click and scroll patterns' },
-    { id: 'funnels', label: 'Funnels', description: 'Conversion analysis' },
-    { id: 'flows', label: 'User Flow', description: 'Navigation patterns' },
-    { id: 'performance', label: 'Performance', description: 'Speed and errors' }
+    { id: 'heatmaps', label: t('analytics.heatmaps'), description: 'Click and scroll patterns' },
+    { id: 'funnels', label: t('analytics.funnels'), description: 'Conversion analysis' },
+    { id: 'flows', label: t('analytics.userFlow'), description: 'Navigation patterns' },
+    { id: 'performance', label: t('analytics.performance'), description: 'Speed and errors' }
   ];
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Behavior, funnels, flows, and performance in a format your agency can act on.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('analytics.title')}</h1>
+          <p className="text-gray-600">{t('analytics.subtitle')}</p>
         </div>
         <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-medium text-surface-600">
           Live portfolio telemetry

@@ -147,10 +147,14 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, user, works
         <div className="border-t border-surface-100 p-3 space-y-1">
           <button
             onClick={toggleLanguage}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800"
           >
-            <Globe className="h-4 w-4 text-surface-400" />
-            {i18n.language === 'en' ? 'Switch to Amharic' : 'Switch to English'}
+            <Globe className="h-4 w-4 text-surface-400 shrink-0" />
+            <span className="flex-1 text-left">{i18n.language === 'en' ? 'Language' : 'ቋንቋ'}</span>
+            <span className="flex items-center rounded-full border border-surface-200 bg-surface-50 text-[10px] font-bold overflow-hidden">
+              <span className={`px-2 py-0.5 ${i18n.language === 'en' ? 'bg-primary-600 text-white' : 'text-surface-400'}`}>EN</span>
+              <span className={`px-2 py-0.5 ${i18n.language === 'am' ? 'bg-primary-600 text-white' : 'text-surface-400'}`}>አማ</span>
+            </span>
           </button>
 
           <Link

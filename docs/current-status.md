@@ -2,19 +2,26 @@
 
 This document is the truthful snapshot of DXM Pulse on the stabilized agency-first monorepo line.
 
+Last updated: 2026-04-01 (Session 2 — UX polish, AI upgrade, homepage rework)
+
 ## What Is Shipping Now
 
 ### Product-facing
 
-- Public landing page positioned for Ethiopian web and growth agencies
+- Public landing page with competitive comparison table (vs Google Analytics / Hotjar), bandwidth badge (~12KB · async · 3G-ready), ETB/Chapa payment callout, and icon-enhanced "How It Works" workflow steps
 - Public site audit that measures response time, page size, and mobile-readiness
-- Login, signup, and workspace onboarding with 3-step flow, verification polling, and timeout state
-- Operational dashboard with live metrics, activity charts, live sessions, insights panel, and 15/30s polling
-- Agency overview with portfolio health, alert hotspots, recent activity, and next actions
+- Login page with "Enter your workspace" heading, rotating daily stats panel (7 day-specific stat sets), and 256-bit SSL trust badge
+- Signup page with 3-step milestone progress bar, ETB/Chapa trust signal in benefits list, and improved specific testimonial
+- Workspace onboarding with 3-step flow, verification polling, and timeout state
+- Operational dashboard with Session Activity (last 24h) and Weekly Completion Trend (7d) charts, live sessions, insights panel, Friction Index metric (computed from alert pressure + bounce pressure), and 15/30s polling
+- Agency overview (AI Portfolio Brief) with AI/AUTO mode badge distinguishing LLM-generated from deterministic briefs, Regenerate button with cache-busting, and responsive evidence grid
 - Client-sites surface with detail views, install snippets, verification, edit flow, conservative delete flow, vitals, funnels, and recent sessions
-- Reports surface with share-ready summaries generated from live portfolio data
-- Demo mode that sells the agency portfolio story instead of a single-site dashboard
-- Settings hub with profile, team, client-site setup, email notifications toggle, Telegram, digest, billing, and integrations sections
+- Reports surface with AI brief in Executive Summary (with AI badge when LLM-generated), Friction Signals section (active alerts with affected session counts), heuristic "no issues" insight when sessions exist but no alerts are active, and share-ready summaries
+- Demo page with Telegram notification simulation panel, Agency ROI widget (hours saved, billable fixes, replay count), "Generate Client Email" modal with pre-written draft, and evidence chips on alert cards
+- Settings hub with sidebar navigation (Identity, Team, Sites, Connections, Billing, Signals sections), sticky "Unsaved Changes" save bar (isDirty pattern — appears on first change, disappears after save or discard), and language preference
+- Heatmap analytics with redesigned mode-aware stats panel (Click/Scroll/Hover show different content), prettified CSS selector labels, intensity legend with color swatches, and pill-style segmented mode selector with icons
+- Navigation with EN / አማ language toggle pill (highlights active language)
+- Amharic localization complete — all 80+ translation keys present in both en.json and am.json
 - Improved empty states on sessions, heatmap, and dashboard pages
 - Client detail page with tracking verification banner and polling
 - Password reset flow fully wired in the frontend (forgot + reset pages)
@@ -86,17 +93,36 @@ What we intentionally did not pull over:
 
 ## DXM Pulse AI
 
-DXM Pulse AI has started in a deliberately small shape:
+DXM Pulse AI now operates in two modes depending on the environment:
 
-- `GET /overview` can now include an optional deterministic AI brief
-- `GET /sites/:id` can now include an optional deterministic site AI brief
-- `GET /alerts/:id` can now include an optional deterministic alert AI brief
-- `GET /funnels/:id/analysis` can now include an optional deterministic funnel AI brief
-- the AI layer reads the existing overview rollups instead of replacing them
-- the site AI layer reads the existing client detail payload instead of replacing it
-- the alert AI layer reads the existing alert detail record instead of re-deriving alert truth
-- the funnel AI layer reads the existing funnel analysis response instead of replacing the funnel analysis route
-- outputs are cached in `ai_artifacts`
-- AI remains additive and fail-open, so the core product still works unchanged when AI is disabled
+**LLM mode** (when `ANTHROPIC_API_KEY` is set):
+- Brief generation calls `api.anthropic.com/v1/messages` using Claude
+- Produces richer, context-aware narratives in English or Amharic
+- Results are cached in `ai_artifacts` for 24 hours to control cost
+- The AI Portfolio Brief shows an `AI` blue badge in the UI
 
-Later AI phases for reports, digests, and provider-backed generation remain roadmap work.
+**Deterministic mode** (fallback when `ANTHROPIC_API_KEY` is absent):
+- Pre-written template strings derived from portfolio data
+- No external call, no cost, always available
+- The AI Portfolio Brief shows an `AUTO` gray badge in the UI
+
+Both modes are fail-open — the core product works unchanged when AI is disabled or the cache table is unavailable.
+
+### Live AI surfaces
+
+- `GET /overview` — portfolio brief (headline, summary, topRisk, topOpportunity, evidence grid)
+- `GET /sites/:id` — per-site brief (headline, summary, recommendations)
+- `GET /alerts/:id` — alert explanation brief
+- `GET /funnels/:id/analysis` — funnel AI brief layered on the existing analysis response
+
+### Frontend AI features
+
+- AI Portfolio Brief: AI/AUTO mode badge, Regenerate button (busts artifact cache via `?refresh=1&t=<timestamp>`), responsive 2/3-column evidence grid
+- Reports Executive Summary: shows `siteDetail.ai.summary` with AI badge when available, falls back to deterministic `report.summary`
+- Reports Friction Signals: renders `openAlertsList` from site detail as an amber callout with affected session counts
+
+### Caching behaviour
+
+- `ai_artifacts` table stores artifact per `(workspaceId, type)` key
+- Artifacts expire after 24 hours; Regenerate forces a fresh generation regardless of cache age
+- The `mode` field on the artifact (`'llm'` | `'deterministic'`) drives the badge in the UI

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Check,
@@ -49,6 +50,7 @@ type PaymentStatus = 'idle' | 'initiating' | 'processing' | 'activating' | 'comp
 /* ── Component ───────────────────────────────────────────────────── */
 
 export const BillingPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { user, workspace, refreshUser } = useAuth();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -356,9 +358,9 @@ export const BillingPage: React.FC = () => {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-surface-900">Billing & Plan</h1>
+          <h1 className="text-2xl font-bold text-surface-900">{t('billing.title')}</h1>
           <p className="mt-1 text-sm text-surface-500">
-            Upgrade your workspace to unlock the full agency suite.
+            {t('billing.subtitle')}
           </p>
         </div>
       </div>
@@ -486,7 +488,7 @@ export const BillingPage: React.FC = () => {
                 <Zap className="h-5 w-5 text-primary-600" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Current workspace plan</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{t('billing.currentPlan')}</p>
                 <h2 className="mt-1 text-2xl font-semibold text-surface-900">{currentPlanMeta.name}</h2>
               </div>
             </div>
@@ -554,7 +556,7 @@ export const BillingPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-primary-600" />
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">Upgrade your plan</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{t('billing.upgrade')}</p>
               <h2 className="mt-1 text-xl font-semibold text-surface-900">
                 {chapaAvailable ? 'Pay online or continue manually' : 'Manual upgrade via Telegram'}
               </h2>
@@ -593,7 +595,7 @@ export const BillingPage: React.FC = () => {
                   <>
                     <CreditCard className="h-4 w-4" />
                     {hasPaidSelection
-                      ? `Pay ${formatPrice(selectedPlanMeta.priceEtb)} with Chapa`
+                      ? `${t('billing.payWithChapa')} — ${formatPrice(selectedPlanMeta.priceEtb)}`
                       : 'Select a paid plan to continue'}
                   </>
                 )}

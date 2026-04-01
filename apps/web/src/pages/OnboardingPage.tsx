@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle,
   Copy,
@@ -49,6 +50,7 @@ function buildSnippet(snippet: string, platform: Platform): string {
 }
 
 export const OnboardingPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { workspace, user } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -375,12 +377,12 @@ export const OnboardingPage: React.FC = () => {
                     {copied ? (
                       <>
                         <CheckCircle className="h-4 w-4" />
-                        Snippet copied to clipboard!
+                        {t('onboarding.step2.copied')}
                       </>
                     ) : (
                       <>
                         <Copy className="h-4 w-4" />
-                        Copy snippet
+                        {t('onboarding.step2.copy')}
                       </>
                     )}
                   </button>
@@ -407,12 +409,12 @@ export const OnboardingPage: React.FC = () => {
                         <CheckCircle className="h-6 w-6 text-emerald-600" />
                       </div>
                       <p className="text-base font-bold text-emerald-800">Tracking is live</p>
-                      <p className="mt-1 text-sm text-emerald-600">First session detected — your portfolio overview is now active.</p>
+                      <p className="mt-1 text-sm text-emerald-600">{t('onboarding.step3.success')}</p>
                       <button
                         onClick={() => navigate('/overview')}
                         className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition"
                       >
-                        Open portfolio overview <ArrowRight className="h-4 w-4" />
+                        {t('onboarding.step3.goToDashboard')} <ArrowRight className="h-4 w-4" />
                       </button>
                     </>
                   ) : timedOut ? (
@@ -451,7 +453,7 @@ export const OnboardingPage: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-base font-semibold text-surface-700">
-                        {verifying ? 'Listening for first session…' : 'Waiting for deployment…'}
+                        {verifying ? t('onboarding.step3.waiting') : 'Waiting for deployment…'}
                       </p>
                       <p className="mt-1 text-sm text-surface-500">
                         After publishing, open the site in a new tab and click around to trigger the first tracked session.
