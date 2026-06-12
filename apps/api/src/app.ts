@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { apiLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter, mcpLimiter } from './middleware/rateLimiter.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
@@ -26,6 +26,9 @@ import sitesRoutes from './routes/sites.js';
 import overviewRoutes from './routes/overview.js';
 import insightsRoutes from './routes/insights.js';
 import adminRoutes from './routes/admin.js';
+import askRoutes from './routes/ask.js';
+import mcpRoutes from './routes/mcp.js';
+import apiKeysRoutes from './routes/apiKeys.js';
 
 const app = express();
 
@@ -39,18 +42,32 @@ const publicIngestCors = cors({
   optionsSuccessStatus: 204,
 });
 
+// Dashboard CORS is fail-closed: only WEB_ORIGIN plus any EXTRA_ORIGINS are
+// allowed. Proxied dev environments with dynamic hostnames (e.g. Replit) must
+// opt in explicitly via DEV_ALLOW_ALL_ORIGINS=1 — and even then the escape
+// hatch is dead in production, because these are credentialed requests.
+const EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const ALLOWED_ORIGINS = new Set([WEB_ORIGIN, ...EXTRA_ORIGINS]);
+const DEV_ALLOW_ALL =
+  process.env.DEV_ALLOW_ALL_ORIGINS === '1' && process.env.NODE_ENV !== 'production';
+if (process.env.DEV_ALLOW_ALL_ORIGINS === '1') {
+  if (process.env.NODE_ENV === 'production') {
+    logger.warn('DEV_ALLOW_ALL_ORIGINS is set but ignored in production');
+  } else {
+    logger.warn('CORS origin allowlist disabled via DEV_ALLOW_ALL_ORIGINS');
+  }
+}
+
 const dashboardCors = cors({
   origin(origin, callback) {
     if (!origin) {
-      callback(null, true);
+      callback(null, true); // curl / health checks / same-origin
       return;
     }
-    // In development, allow all origins (Replit proxy uses dynamic hostnames)
-    if (process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-      return;
-    }
-    if (origin === WEB_ORIGIN) {
+    if (ALLOWED_ORIGINS.has(origin) || DEV_ALLOW_ALL) {
       callback(null, true);
       return;
     }
@@ -89,6 +106,13 @@ app.use('/collect-replay', publicIngestCors, collectRoutes);   // collect router
 // Admin routes — no CORS, curl-only, must sit before dashboardCors
 app.use('/admin/workspaces', adminRoutes);
 
+// MCP endpoint — called by Claude Desktop / Cursor via bearer-token, not the
+// dashboard. Must sit outside dashboardCors so external clients aren't blocked
+// by the origin allowlist. Authentication happens inside the route via
+// requireApiKey; mcpLimiter throttles per bearer token (per IP when absent)
+// since this mount point sits before the general apiLimiter.
+app.use('/mcp', mcpLimiter, mcpRoutes);
+
 app.use(dashboardCors);
 
 // Apply the general API limiter after telemetry so ingest uses collect-specific limits.
@@ -108,6 +132,8 @@ app.use('/onboarding', onboardingRoutes);
 app.use('/funnels', funnelsRoutes);
 app.use('/audit', auditRoutes);
 app.use('/digest', digestRoutes);
+app.use('/ask', askRoutes);
+app.use('/api-keys', apiKeysRoutes);
 
 // ── Sentry error handler (captures before custom handler swallows) ───────────
 if (process.env.SENTRY_DSN) {

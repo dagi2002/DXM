@@ -76,12 +76,18 @@ try {
 }
 
 if (process.env.NODE_ENV === 'production') {
-  const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_SECRET', 'CHAPA_WEBHOOK_SECRET'];
+  // WORKSPACE_API_PEPPER is required because API key hashes are
+  // sha256(raw || pepper) — an unpeppered production DB would let anyone who
+  // exfiltrates it forge key lookups. Note: rotating the pepper invalidates
+  // every issued key.
+  const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'ADMIN_SECRET', 'CHAPA_WEBHOOK_SECRET', 'WORKSPACE_API_PEPPER'];
   const missing  = required.filter(v => !process.env[v]?.trim());
   if (missing.length > 0) {
     logger.error('Missing required env vars', { vars: missing });
     process.exit(1);
   }
+} else if (!process.env.WORKSPACE_API_PEPPER?.trim()) {
+  logger.warn('WORKSPACE_API_PEPPER not set — API key hashes are unpeppered (dev only)');
 }
 
 app.listen(PORT, () => {
