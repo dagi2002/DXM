@@ -13,6 +13,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Key, RefreshCw, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fetchJson } from '../../lib/api';
 
 interface ApiKeyView {
@@ -46,6 +47,7 @@ const formatWhen = (iso: string | null): string => {
 };
 
 export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
+  const { t } = useTranslation();
   const [keys, setKeys] = useState<ApiKeyView[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -69,11 +71,11 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
       const res = await fetchJson<ListResponse>('/api-keys');
       setKeys(res.keys || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load API keys');
+      setError(e instanceof Error ? e.message : t('settings.apiKeys.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadKeys();
@@ -93,7 +95,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
       setNewName('');
       await loadKeys();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create key');
+      setError(e instanceof Error ? e.message : t('settings.apiKeys.createError'));
     } finally {
       setCreating(false);
     }
@@ -106,7 +108,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
       await fetchJson(`/api-keys/${id}/revoke`, { method: 'POST' });
       await loadKeys();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to revoke key');
+      setError(e instanceof Error ? e.message : t('settings.apiKeys.revokeError'));
     }
   };
 
@@ -143,11 +145,10 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
     <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-2 text-surface-900">
         <Key className="h-5 w-5 text-primary-600" />
-        <h2 className="text-xl font-semibold">API keys &amp; MCP</h2>
+        <h2 className="text-xl font-semibold">{t('settings.apiKeys.title')}</h2>
       </div>
       <p className="mt-2 text-sm leading-6 text-surface-600">
-        Connect DXM Pulse to Claude Desktop, Cursor, or any MCP-compatible client. Keys
-        scope access to this workspace and can be revoked at any time.
+        {t('settings.apiKeys.description')}
       </p>
 
       {/* ── One-time secret reveal ───────────────────────────────────── */}
@@ -157,7 +158,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-amber-900">
-                Copy this key now — it can't be shown again.
+                {t('settings.apiKeys.oneTimeWarning')}
               </p>
               <div className="mt-3 flex items-center gap-2">
                 <code className="flex-1 overflow-x-auto rounded-xl bg-white px-3 py-2 font-mono text-xs text-surface-900">
@@ -176,12 +177,12 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
                   {copiedKeyId === 'new' ? (
                     <>
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Copied
+                      {t('settings.apiKeys.copied')}
                     </>
                   ) : (
                     <>
                       <Copy className="h-3.5 w-3.5" />
-                      Copy
+                      {t('settings.apiKeys.copy')}
                     </>
                   )}
                 </button>
@@ -190,7 +191,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
                 onClick={() => setJustCreatedRaw(null)}
                 className="mt-3 text-xs font-semibold text-amber-800 underline-offset-2 hover:underline"
               >
-                I've saved it — dismiss
+                {t('settings.apiKeys.dismiss')}
               </button>
             </div>
           </div>
@@ -203,7 +204,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder='Key label (e.g. "Nathan — Claude Desktop")'
+            placeholder={t('settings.apiKeys.namePlaceholder')}
             maxLength={80}
             className="flex-1 rounded-2xl border border-surface-200 bg-white px-4 py-3 text-sm text-surface-900 placeholder:text-surface-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
           />
@@ -212,7 +213,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
             disabled={!newName.trim() || creating}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-60"
           >
-            {creating ? 'Generating…' : 'Generate key'}
+            {creating ? t('settings.apiKeys.generating') : t('settings.apiKeys.generate')}
           </button>
         </div>
       )}
@@ -227,7 +228,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
       <div className="mt-6">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-surface-900">
-            Active keys ({keys.filter((k) => !k.revokedAt).length})
+            {t('settings.apiKeys.activeKeys', { count: keys.filter((k) => !k.revokedAt).length })}
           </h3>
           <button
             onClick={() => void loadKeys()}
@@ -235,15 +236,15 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
             className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 px-3 py-1 text-xs font-semibold text-surface-600 transition hover:border-primary-300 hover:text-primary-700 disabled:opacity-60"
           >
             <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('settings.apiKeys.refresh')}
           </button>
         </div>
 
         {loading && keys.length === 0 ? (
-          <p className="text-sm text-surface-500">Loading…</p>
+          <p className="text-sm text-surface-500">{t('common.loading')}</p>
         ) : keys.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-surface-200 bg-surface-50 px-4 py-6 text-center text-sm text-surface-500">
-            No API keys yet. Generate one to start using DXM Pulse from Claude Desktop or Cursor.
+            {t('settings.apiKeys.empty')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -263,14 +264,14 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
                       <p className="truncate text-sm font-semibold text-surface-900">{k.name}</p>
                       {isRevoked && (
                         <span className="rounded-full bg-surface-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-surface-600">
-                          Revoked
+                          {t('settings.apiKeys.revokedBadge')}
                         </span>
                       )}
                     </div>
                     <p className="mt-1 font-mono text-xs text-surface-500">{k.prefix}…</p>
                     <p className="mt-1 text-xs text-surface-500">
-                      Created {formatWhen(k.createdAt)} · Last used {formatWhen(k.lastUsedAt)}
-                      {isRevoked ? ` · Revoked ${formatWhen(k.revokedAt)}` : ''}
+                      {t('settings.apiKeys.created')} {formatWhen(k.createdAt)} · {t('settings.apiKeys.lastUsed')} {formatWhen(k.lastUsedAt)}
+                      {isRevoked ? ` · ${t('settings.apiKeys.revokedBadge')} ${formatWhen(k.revokedAt)}` : ''}
                     </p>
                   </div>
                   {canManage && !isRevoked && (
@@ -279,7 +280,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
                       className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      Revoke
+                      {t('settings.apiKeys.revoke')}
                     </button>
                   )}
                 </li>
@@ -292,7 +293,7 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
       {/* ── Claude Desktop snippet ───────────────────────────────────── */}
       <div className="mt-6 rounded-3xl border border-surface-200 bg-surface-50 p-4">
         <div className="flex items-center justify-between gap-3">
-          <h4 className="text-sm font-semibold text-surface-900">Claude Desktop config</h4>
+          <h4 className="text-sm font-semibold text-surface-900">{t('settings.apiKeys.configTitle')}</h4>
           <button
             onClick={() =>
               void copyWithFeedback(
@@ -306,20 +307,19 @@ export const ApiKeysPanel: React.FC<Props> = ({ canManage, apiBase }) => {
             {copiedSnippet ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Copied
+                {t('settings.apiKeys.copied')}
               </>
             ) : (
               <>
                 <Copy className="h-3.5 w-3.5" />
-                Copy
+                {t('settings.apiKeys.copy')}
               </>
             )}
           </button>
         </div>
         <p className="mt-1 text-xs text-surface-500">
-          Add to <code className="rounded bg-white px-1 py-0.5 font-mono">claude_desktop_config.json</code>,
-          replace <code className="rounded bg-white px-1 py-0.5 font-mono">&lt;paste-your-key&gt;</code> with your
-          key, then restart Claude Desktop.
+          {t('settings.apiKeys.configHelpBefore')} <code className="rounded bg-white px-1 py-0.5 font-mono">claude_desktop_config.json</code>
+          {t('settings.apiKeys.configHelpAfter')}
         </p>
         <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 font-mono text-xs leading-relaxed text-surface-900">
           {configSnippet}
