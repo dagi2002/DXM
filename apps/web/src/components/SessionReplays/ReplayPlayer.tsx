@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { fetchJson } from '../../lib/api';
 import type { SessionReplayData, SessionRecordingEvent } from '../../types';
+import type { Replayer } from 'rrweb';
+import type { eventWithTime } from '@rrweb/types';
 
 // Import rrweb replay CSS — critical for mouse cursor, wrapper layout, animations
 import 'rrweb/dist/replay/rrweb-replay.min.css';
@@ -164,7 +166,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
   const cardRef = useRef<HTMLDivElement>(null);       // outermost card — fullscreen target
   const viewportRef = useRef<HTMLDivElement>(null);    // the dark viewport area
   const containerRef = useRef<HTMLDivElement>(null);   // rrweb mount point
-  const replayerRef = useRef<any>(null);
+  const replayerRef = useRef<Replayer | null>(null);
 
   const [replayData, setReplayData] = useState<SessionReplayData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,7 +245,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
         containerRef.current.innerHTML = '';
       }
 
-      const replayer = new Replayer(replayData.events as any[], {
+      const replayer = new Replayer(replayData.events as unknown as eventWithTime[], {
         root: containerRef.current!,
         skipInactive,
         speed: playbackSpeed,
@@ -252,7 +254,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
 
       replayerRef.current = replayer;
 
-      replayer.on('event-cast', (_event: any) => {
+      replayer.on('event-cast', (_event: unknown) => {
         try {
           const meta = replayer.getMetaData();
           setCurrentTime(meta.currentTime || 0);

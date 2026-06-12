@@ -88,7 +88,7 @@ export const FunnelAnalysis: React.FC = () => {
     void loadAnalysis();
   }, [loadAnalysis]);
 
-  const steps = analysis?.steps ?? [];
+  const steps = useMemo(() => analysis?.steps ?? [], [analysis]);
   const totalEntries = steps[0]?.users ?? 0;
   const overallConversion = steps.length > 0 ? steps[steps.length - 1].conversionRate : 0;
   const stepWithBestRetention = steps.reduce<{

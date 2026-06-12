@@ -13,7 +13,7 @@ export const ForgotPasswordPage: React.FC = () => {
     setIsLoading(true);
     try {
       await requestPasswordReset(email);
-    } catch (err) {
+    } catch {
       // Ignored for security, always show success map
     } finally {
       setIsLoading(false);

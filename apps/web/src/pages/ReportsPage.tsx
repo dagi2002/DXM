@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { UpgradeGate } from '../components/UpgradeGate';
 import { ReportView } from '../components/Reports/ReportView';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { fetchJson } from '../lib/api';
 import { BILLING_FEATURES, workspaceHasFeature } from '../lib/billing';
 import { markJourneyMilestone } from '../lib/workspaceSignals';

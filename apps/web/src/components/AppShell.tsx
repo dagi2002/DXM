@@ -12,7 +12,7 @@ import { ClientDetailPage } from '../pages/ClientDetailPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 export const AppShell: React.FC = () => {
   const { user, workspace } = useAuth();

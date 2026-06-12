@@ -8,7 +8,8 @@ import am from './locales/am.json';
 function getSmartFallback(): string {
   const stored = localStorage.getItem('dxm_lang');
   if (stored) return stored;
-  const browserLang = navigator.language || (navigator as any).userLanguage || '';
+  const browserLang =
+    navigator.language || (navigator as Navigator & { userLanguage?: string }).userLanguage || '';
   return browserLang.toLowerCase().startsWith('am') ? 'am' : 'en';
 }
 

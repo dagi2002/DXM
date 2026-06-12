@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { Eye, EyeOff, ArrowRight, Zap, TrendingUp, Shield, Activity, Lock } from 'lucide-react';
 
 // Rotating stat sets — changes each day of the week so returning users see fresh context

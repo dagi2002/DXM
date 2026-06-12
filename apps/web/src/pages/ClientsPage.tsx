@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, Plus, Search } from 'lucide-react';
 import { fetchJson } from '../lib/api';
 import { UpgradeGate } from '../components/UpgradeGate';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { getPlanMeta, getRecommendedUpgradePlan } from '../lib/billing';
 import type { ClientSiteSummary } from '../types';
 

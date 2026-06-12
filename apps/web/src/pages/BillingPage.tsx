@@ -12,7 +12,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { fetchJson } from '../lib/api';
 import {
   PLAN_CATALOG,
@@ -82,6 +82,10 @@ export const BillingPage: React.FC = () => {
   });
   const pollRef = useRef<number>();
   const pollCountRef = useRef(0);
+  // Mirror txRef into a ref so the long-lived polling closure always logs the
+  // current transaction reference instead of the one captured at mount.
+  const latestTxRef = useRef(txRef);
+  useEffect(() => { latestTxRef.current = txRef; }, [txRef]);
 
   /* ── Resolve pending plan from localStorage on mount ───────────── */
 
@@ -199,7 +203,7 @@ export const BillingPage: React.FC = () => {
           setPaymentStatus('activating');
 
           // Analytics: payment success
-          console.info('[billing] payment_success', { plan: targetPlan, txRef: txRef });
+          console.info('[billing] payment_success', { plan: targetPlan, txRef: latestTxRef.current });
 
           // Refresh auth context so feature gates unlock globally
           await refreshUser();

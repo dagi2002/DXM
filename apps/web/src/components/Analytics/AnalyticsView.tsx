@@ -5,7 +5,7 @@ import { FunnelAnalysis } from './Funnels/FunnelAnalysis.tsx';
 import { UserFlowView } from './UserFlow/UserFlowView';
 import PerformanceMetrics from './Performance/PerformanceMetrics';
 import { UpgradeGate } from '../UpgradeGate';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
 
 export const AnalyticsView: React.FC = () => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { Eye, EyeOff, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
 import {
   AGENCY_TYPE_OPTIONS,

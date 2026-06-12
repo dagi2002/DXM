@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { UpgradeGate } from '../UpgradeGate';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import type { Alert, AlertDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
 import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';

@@ -13,7 +13,7 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react';
-import { useAuth, type WorkspaceUser, type Workspace } from '../context/AuthContext';
+import { useAuth, type WorkspaceUser, type Workspace } from '../context/useAuth';
 import { useTranslation } from 'react-i18next';
 import { getPlanLabel } from '../lib/billing';
 

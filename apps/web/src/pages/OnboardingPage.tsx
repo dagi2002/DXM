@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { getApiUrl } from '../lib/api';
 import { UpgradeGate } from '../components/UpgradeGate';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { getRecommendedUpgradePlan } from '../lib/billing';
 
 type Step = 1 | 2 | 3;
