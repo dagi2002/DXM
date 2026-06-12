@@ -709,6 +709,40 @@ If the local flow still fails after the checks above:
    - `VITE_SDK_CDN_URL`
    - the `data-site-id` value being used
 
+## Team Invite Management
+
+### Revoke a pending invite
+
+Settings → Team → Pending invites → **Revoke**, or via curl (owner/admin cookie required):
+
+```bash
+# List pending invites
+curl -s http://localhost:4000/users/invites -H "Cookie: dxm_access=<token>"
+
+# Revoke one
+curl -s -X POST http://localhost:4000/users/invites/<inviteId>/revoke \
+  -H "Cookie: dxm_access=<token>"
+```
+
+Revocation is idempotent and takes effect immediately — the emailed link 404s on the next click. Re-inviting the same email automatically supersedes (revokes) the previous pending invite.
+
+## Shared Report Link Management
+
+### Revoke a shared client report link
+
+Reports → **Share link** → Active links → **Revoke**, or via curl:
+
+```bash
+# List active share links for a site
+curl -s http://localhost:4000/sites/<siteId>/report-shares -H "Cookie: dxm_access=<token>"
+
+# Revoke one
+curl -s -X POST http://localhost:4000/sites/<siteId>/report-shares/<shareId>/revoke \
+  -H "Cookie: dxm_access=<token>"
+```
+
+Revocation is synchronous — the public `/r/<token>` URL returns 404 on the next request. Share links also self-expire (default 30 days). The public payload is field-whitelisted: it never contains `siteKey`, the install snippet, or workspace/user ids; if a client reports a broken link, generate a fresh one rather than un-revoking (tokens cannot be recovered).
+
 ## Related Docs
 
 - [Codebase Onboarding](./codebase-onboarding.md)

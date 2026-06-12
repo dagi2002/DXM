@@ -77,7 +77,7 @@ COOKIE_DOMAIN=localhost
 ### `WEB_ORIGIN`
 **Optional** | Default: `http://localhost:5173`
 
-The CORS allowed origin. Must match the URL of the deployed web app exactly (no trailing slash).
+The CORS allowed origin. Must match the URL of the deployed web app exactly (no trailing slash). Also used to build links in invite emails and shared-report URLs.
 
 ```bash
 WEB_ORIGIN=http://localhost:5173
@@ -86,6 +86,28 @@ WEB_ORIGIN=http://localhost:5173
 In production:
 ```bash
 WEB_ORIGIN=https://app.dxmpulse.et
+```
+
+---
+
+### `EXTRA_ORIGINS`
+**Optional** | Comma-separated list of additional CORS origins
+
+Extends the dashboard CORS allowlist beyond `WEB_ORIGIN` — useful when a staging UI or an internal tool needs credentialed access to the API.
+
+```bash
+EXTRA_ORIGINS=https://staging.dxmpulse.et,https://ops.dxmpulse.et
+```
+
+---
+
+### `DEV_ALLOW_ALL_ORIGINS`
+**Optional, development only** | Set to `1` to disable the CORS allowlist
+
+Escape hatch for proxied dev environments with dynamic hostnames (e.g. Replit). When set, any origin is accepted on dashboard routes. **Hard-ignored when `NODE_ENV=production`** — the server logs a warning and keeps the allowlist, because dashboard requests carry credentials.
+
+```bash
+DEV_ALLOW_ALL_ORIGINS=1
 ```
 
 ---
@@ -253,7 +275,7 @@ CHAPA_WEBHOOK_SECRET=your_webhook_secret
 ---
 
 ### `WORKSPACE_API_PEPPER`
-**Recommended in production** | Secret string mixed into every workspace API key hash
+**Required in production (startup refusal when missing)** | Secret string mixed into every workspace API key hash
 
 Workspace API keys (used by the `/mcp` endpoint for Claude Desktop / Cursor) are stored as `sha256(raw_key || WORKSPACE_API_PEPPER)`. The pepper is a second secret that lives only in the process environment — an attacker who exfiltrates the database still cannot forge key lookups without it.
 
@@ -266,7 +288,7 @@ Generate one:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-If unset, the pepper is an empty string — acceptable for local development but a silent security downgrade in production. Rotating the pepper invalidates every existing API key, so pick a value before issuing any keys to real users.
+If unset in development, the pepper is an empty string and the server logs a warning at startup. In production the server **refuses to start** without it (same treatment as `JWT_SECRET`). Rotating the pepper invalidates every existing API key, so pick a value before issuing any keys to real users.
 
 ---
 
@@ -284,6 +306,10 @@ JWT_REFRESH_SECRET=different_secret_also_min_32_chars
 # ── CORS / Cookies ────────────────────────────────────────────────────────────
 COOKIE_DOMAIN=localhost
 WEB_ORIGIN=http://localhost:5173
+# Extra allowed origins (comma-separated); leave empty for single-origin setups
+EXTRA_ORIGINS=
+# Dev-only escape hatch for proxied hosts (Replit etc.) — ignored in production
+DEV_ALLOW_ALL_ORIGINS=
 
 # ── Anthropic AI (optional — enables LLM-backed briefs via Claude) ────────────
 # Without this key, AI briefs fall back to deterministic mode (no external call)

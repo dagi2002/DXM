@@ -6,7 +6,16 @@ It combines **session replay, insights, alerts, analytics, billing, and reportin
 
 ---
 
-## ✨ What's New — Session 3 (April 2026)
+## ✨ What's New — Session 4 (June 2026)
+
+- **Team invites** — invite teammates by email as admin or viewer; secure single-use links, accept page logs the new member straight in. Role enforcement now actually blocks viewers from mutating sites, funnels, and settings.
+- **Shareable client reports** — generate a read-only `/r/<token>` link from any report and send it to your client. No login needed, revocable, expires in 30 days, print-to-PDF included.
+- **Security hardening** — fail-closed CORS allowlist, `/mcp` rate limiting, API-key pepper required in production.
+- **136 integration tests** (was 98) — MCP isolation, API key lifecycle, friction detectors, invites, and report shares are all covered.
+- **38% smaller bundle** — every authenticated page now lazy-loads as its own chunk (167 → 103 kB gzipped main bundle).
+- **Amharic parity restored** — all Session 3 + 4 UI strings translated; EN/AM key-parallel.
+
+## ✨ Session 3 (April 2026)
 
 - **Ask Pulse** — natural-language chat over your analytics (Claude Haiku 4.5 tool-use). Floating bubble on Dashboard + Overview, answers in English or Amharic, with clickable citations that deep-link back into the product.
 - **MCP endpoint** — query DXM Pulse directly from Claude Desktop or Cursor. JSON-RPC 2.0 over bearer token; 4 read-only workspace-scoped tools. Settings → Connections ships a generate/list/revoke UI and a copy-ready Claude Desktop config snippet.
@@ -194,10 +203,10 @@ npm run check
 ⸻
 
 🛣 Roadmap
-	•	Team invites & role enforcement
-	•	Shareable client report links
-	•	Performance: route-level code splitting
+	•	Multi-workspace membership (emails are currently one-workspace)
+	•	Provider-backed report & digest AI
 	•	Landing & onboarding improvements
+	•	Web component test coverage
 
 ⸻
 

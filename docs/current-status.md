@@ -2,11 +2,23 @@
 
 This document is the truthful snapshot of DXM Pulse on the stabilized agency-first monorepo line.
 
-Last updated: 2026-04-20 (Session 3 — 2026-frontier features: SDK v2, Ask Pulse, Session AI, CWV, MCP)
+Last updated: 2026-06-12 (Session 4 — stabilization, trust, team & sharing)
 
 ## What Is Shipping Now
 
-### Recently shipped (Session 3)
+### Recently shipped (Session 4)
+
+- **Stabilization & security hardening** — Session 3 work is now committed and CI-validated. Dashboard CORS is fail-closed (`WEB_ORIGIN` + `EXTRA_ORIGINS` allowlist; `DEV_ALLOW_ALL_ORIGINS=1` dev-only escape hatch, ignored in production). `/mcp` has a dedicated rate limiter (60/min per hashed bearer token — it was previously unthrottled). `WORKSPACE_API_PEPPER` is required in production (startup refusal). All web lint warnings cleared, including a real stale-closure bug in BillingPage payment polling.
+- **Session 3 surfaces are now tested** — 35 new integration tests across 9 suites: API key lifecycle (one-time reveal, synchronous revocation, viewer 403s), MCP protocol + strict cross-workspace isolation, Ask Pulse fallback, vitals percentile math, journey ranking, the three friction detectors (thresholds + dedup), session summary scoping. Suite: 37 files, 136 tests.
+- **Team invites** — owners/admins invite teammates by email with a role (admin/viewer). Tokens follow the password-reset discipline (sha256-hashed, 7-day expiry, single-use, revocable). Public accept page at `/accept-invite` creates the member and logs them straight in. Settings → Team gains the invite form + pending list.
+- **Role enforcement** — viewers can no longer create/edit/delete sites or funnels, or change workspace settings; all mutating routes are owner/admin-gated (previously any authenticated user could mutate).
+- **Shareable client reports** (flagship) — Reports → Share link creates a tokenized read-only URL (`/r/<token>`, default 30-day expiry, revocable) an agency can send to a client. The public payload is field-whitelisted (no `siteKey`, no snippet, no internal ids), rate-limited per IP, and renders the full ReportView with print-to-PDF and a "Powered by DXM Pulse" footer.
+- **Amharic parity restored** — ApiKeysPanel and WebVitalsCard (previously hardcoded English) plus all new invite/share UI now go through i18next; `en.json`/`am.json` are key-parallel at 328 keys.
+- **Route-level code splitting** — all 11 authenticated pages lazy-load as separate chunks behind an in-shell loader. Main bundle: 625 kB → 322 kB raw (167 → 103 kB gzipped).
+
+**Amharic strings needing native review** (added this session, machine-assisted): `settings.apiKeys.*`, `settings.team.*`, `acceptInvite.*`, `vitals.*`.
+
+### Previously shipped (Session 3)
 
 - **SDK v2 rewrite** — modular TypeScript implementation served at `/dxm.v2.js`, 3.6 KB gzipped. Adds dead-click, form-start, form-submit, form-error events plus a privacy API (`window.dxm.privacy.maskUrls / scrubFields / disableInputCapture`). v1 stays byte-frozen at `/dxm.js` so live installations never break; Settings → Connections shows an Upgrade card with one-click v2 snippet per site.
 - **Ask Pulse** (natural-language analytics chat) — floating bubble on Dashboard + Overview, slide-out panel, Claude Haiku 4.5 tool-use loop (5 tool calls max, 60 s wall-clock cap), 4 tools (`list_sites`, `get_site_metrics`, `recent_alerts`, `search_sessions`), citation chips linking back into the product. Respects `dxm_lang` so answers come back in Amharic when the UI is in Amharic.
@@ -51,7 +63,7 @@ Last updated: 2026-04-20 (Session 3 — 2026-frontier features: SDK v2, Ask Puls
 - Weekly digest compilation and sending pipeline
 - Billing backbone with Chapa payment integration (initiate, webhook with HMAC verification)
 - Admin plan activation endpoint for operator-driven manual upgrades
-- Comprehensive integration test suite: 28 files, 98 tests
+- Comprehensive integration test suite: 37 files, 136 tests
 
 ## What Is Real vs Partial
 
@@ -71,7 +83,7 @@ Last updated: 2026-04-20 (Session 3 — 2026-frontier features: SDK v2, Ask Puls
 - Password reset is fully implemented with secure token generation, SHA-256 hashing, single-use enforcement, 1-hour expiry, and session invalidation
 - Email notifications are live: welcome email on signup, site-verified email on first session, critical alert email on critical-severity alerts — all respecting the workspace `email_notifications_enabled` flag
 - Billing backbone is real: Chapa payment initiation (`POST /billing/chapa/initiate`), HMAC-verified webhook (`POST /billing/chapa/webhook`), upgrade requests (`POST /billing/upgrade-requests`), and admin plan activation (`PATCH /admin/workspaces/:id/plan`)
-- Integration test suite covers 98 tests across 28 files (auth, sessions, alerts, sites, funnels, analytics, billing, password reset, email notifications, admin)
+- Integration test suite covers 136 tests across 37 files (auth, sessions, alerts, sites, funnels, analytics, billing, password reset, email notifications, admin, API keys, MCP, invites, report shares, friction detectors)
 - Build, lint, and root `check` are passing targets for this branch
 - The phase-1 AI foundation is live with deterministic overview, site, alert, and funnel briefs layered onto the primary detail routes
 
