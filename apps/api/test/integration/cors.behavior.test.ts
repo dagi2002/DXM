@@ -145,6 +145,39 @@ describe('cors behavior', () => {
     expect(response.headers['access-control-allow-origin']).toBe('https://random.example');
   });
 
+  it('allows any localhost port outside production (Vite port drift)', async () => {
+    context = await createTestApp(); // WEB_ORIGIN is 5173; browser may be on 5001
+
+    const fromOtherPort = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'http://localhost:5001');
+    expect(fromOtherPort.status).toBe(401);
+    expect(fromOtherPort.headers['access-control-allow-origin']).toBe('http://localhost:5001');
+    expect(fromOtherPort.headers['access-control-allow-credentials']).toBe('true');
+
+    const fromLoopback = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'http://127.0.0.1:5000');
+    expect(fromLoopback.headers['access-control-allow-origin']).toBe('http://127.0.0.1:5000');
+
+    // Lookalike domains never match the localhost rule.
+    const lookalike = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'http://localhost.evil.example');
+    expect(lookalike.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('blocks non-allowlisted localhost origins in production', async () => {
+    context = await createTestApp({ env: { NODE_ENV: 'production' } });
+
+    const response = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'http://localhost:5001');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
   it('ignores DEV_ALLOW_ALL_ORIGINS in production', async () => {
     context = await createTestApp({
       env: { DEV_ALLOW_ALL_ORIGINS: '1', NODE_ENV: 'production' },

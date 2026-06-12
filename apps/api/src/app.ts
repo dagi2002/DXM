@@ -44,18 +44,23 @@ const publicIngestCors = cors({
 });
 
 // Dashboard CORS is fail-closed: only WEB_ORIGIN plus any EXTRA_ORIGINS are
-// allowed. Proxied dev environments with dynamic hostnames (e.g. Replit) must
-// opt in explicitly via DEV_ALLOW_ALL_ORIGINS=1 — and even then the escape
-// hatch is dead in production, because these are credentialed requests.
+// allowed. Outside production, any localhost/127.0.0.1 origin is also accepted
+// because the local Vite port drifts (5000 is taken by macOS AirPlay, so Vite
+// auto-bumps to 5001, etc.) and a stale WEB_ORIGIN should never lock a
+// developer out of their own login. Proxied dev environments with dynamic
+// hostnames (e.g. Replit) must opt in explicitly via DEV_ALLOW_ALL_ORIGINS=1 —
+// and even then the escape hatch is dead in production, because these are
+// credentialed requests.
 const EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 const ALLOWED_ORIGINS = new Set([WEB_ORIGIN, ...EXTRA_ORIGINS]);
-const DEV_ALLOW_ALL =
-  process.env.DEV_ALLOW_ALL_ORIGINS === '1' && process.env.NODE_ENV !== 'production';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const DEV_ALLOW_ALL = process.env.DEV_ALLOW_ALL_ORIGINS === '1' && !IS_PRODUCTION;
 if (process.env.DEV_ALLOW_ALL_ORIGINS === '1') {
-  if (process.env.NODE_ENV === 'production') {
+  if (IS_PRODUCTION) {
     logger.warn('DEV_ALLOW_ALL_ORIGINS is set but ignored in production');
   } else {
     logger.warn('CORS origin allowlist disabled via DEV_ALLOW_ALL_ORIGINS');
@@ -69,6 +74,10 @@ const dashboardCors = cors({
       return;
     }
     if (ALLOWED_ORIGINS.has(origin) || DEV_ALLOW_ALL) {
+      callback(null, true);
+      return;
+    }
+    if (!IS_PRODUCTION && LOCALHOST_ORIGIN.test(origin)) {
       callback(null, true);
       return;
     }
