@@ -5,14 +5,18 @@
  * Supports PDF (print) and CSV export.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  CheckCircle2,
   ChevronDown,
+  Copy,
   Download,
   FileText,
+  Link2,
   Loader2,
   Printer,
+  X,
 } from 'lucide-react';
 import { UpgradeGate } from '../components/UpgradeGate';
 import { ReportView } from '../components/Reports/ReportView';
@@ -47,8 +51,17 @@ interface ApiInsight {
 
 /* ── Component ───────────────────────────────────────────────────── */
 
+interface ShareView {
+  id: string;
+  siteId: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  createdAt: string;
+  active: boolean;
+}
+
 export const ReportsPage: React.FC = () => {
-  const { workspace } = useAuth();
+  const { workspace, user } = useAuth();
   const canUseReports = workspaceHasFeature(workspace?.plan || 'free', BILLING_FEATURES.reports);
 
   // Site list
@@ -67,6 +80,15 @@ export const ReportsPage: React.FC = () => {
 
   // Dropdown open
   const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
+
+  // Share-link state
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [shares, setShares] = useState<ShareView[]>([]);
+  const [newShareUrl, setNewShareUrl] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copiedShare, setCopiedShare] = useState(false);
+  const canManageShares = user?.role === 'owner' || user?.role === 'admin';
 
   /* ── Load sites ─────────────────────────────────────────────────── */
 
@@ -176,6 +198,66 @@ export const ReportsPage: React.FC = () => {
     downloadCsv(csv, `${selectedSite.domain}-report-${date}.csv`);
   };
 
+  /* ── Share-link handlers ────────────────────────────────────────── */
+
+  const loadShares = useCallback(async () => {
+    if (!selectedSiteId) return;
+    try {
+      const res = await fetchJson<{ shares: ShareView[] }>(`/sites/${selectedSiteId}/report-shares`);
+      setShares(res.shares || []);
+    } catch {
+      /* non-fatal — list stays empty */
+    }
+  }, [selectedSiteId]);
+
+  const handleOpenShare = () => {
+    setIsShareOpen(true);
+    setNewShareUrl(null);
+    setShareError(null);
+    void loadShares();
+  };
+
+  const handleCreateShare = async () => {
+    if (!selectedSiteId || isSharing) return;
+    setIsSharing(true);
+    setShareError(null);
+    try {
+      const res = await fetchJson<{ shareUrl: string }>(`/sites/${selectedSiteId}/report-share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      setNewShareUrl(res.shareUrl);
+      void markJourneyMilestone('report_exported').catch(() => {});
+      await loadShares();
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Failed to create share link');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleRevokeShare = async (shareId: string) => {
+    if (!selectedSiteId) return;
+    try {
+      await fetchJson(`/sites/${selectedSiteId}/report-shares/${shareId}/revoke`, { method: 'POST' });
+      await loadShares();
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Failed to revoke link');
+    }
+  };
+
+  const handleCopyShare = async () => {
+    if (!newShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(newShareUrl);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      /* user can select manually */
+    }
+  };
+
   /* ── Upgrade gate ──────────────────────────────────────────────── */
 
   if (!canUseReports) {
@@ -259,6 +341,17 @@ export const ReportsPage: React.FC = () => {
 
           {/* Right: export actions */}
           <div className="flex items-center gap-2">
+            {canManageShares && (
+              <button
+                type="button"
+                onClick={handleOpenShare}
+                disabled={!report}
+                className="inline-flex items-center gap-2 rounded-2xl border border-surface-200 px-4 py-2.5 text-sm font-semibold text-surface-700 transition hover:border-primary-300 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Link2 className="h-4 w-4" />
+                Share link
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCsvExport}
@@ -326,6 +419,101 @@ export const ReportsPage: React.FC = () => {
             aiSummary={siteDetail?.ai?.summary ?? null}
             frictionAlerts={siteDetail?.openAlertsList ?? []}
           />
+        </div>
+      )}
+
+      {/* ── Share modal ──────────────────────────────────────────── */}
+      {isShareOpen && (
+        <div className="dxm-print-hide fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-surface-900/40" onClick={() => setIsShareOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-[28px] border border-surface-200 bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-5 w-5 text-primary-600" />
+                <h3 className="text-lg font-semibold text-surface-900">Share this report</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShareOpen(false)}
+                className="rounded-full p-1.5 text-surface-400 transition hover:bg-surface-100 hover:text-surface-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-surface-600">
+              Create a read-only link for <strong>{selectedSite?.domain}</strong> that your client can
+              open without logging in. Links expire after 30 days and can be revoked here any time.
+            </p>
+
+            {newShareUrl ? (
+              <div className="mt-4 rounded-3xl border border-amber-300 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900">
+                  Copy this link now — it won't be shown again.
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto rounded-xl bg-white px-3 py-2 font-mono text-xs text-surface-900">
+                    {newShareUrl}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyShare()}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400 bg-white px-3 py-2 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                  >
+                    {copiedShare ? (
+                      <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+                    ) : (
+                      <><Copy className="h-3.5 w-3.5" /> Copy</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleCreateShare()}
+                disabled={isSharing}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-60"
+              >
+                {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                {isSharing ? 'Creating…' : 'Create share link'}
+              </button>
+            )}
+
+            {shareError && (
+              <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {shareError}
+              </p>
+            )}
+
+            {shares.filter((s) => s.active).length > 0 && (
+              <div className="mt-5">
+                <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">
+                  Active links
+                </h4>
+                <ul className="mt-3 space-y-2">
+                  {shares.filter((s) => s.active).map((share) => (
+                    <li
+                      key={share.id}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3"
+                    >
+                      <div className="text-xs text-surface-600">
+                        Created {new Date(share.createdAt + 'Z').toLocaleDateString()} · expires{' '}
+                        {new Date(share.expiresAt + 'Z').toLocaleDateString()}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleRevokeShare(share.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-xs font-semibold text-surface-600 transition hover:border-red-300 hover:text-red-700"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Revoke
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

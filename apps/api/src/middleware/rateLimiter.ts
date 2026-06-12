@@ -37,6 +37,15 @@ export const mcpLimiter = rateLimit({
   message: { error: 'MCP rate limit exceeded — slow down.' },
 });
 
+/** Public shared-report endpoint — per-IP; tokens are unguessable but cheap to probe */
+export const publicReportLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — please try again shortly.' },
+});
+
 /** SDK /collect endpoint — generous limit per site key */
 export const collectLimiter = rateLimit({
   windowMs: 10_000,

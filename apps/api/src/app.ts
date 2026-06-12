@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { apiLimiter, mcpLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter, mcpLimiter, publicReportLimiter } from './middleware/rateLimiter.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
@@ -29,6 +29,7 @@ import adminRoutes from './routes/admin.js';
 import askRoutes from './routes/ask.js';
 import mcpRoutes from './routes/mcp.js';
 import apiKeysRoutes from './routes/apiKeys.js';
+import publicReportsRoutes from './routes/publicReports.js';
 
 const app = express();
 
@@ -112,6 +113,11 @@ app.use('/admin/workspaces', adminRoutes);
 // requireApiKey; mcpLimiter throttles per bearer token (per IP when absent)
 // since this mount point sits before the general apiLimiter.
 app.use('/mcp', mcpLimiter, mcpRoutes);
+
+// Public shared client reports — token-authenticated inside the route, served
+// to unauthenticated clients, so it sits outside dashboardCors with its own
+// permissive read-only CORS and a per-IP limiter.
+app.use('/public/reports', publicReportLimiter, publicReportsRoutes);
 
 app.use(dashboardCors);
 
