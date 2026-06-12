@@ -1,11 +1,3 @@
-Good — this is actually a strong README already, it just needs to be upgraded to match what you’ve built (Sprints 12–13 level).
-
-I rewrote it clean, professional, and production-grade while keeping your tone and content.
-
-⸻
-
-✅ UPDATED README (READY TO PASTE)
-
 # DXM Pulse
 
 DXM Pulse is a full-stack **Digital Experience Management (DXM)** platform designed for agencies and businesses to monitor, analyze, and improve user behavior across their websites.
@@ -14,14 +6,26 @@ It combines **session replay, insights, alerts, analytics, billing, and reportin
 
 ---
 
+## ✨ What's New — Session 3 (April 2026)
+
+- **Ask Pulse** — natural-language chat over your analytics (Claude Haiku 4.5 tool-use). Floating bubble on Dashboard + Overview, answers in English or Amharic, with clickable citations that deep-link back into the product.
+- **MCP endpoint** — query DXM Pulse directly from Claude Desktop or Cursor. JSON-RPC 2.0 over bearer token; 4 read-only workspace-scoped tools. Settings → Connections ships a generate/list/revoke UI and a copy-ready Claude Desktop config snippet.
+- **Per-session AI Recap** — every session now opens with a Claude-generated headline, narrative, friction moments, and opportunities (deterministic fallback when no API key).
+- **Core Web Vitals surface** — LCP / INP / CLS / FCP / TTFB percentiles with Google-threshold colouring, range + device toggles on Dashboard and Client Detail.
+- **Expanded friction detection** — dead clicks, U-turns, and form-abandonment detectors on top of the existing rage-click engine.
+- **Auto journey map** — top-10 path Sankey on Client Detail (self-rolled SVG, no heavy dep).
+- **SDK v2** — modular TypeScript rewrite, 3.6 KB gzipped, dead-click + form events, privacy API (`window.dxm.privacy`). v1 stays byte-frozen so no live installation breaks.
+
 ## 🚀 Key Features
 
-- **Dashboard** — real-time metrics, live sessions, and activity tracking  
-- **Session Replay** — rrweb-powered playback with timeline markers and event logs  
-- **Insights Engine** — rule-based detection (bounce rate, traffic drop, low engagement)  
+- **Dashboard** — real-time metrics, live sessions, Core Web Vitals, Friction Index, and Ask Pulse chat  
+- **Session Replay + AI Recap** — rrweb playback with Claude-generated narrative, friction moments, and opportunities  
+- **Insights Engine** — rule-based detection (bounce rate, traffic drop, low engagement) plus dead-click / U-turn / form-abandon detectors  
 - **Alerts System** — database-backed alerts with email + Telegram delivery  
-- **Analytics Suite** — heatmaps, funnels, user flows, and performance metrics  
+- **Analytics Suite** — heatmaps, funnels, user flows, journey Sankey, Core Web Vitals percentiles  
 - **Reports (Decision Layer)** — executive summaries, KPIs, recommendations, exports  
+- **Ask Pulse** — natural-language analytics chat (Claude tool-use, English/Amharic)  
+- **MCP endpoint** — query your workspace from Claude Desktop / Cursor over bearer token  
 - **Billing (Chapa Integration)** — full payment flow with activation + fallback  
 - **Observability** — structured logs, request IDs, optional Sentry integration  
 
@@ -184,14 +188,16 @@ npm run check
 	•	✅ Feature complete (Sprint 1–11.6)
 	•	✅ Production ready (Sprint 12)
 	•	✅ Observability implemented (Sprint 13)
+	•	✅ Testing & CI pipeline (28+ integration suites, GitHub Actions)
+	•	✅ Session 3 — SDK v2, Ask Pulse, session AI, Core Web Vitals, MCP endpoint
 
 ⸻
 
 🛣 Roadmap
-	•	Sprint 14 — Performance & optimization
-	•	Sprint 15 — Testing & CI pipeline
-	•	Sprint 16 — Multi-user & permissions
-	•	Sprint 17 — Landing & onboarding improvements
+	•	Team invites & role enforcement
+	•	Shareable client report links
+	•	Performance: route-level code splitting
+	•	Landing & onboarding improvements
 
 ⸻
 
