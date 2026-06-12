@@ -173,16 +173,41 @@ describe('digest send-all', () => {
     await enableWorkspaceDigest();
     fetchMock.mockResolvedValue({ ok: true });
 
-    const response = await request(context.app)
-      .post('/digest/send-all')
-      .set('x-digest-key', 'digest-secret');
+    // Import AFTER createTestApp — vi.resetModules() inside it means this is
+    // the same logger instance the app's digest route holds.
+    const { logger } = await import('../../src/lib/logger.js');
+    const logInfo = vi.spyOn(logger, 'info').mockImplementation(() => {});
+    const logWarn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
 
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ sent: 1 });
-    expect(infoSpy).toHaveBeenCalledWith('[digest] Starting digest run for 1 eligible workspaces');
-    expect(infoSpy).toHaveBeenCalledWith('[digest] Completed digest run: eligible=1 sent=1 failed=0');
-    expect(warnSpy).not.toHaveBeenCalled();
-    expect(errorSpy).not.toHaveBeenCalled();
+    try {
+      const response = await request(context.app)
+        .post('/digest/send-all')
+        .set('x-digest-key', 'digest-secret');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ sent: 1 });
+      expect(logInfo).toHaveBeenCalledWith(
+        'Starting digest run',
+        expect.objectContaining({ route: 'digest', eligible: 1 }),
+      );
+      expect(logInfo).toHaveBeenCalledWith(
+        'Digest run completed',
+        expect.objectContaining({ route: 'digest', eligible: 1, sent: 1, failed: 0 }),
+      );
+      expect(logWarn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Digest'),
+        expect.anything(),
+      );
+      expect(logError).not.toHaveBeenCalledWith(
+        expect.stringContaining('Digest'),
+        expect.anything(),
+      );
+    } finally {
+      logInfo.mockRestore();
+      logWarn.mockRestore();
+      logError.mockRestore();
+    }
   });
 
   it('logs failures and still returns the successful sent count', async () => {
@@ -199,14 +224,32 @@ describe('digest send-all', () => {
       text: vi.fn().mockResolvedValue('telegram error'),
     });
 
-    const response = await request(context.app)
-      .post('/digest/send-all')
-      .set('x-digest-key', 'digest-secret');
+    const { logger } = await import('../../src/lib/logger.js');
+    const logInfo = vi.spyOn(logger, 'info').mockImplementation(() => {});
+    const logWarn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ sent: 0 });
-    expect(warnSpy).toHaveBeenCalledWith('[digest] Telegram delivery failed (500): telegram error');
-    expect(warnSpy).toHaveBeenCalledWith(`[digest] Delivery failed for workspace ${workspaceId}`);
-    expect(infoSpy).toHaveBeenCalledWith('[digest] Completed digest run: eligible=1 sent=0 failed=1');
+    try {
+      const response = await request(context.app)
+        .post('/digest/send-all')
+        .set('x-digest-key', 'digest-secret');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ sent: 0 });
+      expect(logWarn).toHaveBeenCalledWith(
+        'Telegram delivery failed',
+        expect.objectContaining({ route: 'digest', status: 500, body: 'telegram error' }),
+      );
+      expect(logWarn).toHaveBeenCalledWith(
+        'Digest delivery failed',
+        expect.objectContaining({ route: 'digest', workspaceId }),
+      );
+      expect(logInfo).toHaveBeenCalledWith(
+        'Digest run completed',
+        expect.objectContaining({ route: 'digest', eligible: 1, sent: 0, failed: 1 }),
+      );
+    } finally {
+      logInfo.mockRestore();
+      logWarn.mockRestore();
+    }
   });
 });

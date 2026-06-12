@@ -104,7 +104,7 @@ describe('cors behavior', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
-  it('keeps GET /health unchanged for local and non-browser checks', async () => {
+  it('GET /health reports db status and uptime for local and non-browser checks', async () => {
     context = await createTestApp();
 
     const response = await request(context.app).get('/health');
@@ -112,7 +112,49 @@ describe('cors behavior', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
+      db: 'ok',
+      uptime: expect.any(Number),
       ts: expect.any(String),
     });
+  });
+
+  it('allows extra origins from EXTRA_ORIGINS on dashboard routes', async () => {
+    context = await createTestApp({
+      env: { EXTRA_ORIGINS: 'https://studio.example, https://ops.example' },
+    });
+
+    const response = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'https://studio.example');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBe('https://studio.example');
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('DEV_ALLOW_ALL_ORIGINS=1 opens dashboard CORS outside production only', async () => {
+    context = await createTestApp({
+      env: { DEV_ALLOW_ALL_ORIGINS: '1', NODE_ENV: 'test' },
+    });
+
+    const response = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'https://random.example');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBe('https://random.example');
+  });
+
+  it('ignores DEV_ALLOW_ALL_ORIGINS in production', async () => {
+    context = await createTestApp({
+      env: { DEV_ALLOW_ALL_ORIGINS: '1', NODE_ENV: 'production' },
+    });
+
+    const response = await request(context.app)
+      .get('/auth/me')
+      .set('Origin', 'https://random.example');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 });
