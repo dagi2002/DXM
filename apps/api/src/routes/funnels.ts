@@ -13,7 +13,7 @@ import type {
   FunnelAnalysisStep,
 } from '../../../../packages/contracts/index.js';
 import { db } from '../db/index.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { getFunnelAiBriefOrNull } from '../services/ai/index.js';
 import { nanoid } from 'nanoid';
 import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
@@ -150,7 +150,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /funnels — create a funnel
-router.post('/', (req, res) => {
+router.post('/', requireRole('owner', 'admin'), (req, res) => {
   const workspaceId = req.user!.workspaceId;
   const { name, steps, siteId } = req.body as {
     name: string;
@@ -172,7 +172,7 @@ router.post('/', (req, res) => {
 });
 
 // DELETE /funnels/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireRole('owner', 'admin'), (req, res) => {
   const workspaceId = req.user!.workspaceId;
   db.prepare('DELETE FROM funnels WHERE id = ? AND workspace_id = ?')
     .run(req.params.id, workspaceId);

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { listWorkspaceSites } from '../services/siteAnalytics.js';
 import { sendTelegramTest } from '../services/telegram.js';
@@ -136,7 +136,7 @@ router.get('/', (req, res) => {
 });
 
 // PATCH /settings — update workspace name
-router.patch('/', validate(workspaceSettingsSchema), (req, res) => {
+router.patch('/', requireRole('owner', 'admin'), validate(workspaceSettingsSchema), (req, res) => {
   const {
     name,
     digestEnabled,
@@ -218,7 +218,7 @@ router.post('/milestones/:milestoneKey', (req, res) => {
 });
 
 // PUT /settings/telegram — save Telegram credentials
-router.put('/telegram', requirePlanFeature(BILLING_FEATURES.telegram), validate(telegramSchema), (req, res) => {
+router.put('/telegram', requireRole('owner', 'admin'), requirePlanFeature(BILLING_FEATURES.telegram), validate(telegramSchema), (req, res) => {
   const { botToken, chatId } = req.body;
   db.prepare('UPDATE workspaces SET telegram_bot_token = ?, telegram_chat_id = ? WHERE id = ?')
     .run(botToken, chatId, req.user!.workspaceId);
@@ -226,7 +226,7 @@ router.put('/telegram', requirePlanFeature(BILLING_FEATURES.telegram), validate(
 });
 
 // POST /settings/telegram/test — send a test message
-router.post('/telegram/test', requirePlanFeature(BILLING_FEATURES.telegram), async (req, res) => {
+router.post('/telegram/test', requireRole('owner', 'admin'), requirePlanFeature(BILLING_FEATURES.telegram), async (req, res) => {
   const ws = db.prepare('SELECT telegram_bot_token, telegram_chat_id FROM workspaces WHERE id = ?')
     .get(req.user!.workspaceId) as any;
   if (!ws?.telegram_bot_token || !ws?.telegram_chat_id) {

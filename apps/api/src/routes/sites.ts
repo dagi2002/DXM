@@ -1,8 +1,9 @@
 import { Router, type RequestHandler } from 'express';
+import { randomBytes, createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getSiteAiBriefOrNull } from '../services/ai/index.js';
 import {
@@ -61,7 +62,7 @@ export const createSiteHandler: RequestHandler = (req, res) => {
   return res.status(201).json(detail);
 };
 
-router.patch('/:id', validate(updateSiteSchema), (req, res) => {
+router.patch('/:id', requireRole('owner', 'admin'), validate(updateSiteSchema), (req, res) => {
   const workspaceId = req.user!.workspaceId;
   const current = db
     .prepare('SELECT id, name, domain FROM sites WHERE workspace_id = ? AND id = ?')
@@ -83,7 +84,7 @@ router.patch('/:id', validate(updateSiteSchema), (req, res) => {
   return res.json(getSiteDetail(workspaceId, req.params.id));
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireRole('owner', 'admin'), (req, res) => {
   const workspaceId = req.user!.workspaceId;
   const siteId = req.params.id;
   const current = db
@@ -150,7 +151,7 @@ export const verifySiteHandler: RequestHandler = (req, res) => {
 };
 
 router.get('/', listSitesHandler);
-router.post('/', validate(createSiteSchema), createSiteHandler);
+router.post('/', requireRole('owner', 'admin'), validate(createSiteSchema), createSiteHandler);
 router.get('/:id/verify', verifySiteHandler);
 
 // Core Web Vitals — portfolio-level (all sites) and site-scoped.
@@ -211,6 +212,96 @@ router.get('/:id/journey', (req, res) => {
 
   const data = getSiteJourney(req.user!.workspaceId, req.params.id, parse.data.range ?? '7d');
   return res.json(data);
+});
+
+// ─── Shareable client reports ────────────────────────────────────────────────
+// Agencies generate a tokenized read-only link they can send to a client. The
+// raw token is returned exactly once (same model as API keys); the public
+// route in publicReports.ts resolves it without auth.
+
+const createShareSchema = z.object({
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+});
+
+interface ShareRow {
+  id: string;
+  site_id: string;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+const formatShare = (row: ShareRow) => ({
+  id: row.id,
+  siteId: row.site_id,
+  expiresAt: row.expires_at,
+  revokedAt: row.revoked_at,
+  createdAt: row.created_at,
+  active: !row.revoked_at && new Date(row.expires_at + 'Z').getTime() > Date.now(),
+});
+
+const getOwnedSite = (workspaceId: string, siteId: string) =>
+  db.prepare('SELECT id FROM sites WHERE workspace_id = ? AND id = ?')
+    .get(workspaceId, siteId) as { id: string } | undefined;
+
+router.post(
+  '/:id/report-share',
+  requireRole('owner', 'admin'),
+  validate(createShareSchema),
+  (req, res) => {
+    const site = getOwnedSite(req.user!.workspaceId, req.params.id);
+    if (!site) return res.status(404).json({ error: 'Client site not found' });
+
+    const expiresInDays = (req.body as z.infer<typeof createShareSchema>).expiresInDays ?? 30;
+    const rawToken = randomBytes(24).toString('base64url');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const shareId = 'shr_' + nanoid(16);
+
+    db.prepare(`
+      INSERT INTO report_shares (id, workspace_id, site_id, token_hash, created_by, expires_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now', '+' || ? || ' days'))
+    `).run(shareId, req.user!.workspaceId, site.id, tokenHash, req.user!.id, expiresInDays);
+
+    const row = db.prepare(`
+      SELECT id, site_id, expires_at, revoked_at, created_at FROM report_shares WHERE id = ?
+    `).get(shareId) as ShareRow;
+
+    return res.status(201).json({
+      share: formatShare(row),
+      // Only time the raw token is exposed — the dashboard shows it once.
+      shareUrl: `${process.env.WEB_ORIGIN || 'http://localhost:5173'}/r/${rawToken}`,
+    });
+  },
+);
+
+router.get('/:id/report-shares', (req, res) => {
+  const site = getOwnedSite(req.user!.workspaceId, req.params.id);
+  if (!site) return res.status(404).json({ error: 'Client site not found' });
+
+  const rows = db.prepare(`
+    SELECT id, site_id, expires_at, revoked_at, created_at
+    FROM report_shares
+    WHERE workspace_id = ? AND site_id = ?
+    ORDER BY created_at DESC
+  `).all(req.user!.workspaceId, site.id) as ShareRow[];
+
+  return res.json({ shares: rows.map(formatShare) });
+});
+
+router.post('/:id/report-shares/:shareId/revoke', requireRole('owner', 'admin'), (req, res) => {
+  const row = db.prepare(`
+    SELECT id, revoked_at FROM report_shares
+    WHERE id = ? AND workspace_id = ? AND site_id = ?
+  `).get(req.params.shareId, req.user!.workspaceId, req.params.id) as
+    { id: string; revoked_at: string | null } | undefined;
+
+  if (!row) return res.status(404).json({ error: 'Share link not found' });
+
+  if (!row.revoked_at) {
+    db.prepare('UPDATE report_shares SET revoked_at = CURRENT_TIMESTAMP WHERE id = ?').run(row.id);
+  }
+
+  return res.json({ ok: true });
 });
 
 router.get('/:id/overview', (req, res) => {
