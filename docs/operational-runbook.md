@@ -647,6 +647,54 @@ If you are unsure which DB file the API is using, check your `.env` and confirm 
 npm run build
 ```
 
+## Workspace API Keys & MCP
+
+Workspace API keys authenticate external MCP clients (Claude Desktop, Cursor) hitting `POST /mcp`. They are distinct from the JWT session cookie used by the dashboard.
+
+### Suspected-leak response
+
+If a customer reports that a key may have leaked (GitHub commit, screen share, compromised laptop):
+
+1. In Settings → Connections → API keys, click **Revoke** on the offending key. Revocation is synchronous — the next MCP call from that key returns `401 API key revoked`.
+2. Confirm with a direct SQL query that `revoked_at` is now populated:
+
+   ```sql
+   SELECT id, name, key_prefix, revoked_at
+   FROM workspace_api_keys
+   WHERE workspace_id = :ws_id
+   ORDER BY created_at DESC;
+   ```
+3. Generate a replacement key (same screen) and hand the one-time raw value to the customer over a secure channel. The raw is shown exactly once and is never recoverable afterwards.
+4. If the original key had been used recently, spot-check the `last_used_at` timestamp and scan the API access logs (`requestLogger`) for unfamiliar IPs in the window between leak and revocation.
+
+### Rotating `WORKSPACE_API_PEPPER`
+
+The pepper is mixed into every key hash (`sha256(raw || pepper)`). Rotating it **invalidates every existing key in the database** because the stored hashes no longer match the new pepper. Treat this as a break-glass step:
+
+1. Communicate to all workspaces that their MCP keys will need to be reissued.
+2. Deploy the new `WORKSPACE_API_PEPPER` env value.
+3. Restart the API.
+4. Customers re-generate keys from Settings → Connections → API keys and update their Claude Desktop / Cursor config.
+
+There is no dual-pepper / rolling-rotate mode by design — the pepper is a break-glass secret, not a routine rotation target.
+
+### Health check
+
+```bash
+# Returns 401 without a key
+curl -i http://localhost:4000/mcp
+
+# Discovery descriptor (GET) — use any valid bearer token
+curl -s http://localhost:4000/mcp \
+  -H "Authorization: Bearer dxm_live_..."
+
+# JSON-RPC handshake
+curl -s -X POST http://localhost:4000/mcp \
+  -H "Authorization: Bearer dxm_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
+```
+
 ## Escalation / Next Checks
 
 If the local flow still fails after the checks above:

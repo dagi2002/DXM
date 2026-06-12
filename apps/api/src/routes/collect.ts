@@ -6,7 +6,7 @@
  * POST /collect-replay/replay — rrweb replay chunks
  * Public — authenticated by site_key
  */
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import type {
   CollectReplayRequest,
   CollectRequest,
@@ -30,9 +30,19 @@ import {
 
 const router = Router();
 
+// Resolve SDK version from header (XHR path) or ?sdk= query param (sendBeacon path,
+// which can't set custom headers). Defaults to 'v1' for unlabeled installs.
+const resolveSdkVersion = (req: Request): 'v1' | 'v2' => {
+  const headerValue = req.get('x-dxm-sdk');
+  const queryValue = typeof req.query.sdk === 'string' ? req.query.sdk : null;
+  const raw = (headerValue || queryValue || '').toLowerCase();
+  return raw === 'v2' ? 'v2' : 'v1';
+};
+
 // POST /collect
 router.post('/', collectLimiter, validate(collectSchema), (req, res) => {
   const payload = req.body as CollectRequest;
+  const sdkVersion = resolveSdkVersion(req);
 
   const site = findCollectionSite(payload.siteId);
   if (!site) return res.status(404).json({ error: 'Unknown site key' });
@@ -58,7 +68,7 @@ router.post('/', collectLimiter, validate(collectSchema), (req, res) => {
     }
   }
 
-  ingestSessionBatch(site, payload);
+  ingestSessionBatch(site, payload, sdkVersion);
 
   // Fire alert + insight checks asynchronously — do not await
   void runAlertChecks(site.workspaceId, site.id);

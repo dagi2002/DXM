@@ -5,7 +5,13 @@ import { db } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getSiteAiBriefOrNull } from '../services/ai/index.js';
-import { getSiteDetail, getSiteVerification, listWorkspaceSites } from '../services/siteAnalytics.js';
+import {
+  getSiteDetail,
+  getSiteJourney,
+  getSiteVerification,
+  getWebVitalsPercentiles,
+  listWorkspaceSites,
+} from '../services/siteAnalytics.js';
 import { getWorkspaceBillingSnapshot, sendPlanLimitReached } from '../lib/billing.js';
 
 const router = Router();
@@ -146,6 +152,66 @@ export const verifySiteHandler: RequestHandler = (req, res) => {
 router.get('/', listSitesHandler);
 router.post('/', validate(createSiteSchema), createSiteHandler);
 router.get('/:id/verify', verifySiteHandler);
+
+// Core Web Vitals — portfolio-level (all sites) and site-scoped.
+// Query params: range=24h|7d|30d, device=all|desktop|mobile|tablet.
+const vitalsQuerySchema = z.object({
+  range: z.enum(['24h', '7d', '30d']).optional(),
+  device: z.enum(['all', 'desktop', 'mobile', 'tablet']).optional(),
+});
+
+router.get('/vitals', (req, res) => {
+  const parse = vitalsQuerySchema.safeParse(req.query);
+  if (!parse.success) {
+    return res.status(400).json({ error: 'Invalid query', details: parse.error.flatten() });
+  }
+  const data = getWebVitalsPercentiles(
+    req.user!.workspaceId,
+    null,
+    parse.data.range ?? '7d',
+    parse.data.device ?? 'all',
+  );
+  return res.json(data);
+});
+
+router.get('/:id/vitals', (req, res) => {
+  const parse = vitalsQuerySchema.safeParse(req.query);
+  if (!parse.success) {
+    return res.status(400).json({ error: 'Invalid query', details: parse.error.flatten() });
+  }
+  // Validate the site belongs to the workspace before exposing any data.
+  const site = db
+    .prepare('SELECT id FROM sites WHERE workspace_id = ? AND id = ?')
+    .get(req.user!.workspaceId, req.params.id) as { id: string } | undefined;
+  if (!site) return res.status(404).json({ error: 'Client site not found' });
+
+  const data = getWebVitalsPercentiles(
+    req.user!.workspaceId,
+    req.params.id,
+    parse.data.range ?? '7d',
+    parse.data.device ?? 'all',
+  );
+  return res.json(data);
+});
+
+// Auto journey map — top paths through a site (range=24h|7d|30d).
+const journeyQuerySchema = z.object({
+  range: z.enum(['24h', '7d', '30d']).optional(),
+});
+
+router.get('/:id/journey', (req, res) => {
+  const parse = journeyQuerySchema.safeParse(req.query);
+  if (!parse.success) {
+    return res.status(400).json({ error: 'Invalid query', details: parse.error.flatten() });
+  }
+  const site = db
+    .prepare('SELECT id FROM sites WHERE workspace_id = ? AND id = ?')
+    .get(req.user!.workspaceId, req.params.id) as { id: string } | undefined;
+  if (!site) return res.status(404).json({ error: 'Client site not found' });
+
+  const data = getSiteJourney(req.user!.workspaceId, req.params.id, parse.data.range ?? '7d');
+  return res.json(data);
+});
 
 router.get('/:id/overview', (req, res) => {
   const detail = getSiteDetail(req.user!.workspaceId, req.params.id);

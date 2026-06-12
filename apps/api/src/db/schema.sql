@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS sites (
   domain       TEXT NOT NULL,
   site_key     TEXT NOT NULL UNIQUE,   -- data-site-id used in SDK script tag
   first_session_at DATETIME,
+  preferred_sdk_version TEXT NOT NULL DEFAULT 'v1', -- v1 | v2 — controls Settings "upgrade to v2" surface
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -96,6 +97,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   bounced          INTEGER NOT NULL DEFAULT 0,  -- 0/1 boolean
   converted        INTEGER NOT NULL DEFAULT 0,
   completed        INTEGER NOT NULL DEFAULT 0,
+  sdk_version      TEXT,                -- 'v1' | 'v2' — set from x-dxm-sdk header or ?sdk= query on /collect
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -103,14 +105,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS events (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id   TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  type         TEXT NOT NULL,          -- pageview | click | scroll | navigation | vital | custom | identify
+  -- Free-form TEXT (no CHECK constraint) so v2 event types land without a migration.
+  -- Known values: v1 → pageview | click | scroll | navigation | vital | custom | identify
+  --               v2 → dead_click | form_start | form_submit | form_error
+  type         TEXT NOT NULL,
   ts           INTEGER NOT NULL,       -- epoch ms (from SDK)
   x            INTEGER,
   y            INTEGER,
   scroll_depth INTEGER,
   target       TEXT,
   url          TEXT,
-  value_text   TEXT,                   -- vital value, custom event name, identify userId, etc.
+  value_text   TEXT,                   -- vital value, custom event name, identify userId, form_* identity/field, etc.
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -231,3 +236,20 @@ CREATE INDEX IF NOT EXISTS idx_insights_workspace_active
   ON insights(workspace_id, active, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_insights_workspace_site_type
   ON insights(workspace_id, site_id, type, active);
+
+-- ── Workspace API keys (Wave 3 MCP endpoint) ─────────────────────────────
+-- Used by the Model Context Protocol server to authenticate external clients
+-- (Claude Desktop, Cursor) reading workspace analytics data.
+CREATE TABLE IF NOT EXISTS workspace_api_keys (
+  id            TEXT PRIMARY KEY,
+  workspace_id  TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  key_hash      TEXT NOT NULL,                -- sha256(raw || WORKSPACE_API_PEPPER)
+  key_prefix    TEXT NOT NULL,                -- first 12 chars of raw for display only
+  last_used_at  DATETIME,
+  revoked_at    DATETIME,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_api_keys_hash ON workspace_api_keys(key_hash);
+CREATE INDEX IF NOT EXISTS idx_workspace_api_keys_workspace_created
+  ON workspace_api_keys(workspace_id, created_at DESC);

@@ -19,8 +19,9 @@ import {
   X,
 } from 'lucide-react';
 import { UpgradeGate } from '../components/UpgradeGate';
-import { useAuth } from '../context/AuthContext';
-import { fetchJson } from '../lib/api';
+import { ApiKeysPanel } from '../components/Settings/ApiKeysPanel';
+import { useAuth } from '../context/useAuth';
+import { fetchJson, getApiBaseUrl } from '../lib/api';
 import { BILLING_FEATURES, getPlanLabel, workspaceHasFeature } from '../lib/billing';
 import {
   AGENCY_TYPE_OPTIONS,
@@ -66,6 +67,11 @@ interface SettingsPayload {
   sites: ClientSiteSummary[];
   fitProfile: WorkspaceFitProfile;
   journey: WorkspaceJourney;
+  sdkVersionSummary: {
+    v1Sessions: number;
+    v2Sessions: number;
+    untaggedSessions: number;
+  };
 }
 
 type SettingsSection = 'identity' | 'team' | 'sites' | 'connections' | 'billing' | 'signals';
@@ -79,6 +85,17 @@ const formatDateTime = (value: string | null) => {
 
 const getSnippet = (siteKey: string, sdkCdnUrl: string) =>
   `<script src="${sdkCdnUrl}" data-site-id="${siteKey}" async></script>`;
+
+// v2 snippet derived from the configured CDN URL — swaps /dxm.js → /dxm.v2.js.
+// Falls back to the canonical CDN domain if VITE_SDK_CDN_URL points somewhere exotic.
+const getV2SnippetUrl = (sdkCdnUrl: string): string => {
+  if (/\/dxm\.js(\?|$)/.test(sdkCdnUrl)) return sdkCdnUrl.replace('/dxm.js', '/dxm.v2.js');
+  if (sdkCdnUrl.endsWith('/')) return `${sdkCdnUrl}dxm.v2.js`;
+  return 'https://cdn.dxmpulse.com/dxm.v2.js';
+};
+
+const getV2Snippet = (siteKey: string, sdkCdnUrl: string) =>
+  `<script src="${getV2SnippetUrl(sdkCdnUrl)}" data-site-id="${siteKey}" async></script>`;
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -152,6 +169,13 @@ export const SettingsPage: React.FC = () => {
     await navigator.clipboard.writeText(getSnippet(site.siteKey, sdkCdnUrl));
     setCopiedSiteId(site.id);
     window.setTimeout(() => setCopiedSiteId(null), 1500);
+  };
+
+  const [copiedV2SiteId, setCopiedV2SiteId] = useState<string | null>(null);
+  const handleCopyV2Snippet = async (site: ClientSiteSummary) => {
+    await navigator.clipboard.writeText(getV2Snippet(site.siteKey, sdkCdnUrl));
+    setCopiedV2SiteId(site.id);
+    window.setTimeout(() => setCopiedV2SiteId(null), 1500);
   };
 
   const markDirty = () => setIsDirty(true);
@@ -567,6 +591,110 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 )}
               </section>
+
+              {/* ── SDK v2 UPGRADE CARD ─────────────────────────────── */}
+              {(() => {
+                const summary = payload.sdkVersionSummary || { v1Sessions: 0, v2Sessions: 0, untaggedSessions: 0 };
+                const allV2 =
+                  summary.v1Sessions === 0 &&
+                  summary.untaggedSessions === 0 &&
+                  summary.v2Sessions > 0;
+                const hasLegacy = summary.v1Sessions > 0 || summary.untaggedSessions > 0;
+                return (
+                  <section
+                    className={`rounded-[28px] border p-6 shadow-sm ${
+                      allV2
+                        ? 'border-emerald-200 bg-emerald-50/40'
+                        : 'border-primary-200 bg-gradient-to-br from-primary-50/70 via-white to-accent-50/40'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                          allV2 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary-500/10 text-primary-600'
+                        }`}
+                      >
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-surface-900">
+                          {allV2 ? 'SDK v2 is live across your sites' : 'New: upgrade to SDK v2'}
+                        </h3>
+                        <p className="mt-0.5 text-sm text-surface-600">
+                          {allV2
+                            ? 'All tracked sessions in the last 7 days were captured by the v2 script. Nothing to do.'
+                            : 'Unlocks dead-click detection, form analytics, and a privacy API — all still under 15 KB gzipped.'}
+                        </p>
+                      </div>
+                      <span
+                        className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${
+                          allV2
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-primary-100 text-primary-700'
+                        }`}
+                      >
+                        {allV2 ? 'Up to date' : 'Optional upgrade'}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-white/80 p-3 text-sm">
+                        <p className="text-xs uppercase tracking-[0.16em] text-surface-500">v2 sessions (7d)</p>
+                        <p className="mt-1 text-xl font-semibold text-surface-900">{summary.v2Sessions}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white/80 p-3 text-sm">
+                        <p className="text-xs uppercase tracking-[0.16em] text-surface-500">v1 sessions (7d)</p>
+                        <p className="mt-1 text-xl font-semibold text-surface-900">{summary.v1Sessions}</p>
+                      </div>
+                      <div className="rounded-2xl bg-white/80 p-3 text-sm">
+                        <p className="text-xs uppercase tracking-[0.16em] text-surface-500">Untagged (7d)</p>
+                        <p className="mt-1 text-xl font-semibold text-surface-900">{summary.untaggedSessions}</p>
+                      </div>
+                    </div>
+
+                    {!allV2 && hasLegacy && payload.sites.length > 0 && (
+                      <div className="mt-5 space-y-2">
+                        <p className="text-sm font-semibold text-surface-700">
+                          Copy the v2 snippet for a site below and swap it into the &lt;head&gt; (v1 stays live until you do).
+                        </p>
+                        <div className="grid gap-2">
+                          {payload.sites.map((site) => (
+                            <div
+                              key={site.id}
+                              className="flex items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-surface-200"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-surface-900">{site.name}</p>
+                                <p className="truncate text-xs text-surface-500">{site.domain}</p>
+                              </div>
+                              <button
+                                onClick={() => void handleCopyV2Snippet(site)}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 transition hover:border-primary-300 hover:bg-primary-100"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                {copiedV2SiteId === site.id ? 'Copied!' : 'Copy v2 snippet'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!allV2 && !hasLegacy && (
+                      <p className="mt-5 text-sm text-surface-500">
+                        Once a session is recorded on any site, this card will surface per-site copy buttons.
+                      </p>
+                    )}
+                  </section>
+                );
+              })()}
+
+              {/* ── API KEYS / MCP ──────────────────────────────────── */}
+              {/* Owners and admins manage keys; viewers see the list read-only. */}
+              <ApiKeysPanel
+                canManage={payload.profile.role === 'owner' || payload.profile.role === 'admin'}
+                apiBase={getApiBaseUrl()}
+              />
 
               <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-2 text-surface-900">

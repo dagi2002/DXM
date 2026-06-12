@@ -9,6 +9,7 @@ import { MetricCard } from './MetricCard';
 import { ActivityChart } from './ActivityChart';
 import { LiveSessions } from './LiveSessions';
 import { InsightsPanel, type Insight } from './InsightsPanel';
+import { WebVitalsCard } from '../WebVitals/WebVitalsCard';
 import type { Alert, Metric, SessionRecording } from '../../types';
 
 interface DashboardViewProps {
@@ -181,6 +182,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* ── Core Web Vitals ────────────────────────────────────────────── */}
+      <SectionLabel label="Core Web Vitals" />
+      <WebVitalsCard />
 
       {/* ── Health & Issues ────────────────────────────────────────────── */}
       <SectionLabel label="Health & issues" />

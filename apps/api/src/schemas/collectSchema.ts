@@ -5,7 +5,12 @@ import type {
 } from '../../../../packages/contracts/index.js';
 
 const sdkEventSchema = z.object({
-  type: z.enum(['pageview', 'click', 'scroll', 'navigation', 'vital', 'custom', 'identify']),
+  type: z.enum([
+    // v1 event types — served to frozen /dxm.js installs
+    'pageview', 'click', 'scroll', 'navigation', 'vital', 'custom', 'identify',
+    // v2 event types — served to opt-in /dxm.v2.js installs
+    'dead_click', 'form_start', 'form_submit', 'form_error',
+  ]),
   ts: z.number().optional(),
   x: z.number().optional(),
   y: z.number().optional(),
@@ -17,6 +22,10 @@ const sdkEventSchema = z.object({
   value: z.union([z.string(), z.number()]).optional(),
   event: z.string().optional(),
   userId: z.string().max(64).optional(),
+  // v2 form-lifecycle fields (PII-safe: values never sent, only names)
+  formId: z.string().max(80).optional(),
+  fieldName: z.string().max(80).optional(),
+  message: z.string().max(200).optional(),
   data: z.any().optional(),
 }).passthrough();
 

@@ -2,9 +2,19 @@
 
 This document is the truthful snapshot of DXM Pulse on the stabilized agency-first monorepo line.
 
-Last updated: 2026-04-01 (Session 2 — UX polish, AI upgrade, homepage rework)
+Last updated: 2026-04-20 (Session 3 — 2026-frontier features: SDK v2, Ask Pulse, Session AI, CWV, MCP)
 
 ## What Is Shipping Now
+
+### Recently shipped (Session 3)
+
+- **SDK v2 rewrite** — modular TypeScript implementation served at `/dxm.v2.js`, 3.6 KB gzipped. Adds dead-click, form-start, form-submit, form-error events plus a privacy API (`window.dxm.privacy.maskUrls / scrubFields / disableInputCapture`). v1 stays byte-frozen at `/dxm.js` so live installations never break; Settings → Connections shows an Upgrade card with one-click v2 snippet per site.
+- **Ask Pulse** (natural-language analytics chat) — floating bubble on Dashboard + Overview, slide-out panel, Claude Haiku 4.5 tool-use loop (5 tool calls max, 60 s wall-clock cap), 4 tools (`list_sites`, `get_site_metrics`, `recent_alerts`, `search_sessions`), citation chips linking back into the product. Respects `dxm_lang` so answers come back in Amharic when the UI is in Amharic.
+- **Per-session AI summary** — `/sessions/:id/summary` returns a headline, narrative, friction moments, and opportunities. Rendered as a collapsible "AI Recap" panel at the top of the Session Replays sidebar. Artifact-cache hits ~50 ms; deterministic fallback when the API key is absent.
+- **Core Web Vitals surface** — `/sites/vitals` and `/sites/:id/vitals` expose p50/p75/p95 for LCP, INP, CLS, FCP, TTFB with Google-threshold colouring. New `WebVitalsCard` + `VitalGauge` components mounted on Dashboard and ClientDetail with range (24h/7d/30d) and device (all/desktop/mobile/tablet) toggles.
+- **Expanded friction detection** — `alertEngine` adds three detectors: dead clicks (3+ on same target in 10 min), U-turns (pageview A→B→A→exit inside 30 s + 60 s exit), and form abandon (≥20 starts / >50 % drop-off per URL per hour). All reuse the existing `frustration` / `conversion` alert types; dedup key extended to `(workspace_id, site_id, type, title)` so the three frustration variants don't collide.
+- **Auto journey map** — `/sites/:id/journey` returns top 10 path sequences; self-rolled SVG Sankey (~230 LoC, skips the `@nivo/sankey` ~120 KB dep). Mounted on ClientDetail below Funnels.
+- **MCP endpoint** — `/mcp` speaks JSON-RPC 2.0 (hand-rolled, no SDK dep) for Claude Desktop / Cursor. 4 read-only workspace-scoped tools. Bearer-token auth via new `workspace_api_keys` table; Settings → Connections exposes a full generate / list / revoke UI with a one-time key reveal and a copy-ready Claude Desktop config snippet.
 
 ### Product-facing
 

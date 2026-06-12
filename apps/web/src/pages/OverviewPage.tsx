@@ -13,8 +13,9 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { fetchJson } from '../lib/api';
+import { AskPulseBubble } from '../components/AskPulse/AskPulseBubble';
 import type { PortfolioOverview } from '../types';
 
 const formatRelative = (value: string | null) => {
@@ -491,6 +492,7 @@ export const OverviewPage: React.FC = () => {
           </Link>
         </section>
       </div>
+      <AskPulseBubble />
     </div>
   );
 };

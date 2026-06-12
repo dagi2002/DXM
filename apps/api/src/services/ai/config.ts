@@ -11,6 +11,16 @@ export const ALERT_AI_PERIOD = 'current';
 export const ALERT_AI_TTL_HOURS = 24;
 export const FUNNEL_AI_VERSION = 'funnel-ai-v1';
 export const FUNNEL_AI_TTL_HOURS = 24;
+export const SESSION_AI_VERSION = 'session-ai-v1';
+export const SESSION_AI_PERIOD = 'single';
+export const SESSION_AI_TTL_HOURS = 24 * 7; // session events are immutable after completion
+export const ASK_PULSE_AI_VERSION = 'ask-pulse-v1';
+
+/**
+ * Central model pin for all Claude calls (Ask Pulse, session summaries, briefs).
+ * Override via DXM_AI_MODEL to pilot a newer snapshot without touching code.
+ */
+export const CLAUDE_MODEL = (process.env.DXM_AI_MODEL || 'claude-haiku-4-5-20251001').trim();
 
 export const isAiEnabled = () => {
   const rawValue = process.env.DXM_AI_ENABLED;

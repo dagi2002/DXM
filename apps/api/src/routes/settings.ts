@@ -84,6 +84,28 @@ router.get('/', (req, res) => {
       name ASC
   `).all(req.user!.workspaceId) as any[];
 
+  // SDK version summary — powers the "Upgrade to v2" card in Connections.
+  // Counts sessions created in the last 7 days by sdk_version tag.
+  const sdkVersionRows = db
+    .prepare(`
+      SELECT COALESCE(sdk_version, 'untagged') AS tag, COUNT(*) AS count
+      FROM sessions
+      WHERE workspace_id = ? AND created_at >= datetime('now', '-7 days')
+      GROUP BY COALESCE(sdk_version, 'untagged')
+    `)
+    .all(req.user!.workspaceId) as Array<{ tag: string; count: number }>;
+
+  const sdkVersionSummary = {
+    v1Sessions: 0,
+    v2Sessions: 0,
+    untaggedSessions: 0,
+  };
+  for (const row of sdkVersionRows) {
+    if (row.tag === 'v2') sdkVersionSummary.v2Sessions = row.count;
+    else if (row.tag === 'v1') sdkVersionSummary.v1Sessions = row.count;
+    else sdkVersionSummary.untaggedSessions = row.count;
+  }
+
   return res.json({
     profile,
     workspace: {
@@ -109,6 +131,7 @@ router.get('/', (req, res) => {
     sites: listWorkspaceSites(req.user!.workspaceId),
     fitProfile: getWorkspaceFitProfile(req.user!.workspaceId),
     journey: getWorkspaceJourneyMilestones(req.user!.workspaceId),
+    sdkVersionSummary,
   });
 });
 

@@ -28,4 +28,8 @@ try { db.prepare("ALTER TABLE workspaces ADD COLUMN digest_enabled INTEGER NOT N
 try { db.prepare("ALTER TABLE workspaces ADD COLUMN digest_language TEXT NOT NULL DEFAULT 'en'").run(); } catch {}
 try { db.prepare("ALTER TABLE sessions ADD COLUMN page_count INTEGER NOT NULL DEFAULT 0").run(); } catch {}
 
+// SDK v2 additive columns (Session 3)
+try { db.prepare("ALTER TABLE sessions ADD COLUMN sdk_version TEXT").run(); } catch {}
+try { db.prepare("ALTER TABLE sites ADD COLUMN preferred_sdk_version TEXT NOT NULL DEFAULT 'v1'").run(); } catch {}
+
 console.log('✅ Migration complete — all tables and indexes are up to date.');

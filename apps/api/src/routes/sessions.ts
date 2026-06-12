@@ -5,6 +5,7 @@ import {
   getSessionReplay,
   listSessionSummaries,
 } from '../services/sessionReadModels.js';
+import { getSessionAiSummaryOrNull } from '../services/ai/sessionSummary.js';
 import { BILLING_FEATURES, requirePlanFeature } from '../lib/billing.js';
 
 const router = Router();
@@ -27,6 +28,13 @@ router.get('/:id/replay', requirePlanFeature(BILLING_FEATURES.replay), (req, res
   const replay = getSessionReplay(req.user!.workspaceId, req.params.id);
   if (!replay) return res.status(404).json({ error: 'No replay data for this session' });
   return res.json(replay);
+});
+
+// GET /sessions/:id/summary — AI-generated recap (Haiku + deterministic fallback)
+router.get('/:id/summary', async (req, res) => {
+  const summary = await getSessionAiSummaryOrNull(req.user!.workspaceId, req.params.id);
+  if (!summary) return res.status(404).json({ error: 'Session not found' });
+  return res.json(summary);
 });
 
 export default router;

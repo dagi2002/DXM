@@ -4,6 +4,7 @@
  * so the deterministic engine takes over.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODEL } from './config.js';
 
 let _client: Anthropic | null = null;
 
@@ -42,7 +43,7 @@ export const generateBriefWithLLM = async <T>(
 
   try {
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: CLAUDE_MODEL,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages: [

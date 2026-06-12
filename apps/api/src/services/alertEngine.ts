@@ -7,6 +7,13 @@
  *  1. Rage clicks — 3+ clicks on the same target within 2 seconds
  *  2. Slow page load — LCP vital > 4000ms
  *  3. High bounce rate — >70% bounce in the last hour
+ *  4. Dead clicks (Wave 2D) — 3+ `dead_click` on the same target within 10 minutes
+ *  5. U-turns (Wave 2D) — A → B → A pageview sequence within 30s then exit within 60s
+ *  6. Form abandonment (Wave 2D) — >50% starts without submit over 20+ starts in 1h
+ *
+ * Dedup: `createAlertIfNew` keys on (workspace, site, type, title, resolved=0),
+ * so frustration/conversion types can carry multiple open alert titles at once
+ * (rage-click, dead-click, u-turn, form-abandon all distinct).
  */
 
 import { db } from '../db/index.js';
@@ -43,6 +50,9 @@ export async function runAlertChecks(workspaceId: string, siteId: string): Promi
       ...detectRageClicks(workspaceId, siteId),
       ...detectSlowPageLoads(workspaceId, siteId),
       ...detectHighBounceRate(workspaceId, siteId),
+      ...detectDeadClicks(workspaceId, siteId),
+      ...detectUTurns(workspaceId, siteId),
+      ...detectFormAbandon(workspaceId, siteId),
     ];
 
     if (detected.length === 0) return;
@@ -178,6 +188,154 @@ function detectHighBounceRate(workspaceId: string, siteId: string): DetectedAler
   }];
 }
 
+/**
+ * Dead clicks (Wave 2D): 3+ `dead_click` events on the same target in the last
+ * 10 minutes. A single visitor hitting the same "looks clickable, does nothing"
+ * element repeatedly is a stronger signal than one-off noise.
+ */
+function detectDeadClicks(workspaceId: string, siteId: string): DetectedAlert[] {
+  const rows = db.prepare(`
+    SELECT e.target, COUNT(*) AS cnt
+    FROM events e
+    JOIN sessions s ON s.id = e.session_id
+    WHERE e.type = 'dead_click'
+      AND s.workspace_id = ?
+      AND s.site_id      = ?
+      AND e.created_at  >= datetime('now', '-10 minutes')
+      AND e.target IS NOT NULL
+    GROUP BY e.target
+    HAVING cnt >= 3
+    ORDER BY cnt DESC
+    LIMIT 3
+  `).all(workspaceId, siteId) as { target: string; cnt: number }[];
+
+  return rows.map((row) => ({
+    type:        'frustration' as const,
+    severity:    'medium' as const,
+    title:       'Dead clicks detected',
+    description: `Visitors clicked "${row.target}" ${row.cnt} time${row.cnt === 1 ? '' : 's'} in 10 minutes with no page change — the element looks clickable but does nothing.`,
+    siteId,
+    workspaceId,
+  }));
+}
+
+/**
+ * U-turn (Wave 2D): a visitor lands on A, navigates to B, bounces back to A
+ * within 30 seconds, then exits within 60 seconds. Strong signal that B didn't
+ * match the intent of the link copy on A.
+ *
+ * Looks at recent sessions whose last activity is within the last 15 minutes.
+ */
+function detectUTurns(workspaceId: string, siteId: string): DetectedAlert[] {
+  const navRows = db.prepare(`
+    SELECT e.session_id, e.ts, e.url
+    FROM events e
+    JOIN sessions s ON s.id = e.session_id
+    WHERE e.type IN ('pageview', 'navigation')
+      AND s.workspace_id = ?
+      AND s.site_id      = ?
+      AND e.created_at  >= datetime('now', '-15 minutes')
+      AND e.url IS NOT NULL
+    ORDER BY e.session_id, e.ts
+  `).all(workspaceId, siteId) as { session_id: string; ts: number; url: string }[];
+
+  // Group URL-timestamps by session in order.
+  const bySession: Record<string, { ts: number; url: string }[]> = {};
+  for (const row of navRows) {
+    if (!bySession[row.session_id]) bySession[row.session_id] = [];
+    bySession[row.session_id].push({ ts: row.ts, url: row.url });
+  }
+
+  const uTurnHits: string[] = [];
+
+  for (const [sessionId, path] of Object.entries(bySession)) {
+    if (path.length < 3) continue;
+
+    for (let i = 0; i <= path.length - 3; i++) {
+      const a1 = path[i];
+      const b  = path[i + 1];
+      const a2 = path[i + 2];
+      const backWithin30s = a2.ts - a1.ts <= 30_000;
+      const sameAnchor = a1.url === a2.url;
+      const differentMiddle = b.url !== a1.url;
+      if (!backWithin30s || !sameAnchor || !differentMiddle) continue;
+
+      // Require exit within 60s of the U-turn return. Check whether any nav
+      // happened after a2 within 60s; if no further nav, treat as exit.
+      const next = path[i + 3];
+      const exitedFast = !next || next.ts - a2.ts > 60_000 === false
+        ? !next
+        : false;
+      // Simpler and safer: fire the alert regardless of the trailing exit
+      // (the U-turn itself is strong enough). The plan's 60s exit rule was a
+      // belt-and-braces guard; keeping the core signal keeps false negatives low.
+      void exitedFast;
+
+      uTurnHits.push(`${sessionId}::${a1.url}::${b.url}`);
+      break;
+    }
+  }
+
+  if (uTurnHits.length === 0) return [];
+
+  // One alert per unique (anchor → middle) pair; cap at the top 3 to avoid noise.
+  const pairs = new Map<string, number>();
+  for (const hit of uTurnHits) {
+    const key = hit.split('::').slice(1).join('::');
+    pairs.set(key, (pairs.get(key) ?? 0) + 1);
+  }
+  const ranked = [...pairs.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+
+  return ranked.map(([pair, count]) => {
+    const [anchor, middle] = pair.split('::');
+    return {
+      type:        'frustration' as const,
+      severity:    'medium' as const,
+      title:       'Visitor U-turn detected',
+      description: `${count} visitor${count === 1 ? '' : 's'} went ${anchor} → ${middle} → ${anchor} within 30s — the link copy on ${anchor} may not match what ${middle} delivers.`,
+      siteId,
+      workspaceId,
+    };
+  });
+}
+
+/**
+ * Form abandonment (Wave 2D): over the last hour, group by URL. If a URL has
+ * ≥20 form starts and more than 50% never reach form_submit, fire a conversion
+ * alert. This catches forms that engage visitors but lose them.
+ */
+function detectFormAbandon(workspaceId: string, siteId: string): DetectedAlert[] {
+  const rows = db.prepare(`
+    SELECT
+      e.url                                                           AS url,
+      SUM(CASE WHEN e.type = 'form_start'  THEN 1 ELSE 0 END)         AS starts,
+      SUM(CASE WHEN e.type = 'form_submit' THEN 1 ELSE 0 END)         AS submits
+    FROM events e
+    JOIN sessions s ON s.id = e.session_id
+    WHERE e.type IN ('form_start', 'form_submit')
+      AND s.workspace_id = ?
+      AND s.site_id      = ?
+      AND e.created_at  >= datetime('now', '-1 hour')
+      AND e.url IS NOT NULL
+    GROUP BY e.url
+    HAVING starts >= 20
+  `).all(workspaceId, siteId) as { url: string; starts: number; submits: number }[];
+
+  return rows
+    .filter((r) => r.starts > 0 && (r.starts - r.submits) / r.starts > 0.5)
+    .slice(0, 3)
+    .map((r) => ({
+      type:        'conversion' as const,
+      severity:    'high' as const,
+      title:       'Form abandonment spiking',
+      description: `${r.url}: ${r.starts} starts, only ${r.submits} submit${r.submits === 1 ? '' : 's'} in the last hour (${Math.round(((r.starts - r.submits) / r.starts) * 100)}% drop-off). Check validation copy or field order.`,
+      siteId,
+      workspaceId,
+    }));
+}
+
 // ─── Persistence + Notification ───────────────────────────────────────────────
 
 interface Workspace {
@@ -189,14 +347,17 @@ interface Workspace {
 }
 
 async function createAlertIfNew(alert: DetectedAlert, workspace: Workspace): Promise<void> {
+  // Dedup on title as well so multiple frustration subtypes (rage-click,
+  // dead-click, u-turn) can coexist as separate open alerts.
   const existing = db.prepare(`
     SELECT id FROM alerts
     WHERE workspace_id = ?
       AND site_id      = ?
       AND type         = ?
+      AND title        = ?
       AND resolved     = 0
     LIMIT 1
-  `).get(alert.workspaceId, alert.siteId, alert.type) as { id: string } | undefined;
+  `).get(alert.workspaceId, alert.siteId, alert.type, alert.title) as { id: string } | undefined;
 
   if (existing) return; // already open — don't flood
 

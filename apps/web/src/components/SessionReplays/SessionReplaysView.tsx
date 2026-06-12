@@ -5,8 +5,9 @@ import { Play, MonitorPlay } from 'lucide-react';
 import { SessionList } from './SessionList';
 import { SessionPlayer } from './SessionPlayer';
 import { ReplayPlayer } from './ReplayPlayer';
+import { SessionSummaryPanel } from './SessionSummaryPanel';
 import { UpgradeGate } from '../UpgradeGate';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 import type { SessionRecording, SessionRecordingDetail } from '../../types';
 import { fetchJson } from '../../lib/api';
 import { BILLING_FEATURES, workspaceHasFeature } from '../../lib/billing';
@@ -230,7 +231,13 @@ export const SessionReplaysView: React.FC = () => {
               ]}
             />
           ) : selectedSessionDetail && selectedSessionDetail.id === selectedSessionId ? (
-            <SessionPlayerWithToggle session={selectedSessionDetail} insightContext={insightContext} />
+            <div className="space-y-4">
+              <SessionSummaryPanel
+                sessionId={selectedSessionDetail.id}
+                sessionStartedAt={selectedSessionDetail.startedAt}
+              />
+              <SessionPlayerWithToggle session={selectedSessionDetail} insightContext={insightContext} />
+            </div>
           ) : selectedSession && isDetailLoading ? (
             <div className="rounded-2xl border border-surface-200 bg-white p-12 flex flex-col items-center justify-center text-center shadow-sm">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-50">

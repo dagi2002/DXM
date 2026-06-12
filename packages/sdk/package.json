@@ -1,15 +1,17 @@
 {
   "name": "@dxm-pulse/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
-  "description": "Lightweight analytics tracking script for DXM Pulse",
+  "description": "Lightweight analytics tracking script for DXM Pulse. Ships v1 (frozen) + v2 (TypeScript, privacy API, dead-click + form analytics).",
   "main": "dist/dxm.js",
   "scripts": {
     "build": "node build.js",
-    "dev": "node build.js --watch"
+    "dev": "node build.js --watch",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "esbuild": "^0.20.2"
+    "esbuild": "^0.20.2",
+    "typescript": "^5.4.0"
   }
 }

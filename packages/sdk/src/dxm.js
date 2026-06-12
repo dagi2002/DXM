@@ -1,5 +1,11 @@
 /**
- * DXM Pulse — Base Tracking SDK
+ * DXM Pulse — Base Tracking SDK (v1 — FROZEN)
+ *
+ * ⚠️  FROZEN as of SDK v0.2.0 (Session 3). Do NOT modify this file.
+ *     All new capability goes into packages/sdk/src/v2/*.ts and builds to dist/dxm.v2.js.
+ *     This v1 file continues to be served at /dxm.js to protect existing
+ *     customer installations.
+ *
  * Target bundle: <2kb minified
  * No external dependencies. Pure vanilla JS (ES5-compatible syntax for older Android browsers).
  *
@@ -7,8 +13,10 @@
  * Queues events in localStorage for offline resilience (critical for Ethiopian mobile networks)
  * Flushes max once per 10 seconds via sendBeacon, with XHR fallback
  *
- * Install:
+ * Install (v1):
  *   <script src="https://cdn.dxmpulse.com/dxm.js" data-site-id="YOUR_SITE_KEY" async></script>
+ * Install (v2 — new installations should use this):
+ *   <script src="https://cdn.dxmpulse.com/dxm.v2.js" data-site-id="YOUR_SITE_KEY" async></script>
  */
 import { API_ENDPOINTS } from '../../contracts/index.js';
 

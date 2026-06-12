@@ -445,6 +445,248 @@ const buildVitals = (workspaceId: string, siteId: string) => {
   );
 };
 
+// ─── Core Web Vitals percentiles (portfolio OR site-scoped, device-filterable) ───
+
+export type WebVitalsRange = '24h' | '7d' | '30d';
+export type WebVitalsDevice = 'all' | 'desktop' | 'mobile' | 'tablet';
+
+export type WebVitalName = 'LCP' | 'INP' | 'CLS' | 'FCP' | 'TTFB';
+
+export interface WebVitalMetric {
+  name: WebVitalName;
+  sampleSize: number;
+  p50: number | null;
+  p75: number | null;
+  p95: number | null;
+  status: 'good' | 'needs-improvement' | 'poor' | 'insufficient-data';
+}
+
+export interface WebVitalsResponse {
+  range: WebVitalsRange;
+  device: WebVitalsDevice;
+  siteId: string | null;
+  totalSessions: number;
+  metrics: WebVitalMetric[];
+}
+
+const RANGE_TO_SQLITE: Record<WebVitalsRange, string> = {
+  '24h': "-1 day",
+  '7d':  "-7 days",
+  '30d': "-30 days",
+};
+
+// Google CWV thresholds (https://web.dev/vitals/). Uses p75 as the field standard.
+const classifyVital = (name: WebVitalName, p75: number | null): WebVitalMetric['status'] => {
+  if (p75 === null) return 'insufficient-data';
+  switch (name) {
+    case 'LCP':
+      return p75 <= 2500 ? 'good' : p75 <= 4000 ? 'needs-improvement' : 'poor';
+    case 'INP':
+      return p75 <= 200 ? 'good' : p75 <= 500 ? 'needs-improvement' : 'poor';
+    case 'CLS':
+      return p75 <= 0.1 ? 'good' : p75 <= 0.25 ? 'needs-improvement' : 'poor';
+    case 'FCP':
+      return p75 <= 1800 ? 'good' : p75 <= 3000 ? 'needs-improvement' : 'poor';
+    case 'TTFB':
+      return p75 <= 800 ? 'good' : p75 <= 1800 ? 'needs-improvement' : 'poor';
+  }
+};
+
+const pickPercentile = (sorted: number[], pct: number): number | null => {
+  if (!sorted.length) return null;
+  const idx = Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * pct));
+  return sorted[idx] ?? null;
+};
+
+/**
+ * Returns p50/p75/p95 for LCP/INP/CLS/FCP/TTFB, optionally filtered by site + device.
+ * Percentile computed in-memory because SQLite lacks native PERCENTILE_CONT.
+ */
+export const getWebVitalsPercentiles = (
+  workspaceId: string,
+  siteId: string | null,
+  range: WebVitalsRange = '7d',
+  device: WebVitalsDevice = 'all',
+): WebVitalsResponse => {
+  const params: (string | null)[] = [workspaceId];
+  let where = `s.workspace_id = ? AND e.type = 'vital' AND e.created_at >= datetime('now', '${RANGE_TO_SQLITE[range]}')`;
+  if (siteId) {
+    where += ' AND s.site_id = ?';
+    params.push(siteId);
+  }
+  if (device !== 'all') {
+    where += ' AND s.device = ?';
+    params.push(device);
+  }
+
+  const rows = db
+    .prepare(`
+      SELECT e.value_text AS value_text
+      FROM events e
+      JOIN sessions s ON s.id = e.session_id
+      WHERE ${where}
+    `)
+    .all(...params) as Array<{ value_text: string | null }>;
+
+  const totalSessionsRow = db
+    .prepare(`
+      SELECT COUNT(*) AS c
+      FROM sessions s
+      WHERE s.workspace_id = ?
+        AND s.created_at >= datetime('now', '${RANGE_TO_SQLITE[range]}')
+        ${siteId ? 'AND s.site_id = ?' : ''}
+        ${device !== 'all' ? 'AND s.device = ?' : ''}
+    `)
+    .get(...params.slice()) as { c: number } | undefined;
+
+  const buckets: Record<WebVitalName, number[]> = {
+    LCP: [], INP: [], CLS: [], FCP: [], TTFB: [],
+  };
+
+  for (const row of rows) {
+    if (!row.value_text) continue;
+    const sepIdx = row.value_text.indexOf(':');
+    if (sepIdx < 0) continue;
+    const name = row.value_text.slice(0, sepIdx).toUpperCase();
+    const numeric = Number(row.value_text.slice(sepIdx + 1));
+    if (!Number.isFinite(numeric)) continue;
+    if (name in buckets) {
+      buckets[name as WebVitalName].push(numeric);
+    }
+  }
+
+  const metrics: WebVitalMetric[] = (Object.keys(buckets) as WebVitalName[]).map((name) => {
+    const values = buckets[name];
+    values.sort((a, b) => a - b);
+    const p50 = pickPercentile(values, 0.5);
+    const p75 = pickPercentile(values, 0.75);
+    const p95 = pickPercentile(values, 0.95);
+    return {
+      name,
+      sampleSize: values.length,
+      p50: p50 !== null ? round(p50, name === 'CLS' ? 3 : 0) : null,
+      p75: p75 !== null ? round(p75, name === 'CLS' ? 3 : 0) : null,
+      p95: p95 !== null ? round(p95, name === 'CLS' ? 3 : 0) : null,
+      status: classifyVital(name, p75),
+    };
+  });
+
+  return {
+    range,
+    device,
+    siteId,
+    totalSessions: totalSessionsRow?.c ?? 0,
+    metrics,
+  };
+};
+
+// ─── Auto journey map (top N paths through the site) ────────────────────────
+
+export type JourneyRange = '24h' | '7d' | '30d';
+
+export interface JourneyStep {
+  /** Normalized URL path (query stripped, hash stripped). */
+  url: string;
+}
+
+export interface JourneyPath {
+  /** Deterministic id from the URL sequence (for UI keying). */
+  id: string;
+  steps: JourneyStep[];
+  sessionCount: number;
+}
+
+export interface SiteJourneyResponse {
+  siteId: string;
+  range: JourneyRange;
+  totalSessions: number;
+  paths: JourneyPath[];
+}
+
+const JOURNEY_RANGE_TO_SQLITE: Record<JourneyRange, string> = {
+  '24h': '-1 day',
+  '7d':  '-7 days',
+  '30d': '-30 days',
+};
+
+const MAX_JOURNEY_STEPS = 8;
+const MAX_JOURNEY_PATHS = 10;
+
+const normalizeJourneyUrl = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    // Accept both absolute and root-relative. Build off a dummy origin so
+    // `new URL` handles path-only values consistently.
+    const origin = /^https?:\/\//i.test(trimmed) ? undefined : 'http://__dxm__';
+    const parsed = new URL(trimmed, origin);
+    const path = parsed.pathname.replace(/\/+$/, '') || '/';
+    return path;
+  } catch {
+    // Fallback: strip query+hash manually.
+    return trimmed.split('?')[0].split('#')[0] || '/';
+  }
+};
+
+/**
+ * Builds the top-N journey paths across recent sessions. For each session we
+ * collect `pageview` + `navigation` URLs in chronological order, normalize
+ * them, cap at 8 steps, and tally identical sequences. Returns the top 10.
+ */
+export const getSiteJourney = (
+  workspaceId: string,
+  siteId: string,
+  range: JourneyRange = '7d',
+): SiteJourneyResponse => {
+  const rows = db
+    .prepare(`
+      SELECT e.session_id AS session_id, e.url AS url, e.ts AS ts
+      FROM events e
+      JOIN sessions s ON s.id = e.session_id
+      WHERE e.type IN ('pageview', 'navigation')
+        AND s.workspace_id = ?
+        AND s.site_id      = ?
+        AND e.created_at  >= datetime('now', '${JOURNEY_RANGE_TO_SQLITE[range]}')
+        AND e.url IS NOT NULL
+      ORDER BY e.session_id, e.ts ASC
+    `)
+    .all(workspaceId, siteId) as { session_id: string; url: string; ts: number }[];
+
+  const bySession = new Map<string, string[]>();
+  for (const row of rows) {
+    const norm = normalizeJourneyUrl(row.url);
+    if (!norm) continue;
+    const list = bySession.get(row.session_id) ?? [];
+    // Deduplicate consecutive identical URLs (reload/back navigation noise).
+    if (list[list.length - 1] !== norm) list.push(norm);
+    if (list.length <= MAX_JOURNEY_STEPS) bySession.set(row.session_id, list);
+  }
+
+  const pathCounts = new Map<string, number>();
+  for (const steps of bySession.values()) {
+    if (steps.length === 0) continue;
+    const key = steps.join(' → ');
+    pathCounts.set(key, (pathCounts.get(key) ?? 0) + 1);
+  }
+
+  const ranked = [...pathCounts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, MAX_JOURNEY_PATHS)
+    .map<JourneyPath>(([key, sessionCount], idx) => ({
+      id: `path-${idx + 1}`,
+      steps: key.split(' → ').map((url) => ({ url })),
+      sessionCount,
+    }));
+
+  return {
+    siteId,
+    range,
+    totalSessions: bySession.size,
+    paths: ranked,
+  };
+};
+
 export const getSiteDetail = (workspaceId: string, siteId: string): ClientSiteDetail | null => {
   const site = getSiteRow(workspaceId, siteId);
   if (!site) return null;

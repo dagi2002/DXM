@@ -11,6 +11,10 @@ declare global {
         role: 'owner' | 'admin' | 'viewer';
         workspaceId: string;
       };
+      apiKey?: {
+        id: string;
+        workspaceId: string;
+      };
     }
   }
 }

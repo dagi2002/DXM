@@ -252,6 +252,24 @@ CHAPA_WEBHOOK_SECRET=your_webhook_secret
 
 ---
 
+### `WORKSPACE_API_PEPPER`
+**Recommended in production** | Secret string mixed into every workspace API key hash
+
+Workspace API keys (used by the `/mcp` endpoint for Claude Desktop / Cursor) are stored as `sha256(raw_key || WORKSPACE_API_PEPPER)`. The pepper is a second secret that lives only in the process environment — an attacker who exfiltrates the database still cannot forge key lookups without it.
+
+```bash
+WORKSPACE_API_PEPPER=change_this_pepper_before_you_accept_live_mcp_clients
+```
+
+Generate one:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+If unset, the pepper is an empty string — acceptable for local development but a silent security downgrade in production. Rotating the pepper invalidates every existing API key, so pick a value before issuing any keys to real users.
+
+---
+
 ## Complete `.env.example`
 
 ```bash
@@ -283,6 +301,11 @@ ADMIN_SECRET=
 
 # ── Digest (optional — required for production digest cron) ──────────────────
 DIGEST_CRON_SECRET=change_this_digest_secret_in_production
+
+# ── Workspace API keys / MCP (recommended in production) ─────────────────────
+# Pepper added to sha256(raw) when storing workspace_api_keys. Set before
+# issuing any keys to live users — rotating later invalidates all keys.
+WORKSPACE_API_PEPPER=change_this_pepper_before_accepting_live_mcp_clients
 
 # ── SDK / Frontend ────────────────────────────────────────────────────────────
 SDK_CDN_URL=http://localhost:5173/sdk/dxm.js

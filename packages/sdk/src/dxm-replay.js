@@ -1,5 +1,9 @@
 /**
- * DXM Pulse — Session Replay Extension
+ * DXM Pulse — Session Replay Extension (v1 — FROZEN)
+ *
+ * ⚠️  FROZEN as of SDK v0.2.0 (Session 3). Do NOT modify this file.
+ *     See packages/sdk/src/replay/index.ts for the v2 replay implementation.
+ *
  * Requires dxm.js to be loaded first (provides window.dxm and the event queue/flush)
  *
  * Uses rrweb to capture full DOM snapshots + mutation events.

@@ -72,6 +72,16 @@ const eventValueText = (event: SdkCollectEvent): string | null => {
   if (event.type === 'vital') return event.name && event.value != null ? `${event.name}:${event.value}` : null;
   if (event.type === 'custom') return event.event || null;
   if (event.type === 'identify') return event.userId || null;
+  // v2 form-lifecycle events: pack identity + optional field/message into value_text so existing
+  // read paths (which already project value_text) can display them without schema changes.
+  if (event.type === 'form_start' || event.type === 'form_submit') {
+    return event.formId || null;
+  }
+  if (event.type === 'form_error') {
+    const parts = [event.formId, event.fieldName, event.message].filter((s) => typeof s === 'string' && s.length > 0);
+    return parts.length ? parts.join('|') : null;
+  }
+  // 'dead_click' uses target column (set via event.target) — no extra text needed.
   return null;
 };
 
@@ -100,7 +110,13 @@ export const findCollectionSite = (siteKey: string): CollectionSite | null => {
   };
 };
 
-export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest) => {
+export type IngestSdkVersion = 'v1' | 'v2';
+
+export const ingestSessionBatch = (
+  site: CollectionSite,
+  payload: CollectRequest,
+  sdkVersion: IngestSdkVersion = 'v1',
+) => {
   const metadata = payload.metadata ?? {};
   const ua = metadata.userAgent || '';
   const eventTimestamps = payload.events
@@ -164,9 +180,10 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
           screen_height,
           entry_url,
           page_count,
-          completed
+          completed,
+          sdk_version
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         payload.sessionId,
         site.id,
@@ -181,6 +198,7 @@ export const ingestSessionBatch = (site: CollectionSite, payload: CollectRequest
         normalizeTrackedUrl(metadata.url),
         0,
         payload.completed ? 1 : 0,
+        sdkVersion,
       );
 
       // Check if this is the first session for this site

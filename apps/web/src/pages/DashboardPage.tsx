@@ -4,6 +4,7 @@ import { BarChart3, ArrowRight } from 'lucide-react';
 import { fetchJson } from '../lib/api';
 import { DashboardView } from '../components/Dashboard/DashboardView';
 import type { Insight } from '../components/Dashboard/InsightsPanel';
+import { AskPulseBubble } from '../components/AskPulse/AskPulseBubble';
 import type { Metric, Alert, SessionRecording } from '../types';
 
 const SESSIONS_POLL_MS = 15_000;
@@ -135,6 +136,7 @@ export const DashboardPage: React.FC = () => {
         isLoading={isLoading}
         error={error}
       />
+      <AskPulseBubble />
     </div>
   );
 };

@@ -61,7 +61,15 @@ export type SdkEventType =
   | 'navigation'
   | 'vital'
   | 'custom'
-  | 'identify';
+  | 'identify'
+  // v2-only event types (SDK v0.2.0+). Ignored by v1 analytics paths; consumed by
+  // the 2026-generation friction detectors + journey map.
+  | 'dead_click'
+  | 'form_start'
+  | 'form_submit'
+  | 'form_error';
+
+export type SdkVersion = 'v1' | 'v2';
 
 export interface SessionDimensions {
   width: number;
@@ -98,6 +106,12 @@ export interface SdkCollectEvent {
   event?: string;
   userId?: string;
   data?: unknown;
+  /** v2: logical form identity (id|name|nth-of-type) — set by SDK for form_* events. */
+  formId?: string;
+  /** v2: form field name (PII-scrubbed — values never sent). */
+  fieldName?: string;
+  /** v2: validation message from native `invalid` event. */
+  message?: string;
 }
 
 export interface CollectRequest {
@@ -298,4 +312,90 @@ export interface FunnelAnalysisDetail {
   totalSessions: number;
   steps: FunnelAnalysisStep[];
   ai?: FunnelAiBrief;
+}
+
+export type SessionFrictionMomentKind =
+  | 'rage_click'
+  | 'dead_click'
+  | 'form_error'
+  | 'slow_lcp'
+  | 'u_turn';
+
+export interface SessionFrictionMoment {
+  ts: number;
+  kind: SessionFrictionMomentKind;
+  detail: string;
+}
+
+export interface SessionOpportunity {
+  title: string;
+  rationale: string;
+}
+
+export interface SessionAiSummary {
+  sessionId: string;
+  generatedAt: string;
+  mode: 'deterministic' | 'llm';
+  headline: string;
+  narrative: string;
+  frictionMoments: SessionFrictionMoment[];
+  opportunities: SessionOpportunity[];
+}
+
+// ─── Core Web Vitals (GET /sites/vitals and GET /sites/:id/vitals) ─────────
+export type WebVitalsRange = '24h' | '7d' | '30d';
+export type WebVitalsDevice = 'all' | 'desktop' | 'mobile' | 'tablet';
+export type WebVitalName = 'LCP' | 'INP' | 'CLS' | 'FCP' | 'TTFB';
+export type WebVitalStatus = 'good' | 'needs-improvement' | 'poor' | 'insufficient-data';
+
+export interface WebVitalMetric {
+  name: WebVitalName;
+  sampleSize: number;
+  p50: number | null;
+  p75: number | null;
+  p95: number | null;
+  status: WebVitalStatus;
+}
+
+export interface WebVitalsResponse {
+  range: WebVitalsRange;
+  device: WebVitalsDevice;
+  siteId: string | null;
+  totalSessions: number;
+  metrics: WebVitalMetric[];
+}
+
+// ─── Auto journey map (GET /sites/:id/journey) ─────────────────────────────
+export type JourneyRange = '24h' | '7d' | '30d';
+export interface JourneyStep { url: string; }
+export interface JourneyPath {
+  id: string;
+  steps: JourneyStep[];
+  sessionCount: number;
+}
+export interface SiteJourneyResponse {
+  siteId: string;
+  range: JourneyRange;
+  totalSessions: number;
+  paths: JourneyPath[];
+}
+
+// ─── Workspace API keys (GET/POST /api-keys) ────────────────────────────────
+// Raw key material is only ever returned on creation (`rawKey`). Subsequent
+// reads show the prefix + metadata so the UI can disambiguate without ever
+// re-exposing the secret.
+export interface WorkspaceApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+export interface ListApiKeysResponse {
+  keys: WorkspaceApiKey[];
+}
+export interface CreateApiKeyResponse {
+  key: WorkspaceApiKey | null;
+  rawKey: string; // only populated on POST /api-keys — shown once, never again
 }

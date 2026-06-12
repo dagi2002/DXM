@@ -25,8 +25,13 @@ DXM Pulse API (apps/api)
   ├─ auth + cookies
   ├─ dashboard/API CORS bound to the configured web origin
   ├─ analytics + funnels
-  ├─ alerts + Telegram
+  ├─ alerts + Telegram (rage-click, dead-click, U-turn, form-abandon)
   ├─ deterministic AI interpretation layer
+  ├─ Claude Haiku 4.5 AI briefs (overview, alerts, funnels, reports, sessions)
+  ├─ Ask Pulse NL query (POST /ask — Claude tool-use loop)
+  ├─ Core Web Vitals percentiles (GET /sites/:id/vitals)
+  ├─ Auto journey map (GET /sites/:id/journey)
+  ├─ MCP endpoint (POST /mcp — JSON-RPC 2.0 over bearer token)
   ├─ site management + onboarding compatibility alias
   ├─ public site audit
   ├─ weekly digest trigger
@@ -36,17 +41,22 @@ DXM Pulse API (apps/api)
   ├─ AI artifact cache
   └─ SQLite data layer
 
+External MCP clients (Claude Desktop, Cursor)
+  └─ POST /mcp  (Authorization: Bearer dxm_live_…)
+      └─ requireApiKey → mcpTools.dispatch → read-only workspace-scoped query
+
 SQLite
   ├─ workspaces
+  ├─ workspace_api_keys  (bearer tokens for /mcp)
   ├─ users
-  ├─ sites
-  ├─ sessions
-  ├─ events
+  ├─ sites               (+ preferred_sdk_version)
+  ├─ sessions            (+ sdk_version)
+  ├─ events              (+ dead_click, form_start, form_submit, form_error)
   ├─ session_replays
   ├─ session_replay_chunks
   ├─ alerts
   ├─ funnels
-  └─ ai_artifacts
+  └─ ai_artifacts        (session summaries cached here too)
 ```
 
 ## Core Flows
@@ -155,3 +165,41 @@ The session surface now has an explicit write/read split instead of one mixed ro
   - `GET /analytics/heatmap`
 
 This is intentionally a small structural refactor, not a broader platform redesign.
+
+## Ask Pulse — tool-use flow
+
+`POST /ask` accepts a free-text question plus a locale (`en` or `am`) and returns a markdown answer with citations. The loop is bounded at both ends so a runaway plan can never burn unlimited tokens.
+
+```
+question ──► Claude messages.create (with tool catalogue)
+              │
+              │ stop_reason=end_turn → answer
+              ▼
+         stop_reason=tool_use?
+              │
+              ▼
+        dispatch tool locally
+              │   (list_sites | get_site_metrics | recent_alerts | search_sessions)
+              ▼
+        push tool_result into messages
+              │
+              ▼
+         repeat (iter ≤ 5, wall_clock ≤ 60 s)
+              │
+              ▼
+        final messages.create (no tools) → partial answer if capped
+```
+
+All four tool handlers live in `services/ai/askPulse.ts` and delegate to existing read-model helpers — Ask Pulse never writes and never bypasses the workspace filter. `lang='am'` prepends an Amharic-response directive so the output matches the dashboard's current locale.
+
+## MCP boundary
+
+`POST /mcp` is the only route mounted **outside** `dashboardCors`. It speaks JSON-RPC 2.0 (spec version `2024-11-05`) and is authenticated by `requireApiKey` rather than the JWT session cookie — external MCP clients (Claude Desktop, Cursor) pass a bearer token in the Authorization header.
+
+Methods supported:
+- `initialize` — capability handshake, advertises `tools`
+- `tools/list` — returns the 4-tool catalogue from `services/mcpTools.ts`
+- `tools/call` — dispatches to `dispatchMcpTool(workspaceId, name, args)` and wraps the result as `content: [{ type: 'text', text: JSON.stringify(data) }]`
+- `resources/list`, `prompts/list`, `ping` — empty/OK stubs so probe requests don't produce client-side warnings
+
+The tool handlers reuse `listWorkspaceSites`, `getWebVitalsPercentiles`, and direct scoped SQL queries for alerts/sessions. Nothing is cached; revocation is synchronous (each request does a fresh DB lookup), so disabling a leaked key takes effect on the very next call.

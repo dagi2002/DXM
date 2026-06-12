@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { fetchJson, getApiUrl } from '../lib/api';
 import type { ClientSiteDetail } from '../types';
+import { WebVitalsCard } from '../components/WebVitals/WebVitalsCard';
+import { JourneyMap } from '../components/Journey/JourneyMap';
 
 const formatDateTime = (value: string | null) => {
   if (!value) return 'No activity yet';
@@ -528,6 +530,10 @@ export const ClientDetailPage: React.FC = () => {
         ))}
       </div>
 
+      <div className="mt-6">
+        <WebVitalsCard siteId={client.id} />
+      </div>
+
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-[28px] border border-surface-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2 text-surface-900">
@@ -681,6 +687,10 @@ export const ClientDetailPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      <div className="mt-6">
+        <JourneyMap siteId={client.id} />
+      </div>
     </div>
   );
 };
