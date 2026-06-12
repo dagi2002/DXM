@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { UpgradeGate } from '../components/UpgradeGate';
 import { ApiKeysPanel } from '../components/Settings/ApiKeysPanel';
+import { TeamPanel } from '../components/Settings/TeamPanel';
 import { useAuth } from '../context/useAuth';
 import { fetchJson, getApiBaseUrl } from '../lib/api';
 import { BILLING_FEATURES, getPlanLabel, workspaceHasFeature } from '../lib/billing';
@@ -473,6 +474,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <TeamPanel canManage={payload.profile.role === 'owner' || payload.profile.role === 'admin'} />
             </section>
           )}
 

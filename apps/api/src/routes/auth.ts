@@ -7,7 +7,7 @@ import { db } from '../db/index.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
-import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/authSchemas.js';
+import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, acceptInviteSchema } from '../schemas/authSchemas.js';
 import { upsertWorkspaceFitProfile } from '../lib/workspaceSignals.js';
 import { sendMail, sendWelcomeEmail } from '../lib/mailer.js';
 import { logger } from '../lib/logger.js';
@@ -249,6 +249,99 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), async
   } catch (err) {
     logger.error('Reset password failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── Workspace invite acceptance (public, token-authenticated) ───────────────
+
+interface PendingInviteRow {
+  id: string;
+  workspace_id: string;
+  email: string;
+  role: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  expired: number;
+  workspace_name: string;
+}
+
+const findInviteByToken = (rawToken: string): PendingInviteRow | undefined => {
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  return db.prepare(`
+    SELECT i.id, i.workspace_id, i.email, i.role, i.accepted_at, i.revoked_at,
+           CASE WHEN i.expires_at <= datetime('now') THEN 1 ELSE 0 END AS expired,
+           w.name AS workspace_name
+    FROM workspace_invites i
+    JOIN workspaces w ON w.id = i.workspace_id
+    WHERE i.token_hash = ?
+    LIMIT 1
+  `).get(tokenHash) as PendingInviteRow | undefined;
+};
+
+// GET /auth/invites/:token — preview an invite before accepting.
+// 404 for unknown/revoked (indistinguishable), 410 for expired/used.
+router.get('/invites/:token', authLimiter, (req, res) => {
+  const invite = findInviteByToken(req.params.token);
+  if (!invite || invite.revoked_at) return res.status(404).json({ error: 'Invite not found' });
+  if (invite.accepted_at || invite.expired) {
+    return res.status(410).json({ error: 'This invite has expired or was already used' });
+  }
+  return res.json({
+    email: invite.email,
+    role: invite.role,
+    workspaceName: invite.workspace_name,
+    valid: true,
+  });
+});
+
+// POST /auth/invites/accept — create the user with the invite's role and log
+// them straight in (same cookie flow as signup/login).
+router.post('/invites/accept', authLimiter, validate(acceptInviteSchema), async (req, res) => {
+  const { token, name, password } = req.body;
+  try {
+    const invite = findInviteByToken(token);
+    if (!invite || invite.revoked_at) return res.status(404).json({ error: 'Invite not found' });
+    if (invite.accepted_at || invite.expired) {
+      return res.status(410).json({ error: 'This invite has expired or was already used' });
+    }
+
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(invite.email);
+    if (existing) {
+      return res.status(409).json({ message: 'An account with that email already exists' });
+    }
+
+    const userId = 'usr_' + nanoid(16);
+    const passwordHash = await bcrypt.hash(password, 10);
+    const role = invite.role === 'admin' ? 'admin' : 'viewer';
+
+    db.transaction(() => {
+      db.prepare(`
+        INSERT INTO users (id, workspace_id, name, email, password_hash, role)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(userId, invite.workspace_id, name, invite.email, passwordHash, role);
+      db.prepare('UPDATE workspace_invites SET accepted_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(invite.id);
+    })();
+
+    const payload = { userId, email: invite.email, name, role, workspaceId: invite.workspace_id };
+    const { access, refresh } = makeTokens(payload);
+    const refreshHash = await bcrypt.hash(refresh, 6);
+    db.prepare('UPDATE users SET refresh_token_hash = ? WHERE id = ?').run(refreshHash, userId);
+    setTokenCookies(res, access, refresh);
+
+    const workspace = db.prepare('SELECT id, name, plan, billing_status FROM workspaces WHERE id = ?')
+      .get(invite.workspace_id) as { id: string; name: string; plan: string; billing_status: string };
+
+    return res.status(201).json({
+      user: { id: userId, name, email: invite.email, role },
+      workspace: {
+        id: workspace.id, name: workspace.name,
+        plan: workspace.plan, billingStatus: workspace.billing_status,
+      },
+    });
+  } catch (err) {
+    logger.error('Invite accept failed', { route: 'auth', error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ message: 'Server error accepting invite' });
   }
 });
 

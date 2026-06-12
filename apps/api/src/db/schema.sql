@@ -253,3 +253,39 @@ CREATE TABLE IF NOT EXISTS workspace_api_keys (
 CREATE INDEX IF NOT EXISTS idx_workspace_api_keys_hash ON workspace_api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_workspace_api_keys_workspace_created
   ON workspace_api_keys(workspace_id, created_at DESC);
+
+-- ── Workspace invites (Session 4) ────────────────────────────────────────
+-- Email-based team invitations. Raw token is emailed once — only the sha256
+-- hash is stored. Single-use via accepted_at, 7-day expiry, revocable.
+CREATE TABLE IF NOT EXISTS workspace_invites (
+  id            TEXT PRIMARY KEY,
+  workspace_id  TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  email         TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'viewer',  -- admin | viewer (never owner)
+  token_hash    TEXT NOT NULL,
+  invited_by    TEXT NOT NULL REFERENCES users(id),
+  expires_at    DATETIME NOT NULL,
+  accepted_at   DATETIME,
+  revoked_at    DATETIME,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_invites_workspace
+  ON workspace_invites(workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workspace_invites_token ON workspace_invites(token_hash);
+
+-- ── Report shares (Session 4) ────────────────────────────────────────────
+-- Tokenized public read-only client report links. Raw token lives only in
+-- the share URL — the DB stores its sha256. Revocable, default 30-day expiry.
+CREATE TABLE IF NOT EXISTS report_shares (
+  id            TEXT PRIMARY KEY,
+  workspace_id  TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  site_id       TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  token_hash    TEXT NOT NULL,
+  created_by    TEXT NOT NULL REFERENCES users(id),
+  expires_at    DATETIME NOT NULL,
+  revoked_at    DATETIME,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_report_shares_token ON report_shares(token_hash);
+CREATE INDEX IF NOT EXISTS idx_report_shares_site
+  ON report_shares(site_id, created_at DESC);

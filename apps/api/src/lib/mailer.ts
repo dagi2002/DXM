@@ -6,7 +6,7 @@ export interface MailPayload {
   to: string;
   subject: string;
   text: string;
-  type: 'welcome' | 'site_verified' | 'critical_alert' | 'password_reset';
+  type: 'welcome' | 'site_verified' | 'critical_alert' | 'password_reset' | 'workspace_invite';
 }
 
 /** All mails sent — exposed for test assertions. */
@@ -86,6 +86,21 @@ export async function sendSiteVerifiedEmail(to: string, domain: string): Promise
     subject: `DXM Pulse — ${domain} is now live`,
     text: `Your site ${domain} just received its first session. Tracking is active.\n\n— DXM Pulse`,
     type: 'site_verified',
+  });
+}
+
+export async function sendInviteEmail(
+  to: string,
+  workspaceName: string,
+  inviterName: string,
+  role: string,
+  inviteUrl: string,
+): Promise<void> {
+  await sendMail({
+    to,
+    subject: `${inviterName} invited you to ${workspaceName} on DXM Pulse`,
+    text: `${inviterName} invited you to join the "${workspaceName}" workspace as ${role === 'admin' ? 'an admin' : 'a viewer'}.\n\nAccept the invite (expires in 7 days):\n\n${inviteUrl}\n\nIf you weren't expecting this, you can ignore this email.\n\n— DXM Pulse`,
+    type: 'workspace_invite',
   });
 }
 
