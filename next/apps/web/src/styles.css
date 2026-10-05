@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+@import '@pulse/tokens/tokens.css';
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/inter-tight/wght.css';
+/* Ethiopic glyphs only download when Amharic text is on the page (unicode-range split). */
+@import '@fontsource-variable/noto-sans-ethiopic/wght.css';
+
+@source '../../../packages/ui/src';
+
+@theme {
+  --font-sans: 'Inter Variable', 'Noto Sans Ethiopic Variable', system-ui, sans-serif;
+  --font-display:
+    'Inter Tight Variable', 'Inter Variable', 'Noto Sans Ethiopic Variable', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg font-sans text-text antialiased;
+    font-feature-settings: 'cv11';
+  }
+  /* Ethiopic script is dense: more line height, never below 15px (docs/rebuild/02 §2.4). */
+  :lang(am) body,
+  [lang='am'] {
+    line-height: 1.7;
+  }
+  :lang(am) .text-xs,
+  :lang(am) .text-\[0\.8125rem\] {
+    font-size: 0.875rem;
+  }
+  ::selection {
+    background: var(--primary-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# One VM, one compose file (ADR-008). Secrets come from /etc/pulse/pulse.env (never committed).
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pulse_owner
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_owner_password
+      POSTGRES_DB: pulse
+    volumes: [pgdata:/var/lib/postgresql/data]
+    secrets: [pg_owner_password]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pulse_owner -d pulse']
+      interval: 5s
+
+  migrate:
+    image: ${PULSE_API_IMAGE:-pulse-api:latest}
+    env_file: /etc/pulse/pulse.env
+    command: ['node', '--import', 'tsx', 'packages/db/scripts/migrate.ts']
+    depends_on: { postgres: { condition: service_healthy } }
+    restart: 'no'
+
+  api:
+    image: ${PULSE_API_IMAGE:-pulse-api:latest}
+    env_file: /etc/pulse/pulse.env
+    environment: { TRUST_PROXY_HOPS: '1' }
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  web:
+    image: ${PULSE_WEB_IMAGE:-pulse-web:latest}
+    ports: ['80:80', '443:443']
+    volumes: [caddy_data:/data, caddy_config:/config]
+    environment: { APP_HOST: '${APP_HOST:-app.dxmpulse.et}' }
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  pg_owner_password:
+    file: /etc/pulse/pg_owner_password

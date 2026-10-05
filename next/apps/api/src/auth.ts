@@ -98,7 +98,11 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
         expiresIn: 60 * 10,
         sendMagicLink: async ({ email, url }) => {
           // The recipient may not have an account yet; English with Amharic follow-up is a v1.x item.
-          await mailer.send({ to: email, subject: t('en', 'email.magic.subject'), text: t('en', 'email.magic.body', { url }) });
+          await mailer.send({
+            to: email,
+            subject: t('en', 'email.magic.subject'),
+            text: t('en', 'email.magic.body', { url }),
+          });
         },
       }),
     ],

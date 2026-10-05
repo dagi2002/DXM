@@ -20,7 +20,10 @@ export const requireSession = (deps: Pick<AppDeps, 'auth'>) =>
     };
     c.set('user', user);
     c.set('sessionId', result.session.id);
-    c.set('activeOrgId', (result.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null);
+    c.set(
+      'activeOrgId',
+      (result.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null,
+    );
     await next();
   });
 

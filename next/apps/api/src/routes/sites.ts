@@ -1,5 +1,28 @@
-import { PLAN_LIMITS, SiteCreate, SiteDelete, SiteUpdate, allowedOriginsFor, type PlanId, type Site } from '@pulse/contracts';
-import { auditLog, newId, newPublicKey, orgPlans, sites, withOrg, type SiteRow, type Tx, and, asc, count, eq, isNull, ne } from '@pulse/db';
+import {
+  PLAN_LIMITS,
+  SiteCreate,
+  SiteDelete,
+  SiteUpdate,
+  allowedOriginsFor,
+  type PlanId,
+  type Site,
+} from '@pulse/contracts';
+import {
+  auditLog,
+  newId,
+  newPublicKey,
+  orgPlans,
+  sites,
+  withOrg,
+  type SiteRow,
+  type Tx,
+  and,
+  asc,
+  count,
+  eq,
+  isNull,
+  ne,
+} from '@pulse/db';
 import { Hono, type Context } from 'hono';
 import type { AppDeps } from '../app';
 import { requireManager, requireOrg, requireSession } from '../guards';
@@ -18,7 +41,11 @@ export const toSiteDto = (row: SiteRow): Site => ({
 });
 
 async function planFor(tx: Tx, orgId: string): Promise<PlanId> {
-  const [row] = await tx.select({ plan: orgPlans.plan }).from(orgPlans).where(eq(orgPlans.orgId, orgId)).limit(1);
+  const [row] = await tx
+    .select({ plan: orgPlans.plan })
+    .from(orgPlans)
+    .where(eq(orgPlans.orgId, orgId))
+    .limit(1);
   return row?.plan ?? 'free';
 }
 
@@ -26,13 +53,20 @@ async function assertDomainFree(tx: Tx, domain: string, exceptId?: string) {
   const [dupe] = await tx
     .select({ id: sites.id })
     .from(sites)
-    .where(and(eq(sites.domain, domain), isNull(sites.deletedAt), exceptId ? ne(sites.id, exceptId) : undefined))
+    .where(
+      and(eq(sites.domain, domain), isNull(sites.deletedAt), exceptId ? ne(sites.id, exceptId) : undefined),
+    )
     .limit(1);
-  if (dupe) throw new ApiError(409, 'conflict', 'This domain is already in your organization', { field: 'domain' });
+  if (dupe)
+    throw new ApiError(409, 'conflict', 'This domain is already in your organization', { field: 'domain' });
 }
 
 async function findActive(tx: Tx, id: string): Promise<SiteRow> {
-  const [row] = await tx.select().from(sites).where(and(eq(sites.id, id), isNull(sites.deletedAt))).limit(1);
+  const [row] = await tx
+    .select()
+    .from(sites)
+    .where(and(eq(sites.id, id), isNull(sites.deletedAt)))
+    .limit(1);
   if (!row) throw notFound('Site');
   return row;
 }
@@ -41,7 +75,13 @@ export function siteRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
   r.use('*', requireSession(deps), requireOrg(deps));
 
-  const audit = (tx: Tx, c: Context<AppEnv>, action: string, targetId: string, metadata: Record<string, unknown> = {}) =>
+  const audit = (
+    tx: Tx,
+    c: Context<AppEnv>,
+    action: string,
+    targetId: string,
+    metadata: Record<string, unknown> = {},
+  ) =>
     tx.insert(auditLog).values({
       id: newId('aud'),
       orgId: c.get('orgId')!,
@@ -127,7 +167,9 @@ export function siteRoutes(deps: AppDeps) {
     await withOrg(deps.db, c.get('orgId')!, async (tx) => {
       const site = await findActive(tx, id);
       if (confirmDomain.trim().toLowerCase() !== site.domain) {
-        throw new ApiError(400, 'validation_failed', 'Type the site domain to confirm deletion', { field: 'confirmDomain' });
+        throw new ApiError(400, 'validation_failed', 'Type the site domain to confirm deletion', {
+          field: 'confirmDomain',
+        });
       }
       await tx.update(sites).set({ deletedAt: new Date(), status: 'paused' }).where(eq(sites.id, id));
       await audit(tx, c, 'site.deleted', id, { domain: site.domain });

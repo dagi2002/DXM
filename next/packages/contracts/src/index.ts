@@ -1,22 +1,11 @@
 import { z } from 'zod';
+import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
+
+export * from './constants';
 
 /* ── Errors ─────────────────────────────────────────────────────────────────
  * One envelope for every API error (ADR-005). Codes are stable; messages are for humans.
  */
-export const ERROR_CODES = [
-  'bad_request',
-  'validation_failed',
-  'unauthenticated',
-  'forbidden',
-  'not_found',
-  'conflict',
-  'rate_limited',
-  'plan_limit_reached',
-  'feature_not_in_plan',
-  'no_active_org',
-  'internal',
-] as const;
-export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export const ErrorEnvelope = z.object({
   error: z.object({
@@ -29,13 +18,8 @@ export const ErrorEnvelope = z.object({
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;
 
 /* ── Roles ─────────────────────────────────────────────────────────────────── */
-export const ROLES = ['owner', 'admin', 'member', 'client_viewer'] as const;
 export const Role = z.enum(ROLES);
 export type Role = z.infer<typeof Role>;
-
-/** Roles allowed to change sites, team and settings. */
-export const MANAGER_ROLES: readonly Role[] = ['owner', 'admin'];
-export const canManage = (role: Role | null | undefined): boolean => !!role && MANAGER_ROLES.includes(role);
 
 /* ── Preferences ───────────────────────────────────────────────────────────── */
 export const Locale = z.enum(['en', 'am']);
@@ -65,11 +49,9 @@ export function allowedOriginsFor(domain: string): string[] {
 }
 
 /* ── Sites ─────────────────────────────────────────────────────────────────── */
-export const PLATFORMS = ['html', 'wordpress', 'woocommerce', 'shopify', 'react', 'nextjs', 'telegram_mini_app', 'other'] as const;
 export const Platform = z.enum(PLATFORMS);
 export type Platform = z.infer<typeof Platform>;
 
-export const SITE_STATUSES = ['install', 'live', 'paused'] as const;
 export const SiteStatus = z.enum(SITE_STATUSES);
 
 export const Domain = z
@@ -138,13 +120,3 @@ export type Me = z.infer<typeof Me>;
 export const PreferencesUpdate = z
   .object({ name: z.string().trim().min(1).max(80), locale: Locale, calendar: CalendarPref })
   .partial();
-
-/* ── Plans (structure only — prices are hypotheses, see docs/rebuild/01 §7) ─── */
-export const PLAN_IDS = ['free', 'business', 'growth', 'agency'] as const;
-export type PlanId = (typeof PLAN_IDS)[number];
-export const PLAN_LIMITS: Record<PlanId, { sites: number }> = {
-  free: { sites: 1 },
-  business: { sites: 1 },
-  growth: { sites: 3 },
-  agency: { sites: 10 },
-};

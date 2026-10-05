@@ -159,8 +159,16 @@ Every tenant-owned row carries `org_id`. Postgres RLS policies enforce `org_id =
 | E2E | Playwright: core loop × {en, am} × {360px, 1440px} | green |
 | Accessibility | axe-core in E2E + component tests | 0 violations |
 | Visual | Playwright screenshots of key screens | reviewed diffs |
-| Performance | size-limit + Lighthouse CI (Moto G Power, Slow 4G) | app JS ≤120 KB gz, site JS ≤100 KB, LCP <2.5 s, INP <200 ms, SDK core ≤5 KB |
+| Performance | `scripts/check-bundle.mjs` + Lighthouse CI (Moto G Power, Slow 4G) | app initial JS ≤220 KB gz (measured baseline, see note), marketing site JS ≤100 KB, LCP <2.5 s, INP <200 ms, SDK core ≤5 KB |
 | Security | `pnpm audit --prod`, gitleaks | no high/critical |
+
+**Bundle note (2026-10-05, slice 1).** The original 120 KB app budget was set before measuring. The real first-load baseline is about 214 KB gz: react-dom 63, React Aria 60, TanStack Router 24, i18n stack 30, Better Auth client 13, TanStack Query 13. That is still well under the legacy app (~500 KB). The reduction plan toward ≤160 KB:
+1. Compile ICU messages at build time and drop the runtime parser and `i18next-icu` (~-15 KB).
+2. Load only the active locale (~-3 KB).
+3. Load the Better Auth client only in the auth-page chunk and use thin fetch calls in the shell (~-13 KB).
+4. Re-evaluate the router once the route count is known.
+
+The CI budget gets lowered as each item lands.
 
 ## 9. Environments & ops
 

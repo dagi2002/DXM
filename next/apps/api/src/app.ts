@@ -29,7 +29,11 @@ const REQUEST_ID_RE = /^[A-Za-z0-9._-]{8,64}$/;
  * Client IP = the address appended by our N-th trusted proxy (Caddy = 1).
  * Anything a client puts further left in X-Forwarded-For is ignored, so it can't be spoofed.
  */
-export function resolveClientIp(xff: string | undefined, peer: string | undefined, trustedHops: number): string {
+export function resolveClientIp(
+  xff: string | undefined,
+  peer: string | undefined,
+  trustedHops: number,
+): string {
   if (trustedHops <= 0 || !xff) return peer ?? 'unknown';
   const chain = xff
     .split(',')
@@ -48,7 +52,14 @@ export function createApp(deps: AppDeps) {
     const requestId = incoming && REQUEST_ID_RE.test(incoming) ? incoming : randomUUID();
     c.set('requestId', requestId);
     c.header('x-request-id', requestId);
-    c.set('clientIp', resolveClientIp(c.req.header('x-forwarded-for'), deps.peerAddress?.(c.req.raw, c), env.TRUST_PROXY_HOPS));
+    c.set(
+      'clientIp',
+      resolveClientIp(
+        c.req.header('x-forwarded-for'),
+        deps.peerAddress?.(c.req.raw, c),
+        env.TRUST_PROXY_HOPS,
+      ),
+    );
     c.set('log', log.child({ requestId }));
     const started = performance.now();
     await next();
@@ -117,6 +128,11 @@ export function createApp(deps: AppDeps) {
     headers.set(CLIENT_IP_HEADER, c.get('clientIp'));
     return auth.handler(new Request(c.req.raw, { headers }));
   });
+
+  /** Unauthenticated, cacheable facts the sign-in screens need. */
+  app.get('/api/v1/public-config', (c) =>
+    c.json({ googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) }),
+  );
 
   app.route('/api/v1/me', meRoutes(deps));
   app.route('/api/v1/sites', siteRoutes(deps));

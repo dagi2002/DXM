@@ -76,10 +76,18 @@ export const serverEnvSchema = z
       ctx.addIssue({ code: 'custom', path: ['APP_URL'], message: 'must be https in production' });
     }
     if (!env.RESEND_API_KEY) {
-      ctx.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'is required in production (email delivery)' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RESEND_API_KEY'],
+        message: 'is required in production (email delivery)',
+      });
     }
     if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
-      ctx.addIssue({ code: 'custom', path: ['GOOGLE_CLIENT_ID'], message: 'set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_CLIENT_ID'],
+        message: 'set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither',
+      });
     }
   });
 

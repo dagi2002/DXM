@@ -7,11 +7,24 @@ import { createAuth } from '../src/auth';
 import { MemoryMailer } from '../src/mailer';
 
 const user = process.env.USER ?? 'postgres';
-export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://pulse_app:pulse_app_dev@localhost:5432/pulse_test';
-export const TEST_DATABASE_ADMIN_URL = process.env.TEST_DATABASE_ADMIN_URL ?? `postgres://${user}@localhost:5432/pulse_test`;
+export const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ?? 'postgres://pulse_app:pulse_app_dev@localhost:5432/pulse_test';
+export const TEST_DATABASE_ADMIN_URL =
+  process.env.TEST_DATABASE_ADMIN_URL ?? `postgres://${user}@localhost:5432/pulse_test`;
 export const APP_URL = 'http://localhost:5174';
 
-const TABLES = ['audit_log', 'sites', 'org_plans', 'invitation', 'member', 'organization', 'verification', 'account', 'session', 'user'];
+const TABLES = [
+  'audit_log',
+  'sites',
+  'org_plans',
+  'invitation',
+  'member',
+  'organization',
+  'verification',
+  'account',
+  'session',
+  'user',
+];
 
 export async function resetDatabase() {
   const client = new pg.Client({ connectionString: TEST_DATABASE_ADMIN_URL });
@@ -24,7 +37,10 @@ export async function resetDatabase() {
 }
 
 /** Runs SQL as the owner role (bypasses RLS) — for arranging fixtures only. */
-export async function adminQuery<T extends pg.QueryResultRow = pg.QueryResultRow>(text: string, values: unknown[] = []) {
+export async function adminQuery<T extends pg.QueryResultRow = pg.QueryResultRow>(
+  text: string,
+  values: unknown[] = [],
+) {
   const client = new pg.Client({ connectionString: TEST_DATABASE_ADMIN_URL });
   await client.connect();
   try {
@@ -53,7 +69,14 @@ export function createTestContext(overrides: Record<string, string> = {}): TestC
   const database = createDatabase(env.DATABASE_URL, { max: 4 });
   const mailer = new MemoryMailer();
   const auth = createAuth({ db: database.db, env, mailer });
-  const app = createApp({ env, db: database.db, auth, mailer, log: pino({ level: 'silent' }), peerAddress: () => '127.0.0.1' });
+  const app = createApp({
+    env,
+    db: database.db,
+    auth,
+    mailer,
+    log: pino({ level: 'silent' }),
+    peerAddress: () => '127.0.0.1',
+  });
   return { app, database, mailer };
 }
 
@@ -65,7 +88,10 @@ export class Client {
     private readonly origin = APP_URL,
   ) {}
 
-  async request(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) {
+  async request(
+    path: string,
+    init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+  ) {
     const headers: Record<string, string> = { origin: this.origin, ...init.headers };
     if (this.cookies.size) headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
     if (init.body !== undefined) headers['content-type'] = 'application/json';
@@ -99,7 +125,11 @@ export class Client {
   delete = (path: string, body?: unknown) => this.request(path, { method: 'DELETE', body });
 }
 
-export async function signUp(app: App, email: string, opts: { name?: string; password?: string; locale?: string } = {}) {
+export async function signUp(
+  app: App,
+  email: string,
+  opts: { name?: string; password?: string; locale?: string } = {},
+) {
   const client = new Client(app);
   const res = await client.post('/api/auth/sign-up/email', {
     email,

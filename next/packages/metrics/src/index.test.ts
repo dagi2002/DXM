@@ -70,7 +70,11 @@ describe('formatDelta', () => {
     expect(formatDelta('lcp', 2000, 2500)).toEqual({ direction: 'down', sentiment: 'good', text: '20%' });
   });
   it('compares ratios in percentage points', () => {
-    expect(formatDelta('bounce_rate', 0.382, 0.341)).toEqual({ direction: 'up', sentiment: 'bad', text: '4.1 pts' });
+    expect(formatDelta('bounce_rate', 0.382, 0.341)).toEqual({
+      direction: 'up',
+      sentiment: 'bad',
+      text: '4.1 pts',
+    });
     expect(formatDelta('bounce_rate', 0.382, 0.341, 'am')?.text).toBe('4.1 ነጥብ');
   });
   it('treats tiny changes as flat and handles a zero baseline', () => {

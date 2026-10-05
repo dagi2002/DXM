@@ -1,11 +1,34 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["NODE_ENV", "DATABASE_URL", "DATABASE_ADMIN_URL", "TEST_DATABASE_URL", "TEST_DATABASE_ADMIN_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "DATABASE_ADMIN_URL",
+    "TEST_DATABASE_URL",
+    "TEST_DATABASE_ADMIN_URL"
+  ],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
-    "typecheck": { "dependsOn": ["^typecheck"] },
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^typecheck"
+      ]
+    },
     "lint": {},
-    "test": { "cache": false },
-    "dev": { "cache": false, "persistent": true }
-  }
+    "test": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  },
+  "envMode": "loose"
 }

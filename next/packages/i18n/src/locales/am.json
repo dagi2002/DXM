@@ -1,7 +1,6 @@
 {
   "app.name": "DXM Pulse",
   "app.tagline": "ደንበኞችን የሚያሳጣዎትን ይወቁ — መስተካከሉንም ያረጋግጡ።",
-
   "common.save": "አስቀምጥ",
   "common.saving": "በማስቀመጥ ላይ…",
   "common.cancel": "ተወው",
@@ -22,14 +21,12 @@
   "common.theme.light": "ብሩህ",
   "common.theme.dark": "ጨለማ",
   "common.skipToContent": "ወደ ዋናው ይዘት ይዝለሉ",
-
   "nav.main": "ዋና ማውጫ",
   "nav.today": "ዛሬ",
   "nav.sites": "ድረ-ገጾች",
   "nav.settings": "ቅንብሮች",
   "nav.signOut": "ውጣ",
   "nav.switchOrg": "ድርጅት ቀይር",
-
   "auth.signIn.title": "ወደ Pulse ይግቡ",
   "auth.signIn.submit": "ግባ",
   "auth.signIn.noAccount": "ለPulse አዲስ ነዎት?",
@@ -62,20 +59,17 @@
   "auth.error.weakPassword": "ቢያንስ 10 ፊደላት ይጠቀሙ።",
   "auth.error.generic": "የሆነ ችግር ተፈጥሯል። እንደገና ይሞክሩ።",
   "auth.backToSignIn": "ወደ መግቢያ ተመለስ",
-
   "onboarding.title": "ድርጅትዎን ይሰይሙ",
   "onboarding.subtitle": "ብዙውን ጊዜ የንግድዎ ወይም የኤጀንሲዎ ስም ነው። ቀጥሎ የደንበኛ ድረ-ገጾችን መጨመር ይችላሉ።",
   "onboarding.orgName": "የድርጅቱ ስም",
   "onboarding.orgName.placeholder": "ለምሳሌ፦ አበበ ፈርኒቸር",
   "onboarding.submit": "ድርጅቱን ፍጠር",
-
   "today.title": "ዛሬ",
   "today.empty.title": "እስካሁን የሚስተካከል ችግር የለም",
   "today.empty.noSites": "ደንበኞችን የሚያሳጣዎትን ለማግኘት የመጀመሪያ ድረ-ገጽዎን ይጨምሩ።",
   "today.empty.notLive": "ድረ-ገጾችዎ ተዘጋጅተዋል። ጎብኚዎች መምጣት ሲጀምሩ ችግሮች እዚህ ይታያሉ።",
   "today.empty.addSite": "ድረ-ገጽ ጨምር",
-  "today.summary": "{sites, plural, =0 {እስካሁን ድረ-ገጽ የለም} other {# ድረ-ገጾች}} · {date}",
-
+  "today.summary": "{sites, plural, =0 {እስካሁን ድረ-ገጽ የለም} one {# ድረ-ገጽ} other {# ድረ-ገጾች}} · {date}",
   "sites.title": "ድረ-ገጾች",
   "sites.subtitle": "የሚከታተሏቸው ድረ-ገጾች እና የቴሌግራም ሚኒ አፖች።",
   "sites.add": "ድረ-ገጽ ጨምር",
@@ -99,6 +93,7 @@
   "sites.status.live": "ቀጥታ",
   "sites.status.paused": "ቆሟል",
   "sites.created": "የተጨመረው {date}",
+  "sites.createdLabel": "የተጨመረበት ቀን",
   "sites.create.title": "ድረ-ገጽ ይጨምሩ",
   "sites.create.submit": "ድረ-ገጽ ጨምር",
   "sites.edit.title": "ድረ-ገጹን አርትዕ",
@@ -109,8 +104,8 @@
   "sites.install.pending": "የመጫኛ መመሪያው በሚቀጥለው ዝመና ከክትትሉ ጋር ይመጣል።",
   "sites.error.duplicate": "ይህ ዶሜይን በድርጅትዎ ውስጥ አስቀድሞ አለ።",
   "sites.error.invalidDomain": "እንደ example.et ያለ ዶሜይን ያስገቡ",
-  "sites.error.limit": "እቅድዎ {limit, plural, other {# ድረ-ገጾችን}} ብቻ ይፈቅዳል። ተጨማሪ ለመጨመር እቅድዎን ያሳድጉ።",
-
+  "sites.error.limit": "እቅድዎ {limit, plural, one {# ድረ-ገጽ} other {# ድረ-ገጾች}} ብቻ ይፈቅዳል። ተጨማሪ ለመጨመር እቅድዎን ያሳድጉ።",
+  "sites.error.nameRequired": "ለድረ-ገጹ ስም ይስጡ።",
   "settings.title": "ቅንብሮች",
   "settings.profile": "መገለጫ",
   "settings.profile.subtitle": "Pulse ቀንን፣ ሰዓትንና ቋንቋን እንዴት እንደሚያሳይዎ።",
@@ -131,20 +126,18 @@
   "settings.team.you": "እርስዎ",
   "settings.team.revoke": "ግብዣውን ሰርዝ",
   "settings.team.remove": "አስወግድ",
-
   "invite.title": "በPulse {org}ን ይቀላቀሉ",
   "invite.subtitle": "{inviter} እንደ {role} ጋብዘዎታል።",
   "invite.accept": "ግብዣውን ተቀበል",
   "invite.signInFirst": "ለመቀበል በ{email} ይግቡ ወይም አካውንት ይክፈቱ።",
+  "invite.signInToAccept": "ግብዣው በተላከበት የኢሜይል አድራሻ ይግቡ ወይም አካውንት ይክፈቱ።",
   "invite.invalid": "ይህ ግብዣ ትክክል አይደለም፣ ጊዜው አልፏል ወይም ጥቅም ላይ ውሏል።",
-
   "errors.notFound.title": "ገጹ አልተገኘም",
   "errors.notFound.body": "የሚፈልጉት ገጽ የለም ወይም ተዛውሯል።",
   "errors.generic.title": "የሆነ ችግር ተፈጥሯል",
   "errors.generic.body": "ችግሩ ተመዝግቧል። እንደገና ይሞክሩ።",
   "errors.forbidden": "ይህንን ለማድረግ ፈቃድ የለዎትም።",
   "errors.offline": "ከኢንተርኔት ተቋርጠዋል። ሲገናኙ ለውጦቹ እንደገና ይሞከራሉ።",
-
   "email.verify.subject": "ለPulse ኢሜይልዎን ያረጋግጡ",
   "email.verify.body": "Pulseን አዘጋጅተው ለመጨረስ ኢሜይልዎን ያረጋግጡ፦ {url}",
   "email.reset.subject": "የPulse የይለፍ ቃልዎን ይቀይሩ",

@@ -11,12 +11,18 @@ describe('normalizeDomain', () => {
     expect(normalizeDomain(input)).toBe(expected);
   });
 
-  it.each(['', 'localhost', '127.0.0.1', 'example.et:8080', 'user@example.et', '-bad.et', 'no_underscores.et', 'a..b.et'])(
-    'rejects %j',
-    (input) => {
-      expect(normalizeDomain(input)).toBeNull();
-    },
-  );
+  it.each([
+    '',
+    'localhost',
+    '127.0.0.1',
+    'example.et:8080',
+    'user@example.et',
+    '-bad.et',
+    'no_underscores.et',
+    'a..b.et',
+  ])('rejects %j', (input) => {
+    expect(normalizeDomain(input)).toBeNull();
+  });
 });
 
 describe('allowedOriginsFor', () => {

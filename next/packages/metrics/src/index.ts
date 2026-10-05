@@ -40,7 +40,12 @@ export const METRICS = {
   cls: def({ id: 'cls', unit: 'cls', isUpGood: false, thresholds: { good: 0.1, poor: 0.25 } }),
   fcp: def({ id: 'fcp', unit: 'ms', isUpGood: false, thresholds: { good: 1800, poor: 3000 } }),
   ttfb: def({ id: 'ttfb', unit: 'ms', isUpGood: false, thresholds: { good: 800, poor: 1800 } }),
-  health_score: def({ id: 'health_score', unit: 'score', isUpGood: true, thresholds: { good: 75, poor: 50 } }),
+  health_score: def({
+    id: 'health_score',
+    unit: 'score',
+    isUpGood: true,
+    thresholds: { good: 75, poor: 50 },
+  }),
   revenue_at_risk: def({ id: 'revenue_at_risk', unit: 'money', isUpGood: false }),
 } as const;
 
@@ -154,7 +159,11 @@ export function formatDelta(
     text = `${nf.format(Math.abs(magnitude))} ${locale === 'am' ? 'ነጥብ' : 'pts'}`;
   } else if (previous === 0) {
     if (current === 0) return { direction: 'flat', sentiment: 'neutral', text: '0' };
-    return { direction: 'up', sentiment: metric.isUpGood === null ? 'neutral' : metric.isUpGood ? 'good' : 'bad', text: locale === 'am' ? 'አዲስ' : 'new' };
+    return {
+      direction: 'up',
+      sentiment: metric.isUpGood === null ? 'neutral' : metric.isUpGood ? 'good' : 'bad',
+      text: locale === 'am' ? 'አዲስ' : 'new',
+    };
   } else {
     magnitude = (current - previous) / previous;
     text = pct.format(Math.abs(magnitude));

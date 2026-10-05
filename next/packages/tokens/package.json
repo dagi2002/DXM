@@ -3,12 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./tokens.css": "./src/tokens.css" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
   "scripts": {
     "typecheck": "tsc -p .",
     "lint": "eslint src scripts",
     "test": "vitest run",
     "build:css": "tsx scripts/build-css.ts"
   },
-  "devDependencies": { "tsx": "^4.23.15", "vitest": "^5.0.3" }
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
 }

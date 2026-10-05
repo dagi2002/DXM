@@ -2,7 +2,16 @@ import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { organization, user } from './auth';
 
-const PLATFORMS = ['html', 'wordpress', 'woocommerce', 'shopify', 'react', 'nextjs', 'telegram_mini_app', 'other'] as const;
+const PLATFORMS = [
+  'html',
+  'wordpress',
+  'woocommerce',
+  'shopify',
+  'react',
+  'nextjs',
+  'telegram_mini_app',
+  'other',
+] as const;
 const SITE_STATUSES = ['install', 'live', 'paused'] as const;
 
 const timestamps = {
@@ -29,7 +38,10 @@ export const sites = pgTable(
     platform: text('platform', { enum: PLATFORMS }).notNull().default('html'),
     status: text('status', { enum: SITE_STATUSES }).notNull().default('install'),
     publicKey: text('public_key').notNull().unique(),
-    allowedOrigins: text('allowed_origins').array().notNull().default(sql`'{}'::text[]`),
+    allowedOrigins: text('allowed_origins')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -66,7 +78,9 @@ export const orgPlans = pgTable('org_plans', {
   orgId: text('org_id')
     .primaryKey()
     .references(() => organization.id, { onDelete: 'cascade' }),
-  plan: text('plan', { enum: ['free', 'business', 'growth', 'agency'] }).notNull().default('free'),
+  plan: text('plan', { enum: ['free', 'business', 'growth', 'agency'] })
+    .notNull()
+    .default('free'),
   ...timestamps,
 });
 

@@ -1,7 +1,6 @@
 {
   "app.name": "DXM Pulse",
   "app.tagline": "Know what's costing you customers — and prove it's fixed.",
-
   "common.save": "Save",
   "common.saving": "Saving…",
   "common.cancel": "Cancel",
@@ -22,14 +21,12 @@
   "common.theme.light": "Light",
   "common.theme.dark": "Dark",
   "common.skipToContent": "Skip to main content",
-
   "nav.main": "Main",
   "nav.today": "Today",
   "nav.sites": "Sites",
   "nav.settings": "Settings",
   "nav.signOut": "Sign out",
   "nav.switchOrg": "Switch organization",
-
   "auth.signIn.title": "Sign in to Pulse",
   "auth.signIn.submit": "Sign in",
   "auth.signIn.noAccount": "New to Pulse?",
@@ -62,20 +59,17 @@
   "auth.error.weakPassword": "Use at least 10 characters.",
   "auth.error.generic": "Something went wrong. Please try again.",
   "auth.backToSignIn": "Back to sign in",
-
   "onboarding.title": "Name your organization",
   "onboarding.subtitle": "This is usually your business or agency name. You can add client sites to it next.",
   "onboarding.orgName": "Organization name",
   "onboarding.orgName.placeholder": "e.g. Abebe Furniture",
   "onboarding.submit": "Create organization",
-
   "today.title": "Today",
   "today.empty.title": "No issues to fix yet",
   "today.empty.noSites": "Add your first site to start finding what's costing you customers.",
   "today.empty.notLive": "Your sites are set up. Issues appear here once visitors start arriving.",
   "today.empty.addSite": "Add a site",
   "today.summary": "{sites, plural, =0 {No sites yet} one {# site} other {# sites}} · {date}",
-
   "sites.title": "Sites",
   "sites.subtitle": "Websites and Telegram Mini Apps you monitor.",
   "sites.add": "Add site",
@@ -99,6 +93,7 @@
   "sites.status.live": "Live",
   "sites.status.paused": "Paused",
   "sites.created": "Added {date}",
+  "sites.createdLabel": "Added on",
   "sites.create.title": "Add a site",
   "sites.create.submit": "Add site",
   "sites.edit.title": "Edit site",
@@ -110,7 +105,7 @@
   "sites.error.duplicate": "This domain is already in your organization.",
   "sites.error.invalidDomain": "Enter a domain like example.et",
   "sites.error.limit": "Your plan allows {limit, plural, one {# site} other {# sites}}. Upgrade to add more.",
-
+  "sites.error.nameRequired": "Give the site a name.",
   "settings.title": "Settings",
   "settings.profile": "Profile",
   "settings.profile.subtitle": "How Pulse shows dates, times and language to you.",
@@ -131,20 +126,18 @@
   "settings.team.you": "you",
   "settings.team.revoke": "Revoke",
   "settings.team.remove": "Remove",
-
   "invite.title": "Join {org} on Pulse",
   "invite.subtitle": "{inviter} invited you as {role}.",
   "invite.accept": "Accept invitation",
   "invite.signInFirst": "Sign in or create an account with {email} to accept.",
+  "invite.signInToAccept": "Sign in or create an account with the email address this invitation was sent to.",
   "invite.invalid": "This invitation is invalid, expired or already used.",
-
   "errors.notFound.title": "Page not found",
   "errors.notFound.body": "The page you're looking for doesn't exist or was moved.",
   "errors.generic.title": "Something went wrong",
   "errors.generic.body": "We've been notified. Please try again.",
   "errors.forbidden": "You don't have permission to do that.",
   "errors.offline": "You're offline. Changes will be retried when you reconnect.",
-
   "email.verify.subject": "Confirm your email for Pulse",
   "email.verify.body": "Confirm your email to finish setting up Pulse: {url}",
   "email.reset.subject": "Reset your Pulse password",

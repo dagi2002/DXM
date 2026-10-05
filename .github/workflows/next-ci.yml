@@ -1,0 +1,72 @@
+name: next (rebuild) CI
+
+on:
+  push:
+    branches: [main, rebuild]
+    paths: ['next/**', '.github/workflows/next-ci.yml']
+  pull_request:
+    paths: ['next/**', '.github/workflows/next-ci.yml']
+
+concurrency:
+  group: next-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: next
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+      TEST_DATABASE_URL: postgres://pulse_app:pulse_app_ci@localhost:5432/pulse_test
+      TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/pulse_test
+      E2E_DATABASE_URL: postgres://pulse_app:pulse_app_ci@localhost:5432/pulse_e2e
+      E2E_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/pulse_e2e
+      APP_DB_PASSWORD: pulse_app_ci
+      PULSE_DATABASES: pulse_test,pulse_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: next/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: next/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Database roles and databases
+        run: pnpm db:setup
+      - name: Types
+        run: pnpm turbo run typecheck
+      - name: Lint
+        run: pnpm turbo run lint
+      - name: Unit, component and API integration tests
+        run: pnpm turbo run test --concurrency=1
+      - name: Build
+        run: pnpm turbo run build
+      - name: Dependency audit (production, high+)
+        run: pnpm audit --prod --audit-level high
+      - name: Install Playwright browser
+        run: pnpm --filter @pulse/web exec playwright install --with-deps --only-shell chromium
+      - name: E2E (desktop + 360px mobile, axe WCAG 2.2 AA)
+        run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: next/apps/web/playwright-report

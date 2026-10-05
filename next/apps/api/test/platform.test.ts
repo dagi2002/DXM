@@ -14,6 +14,14 @@ describe('health', () => {
   });
 });
 
+describe('public config', () => {
+  it('tells the sign-in screen whether Google is configured, without auth', async () => {
+    const res = await ctx.app.request('/api/v1/public-config');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ googleEnabled: false });
+  });
+});
+
 describe('errors & request ids', () => {
   it('returns the error envelope for unknown routes with a request id', async () => {
     const res = await ctx.app.request('/api/v1/nope');
@@ -31,7 +39,11 @@ describe('errors & request ids', () => {
   });
 
   it('rejects malformed JSON with a 400 envelope, not a crash', async () => {
-    const res = await ctx.app.request('/api/v1/me/preferences', { method: 'PATCH', headers: { origin: APP_URL, 'content-type': 'application/json' }, body: '{' });
+    const res = await ctx.app.request('/api/v1/me/preferences', {
+      method: 'PATCH',
+      headers: { origin: APP_URL, 'content-type': 'application/json' },
+      body: '{',
+    });
     // Unauthenticated requests are rejected before the body is read.
     expect(res.status).toBe(401);
   });
@@ -46,10 +58,16 @@ describe('security headers & CORS', () => {
   });
 
   it('allows credentialed CORS only for the app origin', async () => {
-    const ok = await ctx.app.request('/api/v1/me', { method: 'OPTIONS', headers: { origin: APP_URL, 'access-control-request-method': 'GET' } });
+    const ok = await ctx.app.request('/api/v1/me', {
+      method: 'OPTIONS',
+      headers: { origin: APP_URL, 'access-control-request-method': 'GET' },
+    });
     expect(ok.headers.get('access-control-allow-origin')).toBe(APP_URL);
     expect(ok.headers.get('access-control-allow-credentials')).toBe('true');
-    const evil = await ctx.app.request('/api/v1/me', { method: 'OPTIONS', headers: { origin: 'https://evil.example', 'access-control-request-method': 'GET' } });
+    const evil = await ctx.app.request('/api/v1/me', {
+      method: 'OPTIONS',
+      headers: { origin: 'https://evil.example', 'access-control-request-method': 'GET' },
+    });
     expect(evil.headers.get('access-control-allow-origin')).toBeNull();
   });
 });

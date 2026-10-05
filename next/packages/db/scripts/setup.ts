@@ -27,7 +27,9 @@ try {
   const role = await client.query('select 1 from pg_roles where rolname = $1', [appRole]);
   const literal = client.escapeLiteral(appPassword);
   if (role.rowCount === 0) {
-    await client.query(`create role ${ident(appRole)} login nosuperuser nobypassrls nocreatedb nocreaterole password ${literal}`);
+    await client.query(
+      `create role ${ident(appRole)} login nosuperuser nobypassrls nocreatedb nocreaterole password ${literal}`,
+    );
     console.log(`created role ${appRole}`);
   } else {
     await client.query(`alter role ${ident(appRole)} login nosuperuser nobypassrls password ${literal}`);

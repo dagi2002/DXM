@@ -1,21 +1,42 @@
 import { createDatabase, sites, withOrg } from '@pulse/db';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import type { Client} from './helpers';
-import { adminQuery, createTestContext, resetDatabase, signUp, signUpWithOrg, TEST_DATABASE_URL } from './helpers';
+import type { Client } from './helpers';
+import {
+  adminQuery,
+  createTestContext,
+  resetDatabase,
+  signUp,
+  signUpWithOrg,
+  TEST_DATABASE_URL,
+} from './helpers';
 
 const ctx = createTestContext();
 beforeEach(resetDatabase);
 afterAll(() => ctx.database.close());
 
 const setPlan = (orgId: string, plan: string) =>
-  adminQuery(`insert into org_plans (org_id, plan) values ($1, $2) on conflict (org_id) do update set plan = $2`, [orgId, plan]);
+  adminQuery(
+    `insert into org_plans (org_id, plan) values ($1, $2) on conflict (org_id) do update set plan = $2`,
+    [orgId, plan],
+  );
 
 describe('sites CRUD', () => {
   it('creates a site with a normalized domain, public key and origins, and lists it', async () => {
     const { client, orgId } = await signUpWithOrg(ctx.app, 'o@example.et');
-    const res = await client.post('/api/v1/sites', { name: 'Shop', domain: 'https://WWW.Shop.et/path?x=1', platform: 'woocommerce' });
+    const res = await client.post('/api/v1/sites', {
+      name: 'Shop',
+      domain: 'https://WWW.Shop.et/path?x=1',
+      platform: 'woocommerce',
+    });
     expect(res.status).toBe(201);
-    expect(res.body.site).toMatchObject({ orgId, name: 'Shop', domain: 'www.shop.et', platform: 'woocommerce', status: 'install', verifiedAt: null });
+    expect(res.body.site).toMatchObject({
+      orgId,
+      name: 'Shop',
+      domain: 'www.shop.et',
+      platform: 'woocommerce',
+      status: 'install',
+      verifiedAt: null,
+    });
     expect(res.body.site.id).toMatch(/^site_[0-9A-Za-z]{20}$/);
     expect(res.body.site.publicKey).toMatch(/^pk_[0-9A-Za-z]{22}$/);
     const { rows } = await adminQuery('select allowed_origins from sites where id = $1', [res.body.site.id]);
@@ -53,7 +74,9 @@ describe('sites CRUD', () => {
     const dupe = await client.post('/api/v1/sites', { name: 'B', domain: 'https://shop.et/' });
     expect(dupe.status).toBe(409);
     expect(dupe.body.error.code).toBe('conflict');
-    expect((await client.delete(`/api/v1/sites/${first.body.site.id}`, { confirmDomain: 'shop.et' })).status).toBe(204);
+    expect(
+      (await client.delete(`/api/v1/sites/${first.body.site.id}`, { confirmDomain: 'shop.et' })).status,
+    ).toBe(204);
     expect((await client.post('/api/v1/sites', { name: 'Again', domain: 'shop.et' })).status).toBe(201);
   });
 
@@ -73,12 +96,16 @@ describe('sites CRUD', () => {
     const { body } = await client.post('/api/v1/sites', { name: 'A', domain: 'gone.et' });
     const wrong = await client.delete(`/api/v1/sites/${body.site.id}`, { confirmDomain: 'nope.et' });
     expect(wrong.status).toBe(400);
-    expect((await client.delete(`/api/v1/sites/${body.site.id}`, { confirmDomain: 'GONE.et' })).status).toBe(204);
+    expect((await client.delete(`/api/v1/sites/${body.site.id}`, { confirmDomain: 'GONE.et' })).status).toBe(
+      204,
+    );
     expect((await client.get(`/api/v1/sites/${body.site.id}`)).status).toBe(404);
     expect((await client.get('/api/v1/sites')).body.sites).toEqual([]);
     const { rows } = await adminQuery('select deleted_at from sites where id = $1', [body.site.id]);
     expect(rows[0]!.deleted_at).not.toBeNull();
-    const audit = await adminQuery('select action from audit_log where org_id = $1 order by created_at', [orgId]);
+    const audit = await adminQuery('select action from audit_log where org_id = $1 order by created_at', [
+      orgId,
+    ]);
     expect(audit.rows.map((r) => r.action)).toEqual(['site.created', 'site.deleted']);
   });
 });
@@ -121,7 +148,9 @@ describe('tenant isolation', () => {
       // Writing a row for another org is rejected by the policy's WITH CHECK.
       await expect(
         withOrg(appDb.db, b.orgId, (tx) =>
-          tx.insert(sites).values({ id: 'site_x', orgId: a.orgId, name: 'x', domain: 'x.et', publicKey: 'pk_x' }),
+          tx
+            .insert(sites)
+            .values({ id: 'site_x', orgId: a.orgId, name: 'x', domain: 'x.et', publicKey: 'pk_x' }),
         ),
       ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/row-level security/) } });
     } finally {
@@ -161,7 +190,9 @@ describe('roles', () => {
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('forbidden');
     }
-    expect((await adminClient.patch(`/api/v1/sites/${body.site.id}`, { name: 'Renamed by admin' })).status).toBe(200);
+    expect(
+      (await adminClient.patch(`/api/v1/sites/${body.site.id}`, { name: 'Renamed by admin' })).status,
+    ).toBe(200);
   });
 
   it('client viewers see no sites until sites are shared with them', async () => {
@@ -176,7 +207,9 @@ describe('roles', () => {
     const owner = await signUpWithOrg(ctx.app, 'own@example.et');
     const staff = await inviteAndJoin(owner.client, 'temp@example.et', 'admin');
     expect((await staff.post('/api/v1/sites', { name: 'S', domain: 's.et' })).status).toBe(201);
-    await adminQuery(`update member set role = 'member' where organization_id = $1 and role = 'admin'`, [owner.orgId]);
+    await adminQuery(`update member set role = 'member' where organization_id = $1 and role = 'admin'`, [
+      owner.orgId,
+    ]);
     expect((await staff.patch('/api/v1/sites/whatever', { name: 'x' })).status).toBe(403);
     await adminQuery(`delete from member where organization_id = $1 and role = 'member'`, [owner.orgId]);
     expect((await staff.get('/api/v1/sites')).status).toBe(403);
@@ -184,7 +217,10 @@ describe('roles', () => {
 
   it('only the invited email can accept an invitation', async () => {
     const owner = await signUpWithOrg(ctx.app, 'inv-owner@example.et');
-    await owner.client.post('/api/auth/organization/invite-member', { email: 'right@example.et', role: 'member' });
+    await owner.client.post('/api/auth/organization/invite-member', {
+      email: 'right@example.et',
+      role: 'member',
+    });
     const id = ctx.mailer.lastTo('right@example.et')!.text.match(/accept-invitation\/(\S+)/)![1]!;
     const intruder = await signUp(ctx.app, 'wrong@example.et');
     const res = await intruder.post('/api/auth/organization/accept-invitation', { invitationId: id });

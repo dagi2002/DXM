@@ -10,7 +10,13 @@ describe('sign-up & session', () => {
     const client = await signUp(ctx.app, 'abebe@example.et', { name: 'Abebe', locale: 'am' });
     const me = await client.get('/api/v1/me');
     expect(me.status).toBe(200);
-    expect(me.body.user).toMatchObject({ name: 'Abebe', email: 'abebe@example.et', locale: 'am', calendar: 'gregorian', emailVerified: false });
+    expect(me.body.user).toMatchObject({
+      name: 'Abebe',
+      email: 'abebe@example.et',
+      locale: 'am',
+      calendar: 'gregorian',
+      emailVerified: false,
+    });
     expect(me.body.orgs).toEqual([]);
     expect(me.body.activeOrgId).toBeNull();
     const mail = ctx.mailer.lastTo('abebe@example.et');
@@ -31,19 +37,33 @@ describe('sign-up & session', () => {
 
   it('rejects short passwords and duplicate emails', async () => {
     const c = new Client(ctx.app);
-    const short = await c.post('/api/auth/sign-up/email', { email: 'x@example.et', password: 'short', name: 'X' });
+    const short = await c.post('/api/auth/sign-up/email', {
+      email: 'x@example.et',
+      password: 'short',
+      name: 'X',
+    });
     expect(short.status).toBe(400);
     await signUp(ctx.app, 'dup@example.et');
-    const dup = await new Client(ctx.app).post('/api/auth/sign-up/email', { email: 'dup@example.et', password: 'correct horse battery', name: 'D' });
+    const dup = await new Client(ctx.app).post('/api/auth/sign-up/email', {
+      email: 'dup@example.et',
+      password: 'correct horse battery',
+      name: 'D',
+    });
     expect(dup.status).toBeGreaterThanOrEqual(400);
   });
 
   it('signs in, rejects a wrong password, and signs out server-side', async () => {
     await signUp(ctx.app, 'kidist@example.et');
     const c = new Client(ctx.app);
-    const wrong = await c.post('/api/auth/sign-in/email', { email: 'kidist@example.et', password: 'nope nope nope' });
+    const wrong = await c.post('/api/auth/sign-in/email', {
+      email: 'kidist@example.et',
+      password: 'nope nope nope',
+    });
     expect(wrong.status).toBe(401);
-    const ok = await c.post('/api/auth/sign-in/email', { email: 'kidist@example.et', password: 'correct horse battery' });
+    const ok = await c.post('/api/auth/sign-in/email', {
+      email: 'kidist@example.et',
+      password: 'correct horse battery',
+    });
     expect(ok.status).toBe(200);
     expect((await c.get('/api/v1/me')).status).toBe(200);
     expect((await c.post('/api/auth/sign-out')).status).toBe(200);
@@ -55,21 +75,43 @@ describe('sign-up & session', () => {
   it('resets a password with an emailed, single-use token and revokes old sessions', async () => {
     const original = await signUp(ctx.app, 'reset@example.et');
     const c = new Client(ctx.app);
-    const req = await c.post('/api/auth/request-password-reset', { email: 'reset@example.et', redirectTo: 'http://localhost:5174/reset-password' });
+    const req = await c.post('/api/auth/request-password-reset', {
+      email: 'reset@example.et',
+      redirectTo: 'http://localhost:5174/reset-password',
+    });
     expect(req.status).toBe(200);
     const url = ctx.mailer.lastTo('reset@example.et')!.text.match(/https?:\/\/\S+/)![0];
     const token = url.split('/reset-password/')[1]!.split('?')[0]!;
     const reset = await c.post('/api/auth/reset-password', { token, newPassword: 'a brand new passphrase' });
     expect(reset.status).toBe(200);
-    expect((await c.post('/api/auth/reset-password', { token, newPassword: 'yet another passphrase' })).status).toBe(400);
+    expect(
+      (await c.post('/api/auth/reset-password', { token, newPassword: 'yet another passphrase' })).status,
+    ).toBe(400);
     expect((await original.get('/api/v1/me')).status).toBe(401);
-    expect((await c.post('/api/auth/sign-in/email', { email: 'reset@example.et', password: 'correct horse battery' })).status).toBe(401);
-    expect((await c.post('/api/auth/sign-in/email', { email: 'reset@example.et', password: 'a brand new passphrase' })).status).toBe(200);
+    expect(
+      (
+        await c.post('/api/auth/sign-in/email', {
+          email: 'reset@example.et',
+          password: 'correct horse battery',
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await c.post('/api/auth/sign-in/email', {
+          email: 'reset@example.et',
+          password: 'a brand new passphrase',
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it('does not reveal whether an email has an account', async () => {
     const c = new Client(ctx.app);
-    const res = await c.post('/api/auth/request-password-reset', { email: 'nobody@example.et', redirectTo: 'http://localhost:5174/reset-password' });
+    const res = await c.post('/api/auth/request-password-reset', {
+      email: 'nobody@example.et',
+      redirectTo: 'http://localhost:5174/reset-password',
+    });
     expect(res.status).toBe(200);
     expect(ctx.mailer.lastTo('nobody@example.et')).toBeUndefined();
   });
@@ -90,7 +132,11 @@ describe('sign-up & session', () => {
 describe('preferences', () => {
   it('updates language and calendar and validates values', async () => {
     const c = await signUp(ctx.app, 'pref@example.et');
-    const ok = await c.patch('/api/v1/me/preferences', { locale: 'am', calendar: 'ethiopian', name: 'Tigist' });
+    const ok = await c.patch('/api/v1/me/preferences', {
+      locale: 'am',
+      calendar: 'ethiopian',
+      name: 'Tigist',
+    });
     expect(ok.status).toBe(200);
     expect(ok.body.user).toMatchObject({ locale: 'am', calendar: 'ethiopian', name: 'Tigist' });
     const bad = await c.patch('/api/v1/me/preferences', { locale: 'fr' });
@@ -104,7 +150,9 @@ describe('organizations', () => {
     const { client, orgId } = await signUpWithOrg(ctx.app, 'owner@example.et', 'Abebe Furniture');
     const me = await client.get('/api/v1/me');
     expect(me.body.activeOrgId).toBe(orgId);
-    expect(me.body.orgs).toEqual([expect.objectContaining({ id: orgId, name: 'Abebe Furniture', role: 'owner' })]);
+    expect(me.body.orgs).toEqual([
+      expect.objectContaining({ id: orgId, name: 'Abebe Furniture', role: 'owner' }),
+    ]);
   });
 
   it('org-scoped routes require an active org', async () => {

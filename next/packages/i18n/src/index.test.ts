@@ -80,7 +80,15 @@ describe('messages', () => {
   });
 
   it('has no empty or untranslated Amharic strings (brand and tech names excepted)', () => {
-    const allowedSame = new Set(['app.name', 'sites.domain.placeholder', 'sites.platform.wordpress', 'sites.platform.woocommerce', 'sites.platform.shopify', 'sites.platform.react', 'sites.platform.nextjs']);
+    const allowedSame = new Set([
+      'app.name',
+      'sites.domain.placeholder',
+      'sites.platform.wordpress',
+      'sites.platform.woocommerce',
+      'sites.platform.shopify',
+      'sites.platform.react',
+      'sites.platform.nextjs',
+    ]);
     for (const [key, en] of Object.entries(messages.en)) {
       const am = (messages.am as Record<string, string>)[key]!;
       expect(am.trim(), key).not.toBe('');
@@ -92,5 +100,6 @@ describe('messages', () => {
     expect(t('en', 'today.summary', { sites: 1, date: 'today' })).toBe('1 site · today');
     expect(t('en', 'today.summary', { sites: 0, date: 'today' })).toBe('No sites yet · today');
     expect(t('am', 'today.summary', { sites: 3, date: 'ዛሬ' })).toBe('3 ድረ-ገጾች · ዛሬ');
+    expect(t('am', 'today.summary', { sites: 1, date: 'ዛሬ' })).toBe('1 ድረ-ገጽ · ዛሬ'); // Amharic: 1 is singular
   });
 });

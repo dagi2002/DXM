@@ -32,8 +32,15 @@ describe('loadServerEnv', () => {
   });
 
   it('refuses weak or placeholder secrets in production', () => {
-    const prod = { ...base, NODE_ENV: 'production', APP_URL: 'https://app.dxmpulse.et', RESEND_API_KEY: 're_x' };
-    expect(() => loadServerEnv({ ...prod, BETTER_AUTH_SECRET: 'change_this_in_production_min_32_chars' })).toThrow(/placeholder/);
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      APP_URL: 'https://app.dxmpulse.et',
+      RESEND_API_KEY: 're_x',
+    };
+    expect(() =>
+      loadServerEnv({ ...prod, BETTER_AUTH_SECRET: 'change_this_in_production_min_32_chars' }),
+    ).toThrow(/placeholder/);
     expect(() => loadServerEnv({ ...prod, BETTER_AUTH_SECRET: 'a'.repeat(40) })).toThrow(/weak/);
     expect(loadServerEnv(prod).NODE_ENV).toBe('production');
   });

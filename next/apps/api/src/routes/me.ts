@@ -41,7 +41,10 @@ export function meRoutes(deps: AppDeps) {
   r.patch('/preferences', async (c) => {
     const input = PreferencesUpdate.parse(await c.req.json());
     if (Object.keys(input).length > 0) {
-      await deps.db.update(user).set({ ...input, updatedAt: new Date() }).where(eq(user.id, c.get('user')!.id));
+      await deps.db
+        .update(user)
+        .set({ ...input, updatedAt: new Date() })
+        .where(eq(user.id, c.get('user')!.id));
     }
     return c.json(await load(c.get('user')!.id, c.get('activeOrgId') ?? null));
   });

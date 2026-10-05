@@ -30,7 +30,10 @@ export function t(locale: Locale, key: MessageKey, values?: Record<string, strin
   const cacheKey = `${locale}:${key}`;
   let fmt = cache.get(cacheKey);
   if (!fmt) {
-    const source = (messages[locale] as Record<string, string>)[key] ?? (messages.en as Record<string, string>)[key] ?? key;
+    const source =
+      (messages[locale] as Record<string, string>)[key] ??
+      (messages.en as Record<string, string>)[key] ??
+      key;
     fmt = new IntlMessageFormat(source, locale === 'am' ? 'am-ET' : 'en-US');
     cache.set(cacheKey, fmt);
   }
