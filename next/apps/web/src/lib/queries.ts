@@ -1,4 +1,4 @@
-import type { Me, Site } from '@pulse/contracts';
+import type { Me, Site, SiteInstall, Today } from '@pulse/contracts';
 import { formatDate, type CalendarPref, type Locale } from '@pulse/i18n';
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -57,3 +57,16 @@ export function useFormatDate() {
   const calendar = (data?.user.calendar ?? undefined) as CalendarPref | undefined;
   return (date: Date | string, withTime = false) => formatDate(date, { locale, calendar, withTime });
 }
+
+export const installQuery = (orgId: string, siteId: string) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'sites', siteId, 'install'],
+    queryFn: ({ signal }) => api<SiteInstall>(`/sites/${siteId}/install`, { signal }),
+  });
+
+export const todayQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'today'],
+    queryFn: ({ signal }) => api<Today>('/today', { signal }),
+    refetchInterval: 60_000,
+  });

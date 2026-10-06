@@ -1,13 +1,14 @@
 import type { ServerEnv } from '@pulse/config';
 import type { Db } from '@pulse/db';
 import { schema } from '@pulse/db';
-import { isLocale, t, type Locale } from '@pulse/i18n';
+import { isLocale, type Locale } from '@pulse/i18n';
+import { t } from '@pulse/i18n/messages';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink, organization } from 'better-auth/plugins';
 import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements, memberAc, ownerAc } from 'better-auth/plugins/organization/access';
-import type { Mailer } from './mailer';
+import type { Mailer } from '@pulse/mail';
 
 /** Header the API sets from the real socket/proxy chain; Better Auth trusts only this one. */
 export const CLIENT_IP_HEADER = 'x-pulse-client-ip';

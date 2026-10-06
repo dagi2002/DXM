@@ -29,6 +29,34 @@
       "when": 1791195041316,
       "tag": "0003_org_plans_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791197882978,
+      "tag": "0004_visits",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791197883456,
+      "tag": "0005_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791198424199,
+      "tag": "0006_maintenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791293027993,
+      "tag": "0007_site_extra_origins",
+      "breakpoints": true
     }
   ]
 }

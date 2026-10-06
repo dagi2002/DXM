@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 
 // Measured baseline for React 19 + React Aria + router + i18n (2026-10-05). Reduction plan in
 // docs/rebuild/03-architecture.md §8 targets 160 KB; ratchet this down as items land.
-const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 220);
+const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 216);
 const html = readFileSync('dist/index.html', 'utf8');
 const files = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.js)"/g)].map((m) => m[1]);
 let total = 0;

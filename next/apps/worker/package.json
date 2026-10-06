@@ -1,0 +1,29 @@
+{
+  "name": "@pulse/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
+    "build": "tsup",
+    "typecheck": "tsc -p .",
+    "lint": "eslint src test",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pulse/config": "workspace:*",
+    "@pulse/contracts": "workspace:*",
+    "@pulse/db": "workspace:*",
+    "@pulse/i18n": "workspace:*",
+    "@pulse/jobs": "workspace:*",
+    "pino": "^10.4.0",
+    "@pulse/mail": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "pg": "^8.16.3",
+    "tsup": "^8.5.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}

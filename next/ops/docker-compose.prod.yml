@@ -14,9 +14,8 @@ services:
       interval: 5s
 
   migrate:
-    image: ${PULSE_API_IMAGE:-pulse-api:latest}
-    env_file: /etc/pulse/pulse.env
-    command: ['node', '--import', 'tsx', 'packages/db/scripts/migrate.ts']
+    image: ${PULSE_MIGRATE_IMAGE:-pulse-migrate:latest}
+    env_file: /etc/pulse/pulse.env  # needs DATABASE_ADMIN_URL (owner role)
     depends_on: { postgres: { condition: service_healthy } }
     restart: 'no'
 
@@ -28,12 +27,27 @@ services:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
 
+  collector:
+    image: ${PULSE_COLLECTOR_IMAGE:-pulse-collector:latest}
+    env_file: /etc/pulse/pulse.env
+    environment: { TRUST_PROXY_HOPS: '1' }
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    image: ${PULSE_WORKER_IMAGE:-pulse-worker:latest}
+    env_file: /etc/pulse/pulse.env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
   web:
     image: ${PULSE_WEB_IMAGE:-pulse-web:latest}
     ports: ['80:80', '443:443']
     volumes: [caddy_data:/data, caddy_config:/config]
     environment: { APP_HOST: '${APP_HOST:-app.dxmpulse.et}' }
-    depends_on: [api]
+    depends_on: [api, collector]
     restart: unless-stopped
 
 volumes:

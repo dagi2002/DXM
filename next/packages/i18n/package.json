@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./messages": "./src/messages.ts",
     "./locales/en.json": "./src/locales/en.json",
     "./locales/am.json": "./src/locales/am.json"
   },

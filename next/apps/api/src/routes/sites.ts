@@ -6,13 +6,19 @@ import {
   allowedOriginsFor,
   type PlanId,
   type Site,
+  InstallEmail,
+  buildSnippet,
+  type SiteInstall,
 } from '@pulse/contracts';
+import { isLocale } from '@pulse/i18n';
+import { t as translate } from '@pulse/i18n/messages';
 import {
   auditLog,
   newId,
   newPublicKey,
   orgPlans,
   sites,
+  visits,
   withOrg,
   type SiteRow,
   type Tx,
@@ -21,6 +27,7 @@ import {
   count,
   eq,
   isNull,
+  max,
   ne,
 } from '@pulse/db';
 import { Hono, type Context } from 'hono';
@@ -147,17 +154,77 @@ export function siteRoutes(deps: AppDeps) {
     const input = SiteUpdate.parse(await c.req.json());
     const id = c.req.param('id');
     const row = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
-      await findActive(tx, id);
       if (input.domain) await assertDomainFree(tx, input.domain, id);
+      const current = await findActive(tx, id);
+      const domain = input.domain ?? current.domain;
+      const extra = input.extraOrigins ?? current.extraOrigins;
       const [updated] = await tx
         .update(sites)
-        .set({ ...input, ...(input.domain ? { allowedOrigins: allowedOriginsFor(input.domain) } : {}) })
+        .set({
+          ...input,
+          extraOrigins: extra,
+          // The collector only accepts data from these origins.
+          allowedOrigins: [...new Set([...allowedOriginsFor(domain), ...extra])],
+        })
         .where(eq(sites.id, id))
         .returning();
       await audit(tx, c, 'site.updated', id, { fields: Object.keys(input) });
       return updated!;
     });
     return c.json({ site: toSiteDto(row) });
+  });
+
+  const scriptUrl = `${deps.env.COLLECTOR_PUBLIC_URL.replace(/\/$/, '')}/sdk/p.js`;
+  const installFor = async (orgId: string, row: SiteRow): Promise<SiteInstall> => {
+    const last = await withOrg(deps.db, orgId, (tx) =>
+      tx
+        .select({ last: max(visits.lastSeenAt) })
+        .from(visits)
+        .where(eq(visits.siteId, row.id)),
+    );
+    return {
+      snippet: buildSnippet(scriptUrl, row.publicKey),
+      scriptUrl,
+      status: row.status,
+      verifiedAt: row.verifiedAt?.toISOString() ?? null,
+      lastEventAt: last[0]?.last?.toISOString() ?? null,
+      allowedOrigins: row.allowedOrigins,
+      extraOrigins: row.extraOrigins,
+    };
+  };
+
+  /** Install instructions + live verification status (polled by the install screen). */
+  r.get('/:id/install', async (c) => {
+    if (c.get('role') === 'client_viewer') throw notFound('Site');
+    const row = await withOrg(deps.db, c.get('orgId')!, (tx) => findActive(tx, c.req.param('id')));
+    return c.json(await installFor(c.get('orgId')!, row));
+  });
+
+  /** Sends the snippet and guides to whoever builds the site (owners often aren't developers). */
+  const emailsSent = new Map<string, number[]>();
+  r.post('/:id/install/email', requireManager, async (c) => {
+    const { email } = InstallEmail.parse(await c.req.json());
+    const orgId = c.get('orgId')!;
+    const row = await withOrg(deps.db, orgId, (tx) => findActive(tx, c.req.param('id')));
+    const now = Date.now();
+    const recent = (emailsSent.get(row.id) ?? []).filter((t) => now - t < 3_600_000);
+    if (recent.length >= 5)
+      throw new ApiError(429, 'rate_limited', 'Too many emails for this site — try again later');
+    emailsSent.set(row.id, [...recent, now]);
+    const user = c.get('user')!;
+    const locale = isLocale(user.locale) ? user.locale : 'en';
+    await deps.mailer.send({
+      to: email,
+      subject: translate(locale, 'email.install.subject', { domain: row.domain }),
+      text: translate(locale, 'email.install.body', {
+        inviter: user.name,
+        domain: row.domain,
+        snippet: buildSnippet(scriptUrl, row.publicKey),
+        url: `${deps.env.APP_URL}/docs/install`,
+      }),
+    });
+    await withOrg(deps.db, orgId, (tx) => audit(tx, c, 'site.install_emailed', row.id, { to: email }));
+    return c.json({ ok: true });
   });
 
   /** Soft delete; a purge job removes the site and its data after 7 days (worker, slice 2+). */

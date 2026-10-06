@@ -10,6 +10,11 @@ const E2E_ADMIN_DB = process.env.E2E_DATABASE_ADMIN_URL ?? `postgres://${user}@l
 const WEB_PORT = 5175;
 const API_PORT = 4101;
 const APP_URL = `http://localhost:${WEB_PORT}`;
+const COLLECTOR_PORT = 4201;
+const DEMO_PORT = 4301;
+export const COLLECTOR_URL = `http://localhost:${COLLECTOR_PORT}`;
+export const DEMO_URL = `http://localhost:${DEMO_PORT}`;
+const API_READY = `http://localhost:${API_PORT}/readyz`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -38,7 +43,39 @@ export default defineConfig({
         APP_URL,
         API_URL: APP_URL,
         BETTER_AUTH_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0123456789abcdef',
+        COLLECTOR_PUBLIC_URL: COLLECTOR_URL,
       },
+    },
+    {
+      // Collector serves the freshly built SDK; starts once the API has prepared the database.
+      command: `node e2e/wait-for.mjs ${API_READY} && pnpm --filter @pulse/sdk build && pnpm --dir ../collector exec tsx src/server.ts`,
+      url: `${COLLECTOR_URL}/livez`,
+      reuseExistingServer: false,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        NODE_ENV: 'test',
+        LOG_LEVEL: 'warn',
+        DATABASE_URL: E2E_DB,
+        COLLECTOR_PORT: String(COLLECTOR_PORT),
+        // Playwright's Chromium identifies as headless; let it through in tests only.
+        COLLECTOR_ALLOW_HEADLESS: '1',
+      },
+    },
+    {
+      command: `node e2e/wait-for.mjs ${API_READY} && pnpm --dir ../worker exec tsx src/main.ts`,
+      url: 'http://localhost:4251/livez',
+      reuseExistingServer: false,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { NODE_ENV: 'test', LOG_LEVEL: 'warn', DATABASE_URL: E2E_DB, APP_URL, WORKER_HEALTH_PORT: '4251' },
+    },
+    {
+      // A stand-in customer website on its own origin.
+      command: 'node e2e/demo-server.mjs',
+      url: DEMO_URL,
+      reuseExistingServer: false,
+      env: { DEMO_PORT: String(DEMO_PORT) },
     },
     {
       command: 'pnpm exec vite',

@@ -1,5 +1,16 @@
 import { sql } from 'drizzle-orm';
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { organization, user } from './auth';
 
 const PLATFORMS = [
@@ -39,6 +50,11 @@ export const sites = pgTable(
     status: text('status', { enum: SITE_STATUSES }).notNull().default('install'),
     publicKey: text('public_key').notNull().unique(),
     allowedOrigins: text('allowed_origins')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    /** Origins added by the user (staging, second domain, localhost testing). allowed = domain ∪ extra. */
+    extraOrigins: text('extra_origins')
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
@@ -84,5 +100,74 @@ export const orgPlans = pgTable('org_plans', {
   ...timestamps,
 });
 
+/**
+ * One visit = one browser tab session on a site (new id after 30 min idle). The visit id comes
+ * from the browser, so it is only unique *per site*: the primary key is (site_id, id), which
+ * makes cross-tenant injection impossible by construction (legacy bug, audit §7).
+ */
+export const visits = pgTable(
+  'visits',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    entryPath: text('entry_path'),
+    exitPath: text('exit_path'),
+    referrerHost: text('referrer_host'),
+    utmSource: text('utm_source'),
+    utmMedium: text('utm_medium'),
+    utmCampaign: text('utm_campaign'),
+    device: text('device', { enum: ['desktop', 'mobile', 'tablet'] })
+      .notNull()
+      .default('desktop'),
+    browser: text('browser'),
+    os: text('os'),
+    language: text('language'),
+    network: text('network'),
+    platform: text('platform', { enum: ['web', 'telegram_mini_app'] })
+      .notNull()
+      .default('web'),
+    country: text('country'),
+    sdkVersion: text('sdk_version'),
+    pageviews: integer('pageviews').notNull().default(0),
+    eventsCount: integer('events_count').notNull().default(0),
+    clicks: integer('clicks').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    maxScrollPct: smallint('max_scroll_pct').notNull().default(0),
+    bounced: boolean('bounced'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.siteId, t.id] }),
+    index('visits_org_site_started_idx').on(t.orgId, t.siteId, t.startedAt),
+    index('visits_open_idx')
+      .on(t.lastSeenAt)
+      .where(sql`${t.endedAt} is null`),
+  ],
+);
+
+/** Drops duplicate deliveries of the same batch (retries, beacon + fetch). Purged after 2 days. */
+export const ingestDedupe = pgTable(
+  'ingest_dedupe',
+  {
+    siteId: text('site_id').notNull(),
+    visitId: text('visit_id').notNull(),
+    seq: integer('seq').notNull(),
+    orgId: text('org_id').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.siteId, t.visitId, t.seq] }),
+    index('ingest_dedupe_received_idx').on(t.receivedAt),
+  ],
+);
+
+export type VisitRow = typeof visits.$inferSelect;
 export type SiteRow = typeof sites.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;

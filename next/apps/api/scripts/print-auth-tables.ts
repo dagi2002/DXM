@@ -1,6 +1,6 @@
 import { getAuthTables } from 'better-auth/db';
 import { authOptions } from '../src/auth';
-import { MemoryMailer } from '../src/mailer';
+import { MemoryMailer } from '@pulse/mail';
 
 const env = {
   NODE_ENV: 'development',

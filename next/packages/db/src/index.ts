@@ -6,7 +6,7 @@ import * as schema from './schema/index';
 
 export { schema };
 /** Query helpers re-exported so every workspace uses this package's single drizzle-orm instance. */
-export { and, asc, count, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+export { and, asc, count, desc, eq, gt, inArray, isNull, lt, max, ne, or, sql } from 'drizzle-orm';
 export * from './schema/index';
 
 export type Db = NodePgDatabase<typeof schema>;

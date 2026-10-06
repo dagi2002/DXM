@@ -1,4 +1,4 @@
-import { migrateDatabase } from '@pulse/db/migrate';
+import { migrateAll } from '@pulse/jobs/migrate-all';
 import pg from 'pg';
 const user = process.env.USER ?? 'postgres';
 const E2E_ADMIN_DB = process.env.E2E_DATABASE_ADMIN_URL ?? `postgres://${user}@localhost:5432/pulse_e2e`;
@@ -17,12 +17,12 @@ async function prepare() {
   if (exists.rowCount === 0) await admin.query(`create database "${dbName}"`);
   await admin.end();
 
-  await migrateDatabase(E2E_ADMIN_DB);
+  await migrateAll(E2E_ADMIN_DB);
 
   const db = new pg.Client({ connectionString: E2E_ADMIN_DB });
   await db.connect();
   await db.query(
-    'truncate "audit_log", "sites", "org_plans", "invitation", "member", "organization", "verification", "account", "session", "user" cascade',
+    'truncate "events", "ingest_dedupe", "visits", "audit_log", "sites", "org_plans", "invitation", "member", "organization", "verification", "account", "session", "user" cascade',
   );
   await db.end();
 }

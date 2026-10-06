@@ -9,9 +9,10 @@ import type { Logger } from 'pino';
 import { ZodError } from 'zod';
 import { CLIENT_IP_HEADER, type Auth } from './auth';
 import { ApiError, errorBody, type AppEnv } from './http';
-import type { Mailer } from './mailer';
+import type { Mailer } from '@pulse/mail';
 import { meRoutes } from './routes/me';
 import { siteRoutes } from './routes/sites';
+import { todayRoutes } from './routes/today';
 
 export interface AppDeps {
   env: ServerEnv;
@@ -136,6 +137,7 @@ export function createApp(deps: AppDeps) {
 
   app.route('/api/v1/me', meRoutes(deps));
   app.route('/api/v1/sites', siteRoutes(deps));
+  app.route('/api/v1/today', todayRoutes(deps));
 
   app.notFound((c) => c.json(errorBody(c, 'not_found', 'Route not found'), 404));
 
@@ -152,7 +154,10 @@ export function createApp(deps: AppDeps) {
         400,
       );
     }
-    if (err instanceof SyntaxError) return c.json(errorBody(c, 'bad_request', 'Malformed JSON body'), 400);
+    // Only body-parsing failures are the client's fault; other SyntaxErrors are our bugs (500).
+    if (err instanceof SyntaxError && /JSON/i.test(err.message)) {
+      return c.json(errorBody(c, 'bad_request', 'Malformed JSON body'), 400);
+    }
     c.get('log').error({ err }, 'unhandled error');
     return c.json(errorBody(c, 'internal', 'Something went wrong'), 500);
   });

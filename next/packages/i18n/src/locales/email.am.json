@@ -1,0 +1,14 @@
+{
+  "email.verify.subject": "ለPulse ኢሜይልዎን ያረጋግጡ",
+  "email.verify.body": "Pulseን አዘጋጅተው ለመጨረስ ኢሜይልዎን ያረጋግጡ፦ {url}",
+  "email.reset.subject": "የPulse የይለፍ ቃልዎን ይቀይሩ",
+  "email.reset.body": "አዲስ የይለፍ ቃል ለመምረጥ ይህንን ሊንክ ይጠቀሙ። በ1 ሰዓት ውስጥ ጊዜው ያልፋል፦ {url}",
+  "email.magic.subject": "የPulse መግቢያ ሊንክዎ",
+  "email.magic.body": "በዚህ ሊንክ ወደ Pulse ይግቡ። በ10 ደቂቃ ውስጥ ጊዜው ያልፋል፦ {url}",
+  "email.invite.subject": "{inviter} በPulse ወደ {org} ጋብዘዎታል",
+  "email.invite.body": "በPulse {org}ን ይቀላቀሉ፦ {url}",
+  "email.siteLive.subject": "Pulse ከ{site} ጉብኝቶችን መቀበል ጀምሯል",
+  "email.siteLive.body": "ከ{domain} የመጀመሪያውን ጉብኝት ተቀብለናል። ድረ-ገጽዎ ቀጥታ ነው — ችግሮች በ«ዛሬ» ገጽ ላይ ይታያሉ፦ {url}",
+  "email.install.subject": "እባክዎ DXM Pulseን በ{domain} ላይ ይጫኑ",
+  "email.install.body": "{inviter} DXM Pulseን በ{domain} ላይ እንዲጭኑ ጠይቀዋል።\n\nይህንን መስመር በእያንዳንዱ ገጽ ላይ ከ</head> በፊት ይለጥፉ፦\n\n{snippet}\n\nገጹን አያዘገይም (ከ5 KB በታች)፣ ሰዎች የሚጽፉትንም አይሰበስብም። ለWordPress፣ Shopify፣ Next.js እና የቴሌግራም ሚኒ አፖች ደረጃ በደረጃ መመሪያ፦ {url}"
+}

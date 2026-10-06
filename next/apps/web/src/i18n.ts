@@ -1,5 +1,5 @@
-import { isLocale, messages, type Locale } from '@pulse/i18n';
-import i18next from 'i18next';
+import { isLocale, type Locale } from '@pulse/i18n';
+import i18next, { type BackendModule } from 'i18next';
 import ICU from 'i18next-icu';
 import { initReactI18next } from 'react-i18next';
 
@@ -27,20 +27,34 @@ export function applyLocale(locale: Locale) {
   }
 }
 
+/** Only the active language is downloaded; switching fetches the other one (~4 KB gzip). */
+const lazyLocales: BackendModule = {
+  type: 'backend',
+  init() {},
+  read(language, _namespace, callback) {
+    const load =
+      language === 'am' ? import('@pulse/i18n/locales/am.json') : import('@pulse/i18n/locales/en.json');
+    load.then((m) => callback(null, m.default)).catch((err: Error) => callback(err, false));
+  },
+};
+
 export const i18n = i18next.createInstance();
 
-void i18n
+export const i18nReady = i18n
+  .use(lazyLocales)
   .use(ICU)
   .use(initReactI18next)
   .init({
-    resources: { en: { translation: messages.en }, am: { translation: messages.am } },
     lng: initialLocale(),
-    fallbackLng: 'en',
+    supportedLngs: ['en', 'am'],
+    // Both files are key-parallel (enforced by @pulse/i18n tests), so no fallback download is needed.
+    fallbackLng: false,
     keySeparator: false,
     nsSeparator: false,
     interpolation: { escapeValue: false },
     returnNull: false,
-  });
+    react: { useSuspense: false },
+  })
+  .then(() => applyLocale(i18n.language as Locale));
 
-applyLocale(i18n.language as Locale);
 i18n.on('languageChanged', (lng) => isLocale(lng) && applyLocale(lng));

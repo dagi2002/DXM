@@ -3,7 +3,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
-import { i18n } from './i18n';
+import { i18n, i18nReady } from './i18n';
 import { ApiError, onUnauthenticated } from './lib/api';
 import { meQuery } from './lib/queries';
 import { createAppRouter } from './router';
@@ -36,6 +36,9 @@ onUnauthenticated(() => {
     void router.navigate({ to: '/sign-in', search: { redirect: router.state.location.href } as never });
   }
 });
+
+// Render once the active language's messages are in (one small request on first visit).
+await i18nReady;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

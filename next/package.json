@@ -14,7 +14,7 @@
     "test": "turbo run test --concurrency=1",
     "check": "turbo run typecheck lint test",
     "db:setup": "pnpm --filter @pulse/db run setup",
-    "db:migrate": "pnpm --filter @pulse/db run migrate",
+    "db:migrate": "pnpm --filter @pulse/jobs run migrate",
     "db:seed": "pnpm --filter @pulse/db run seed",
     "e2e": "pnpm --filter @pulse/web run e2e",
     "format": "prettier --write ."

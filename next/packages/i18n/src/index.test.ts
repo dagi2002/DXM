@@ -4,11 +4,11 @@ import {
   formatDate,
   formatEthiopianDate,
   formatEthiopianTime,
+  formatRelative,
   gregorianToEthiopian,
-  messages,
-  t,
   toEthiopian,
 } from './index';
+import { messages, t } from './messages';
 
 describe('Ethiopian calendar', () => {
   it.each([
@@ -52,6 +52,29 @@ describe('formatDate', () => {
   });
 });
 
+describe('formatRelative', () => {
+  const now = new Date('2026-10-06T10:00:00Z');
+  it('speaks both languages', () => {
+    expect(formatRelative(new Date('2026-10-06T09:57:00Z'), 'en', now)).toBe('3 minutes ago');
+    expect(formatRelative(new Date('2026-10-06T07:00:00Z'), 'en', now)).toBe('3 hours ago');
+    expect(formatRelative(new Date('2026-10-06T09:57:00Z'), 'am', now)).toMatch(/3/);
+    expect(formatRelative(new Date('2026-10-06T09:57:00Z'), 'am', now)).not.toBe('3 minutes ago');
+  });
+});
+
+describe('t()', () => {
+  it('treats angle brackets as text (install emails contain </head>)', () => {
+    const out = t('en', 'email.install.body', {
+      inviter: 'Tigist',
+      domain: 'shop.et',
+      snippet: '<script async src="x"></script>',
+      url: 'https://u',
+    });
+    expect(out).toContain('just before </head>');
+    expect(out).toContain('<script async src="x"></script>');
+  });
+});
+
 describe('messages', () => {
   const placeholders = (src: string): string[] => {
     const out: string[] = [];
@@ -64,7 +87,7 @@ describe('messages', () => {
         }
       }
     };
-    walk(parse(src));
+    walk(parse(src, { ignoreTag: true }));
     return [...new Set(out)].sort();
   };
 

@@ -73,11 +73,38 @@ export const SiteCreate = z.object({
 });
 export type SiteCreate = z.input<typeof SiteCreate>;
 
+/**
+ * Extra origins a site's tracking may send from (staging, a second domain, or local testing).
+ * https only, except http://localhost for development.
+ */
+export const ExtraOrigin = z
+  .string()
+  .trim()
+  .transform((v, ctx) => {
+    try {
+      const u = new URL(v);
+      const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      if (
+        (u.protocol === 'https:' || (u.protocol === 'http:' && local)) &&
+        !u.username &&
+        u.pathname === '/' &&
+        !u.search
+      ) {
+        return u.origin;
+      }
+    } catch {
+      /* fall through */
+    }
+    ctx.addIssue({ code: 'custom', message: 'invalid_origin' });
+    return z.NEVER;
+  });
+
 export const SiteUpdate = z
   .object({
     name: z.string().trim().min(1).max(80),
     domain: Domain,
     platform: Platform,
+    extraOrigins: z.array(ExtraOrigin).max(10),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'nothing_to_update' });
@@ -99,6 +126,36 @@ export const Site = z.object({
 export type Site = z.infer<typeof Site>;
 
 export const SiteList = z.object({ sites: z.array(Site) });
+
+export const SiteInstall = z.object({
+  snippet: z.string(),
+  scriptUrl: z.string(),
+  status: SiteStatus,
+  verifiedAt: z.string().nullable(),
+  lastEventAt: z.string().nullable(),
+  allowedOrigins: z.array(z.string()),
+  extraOrigins: z.array(z.string()),
+});
+export type SiteInstall = z.infer<typeof SiteInstall>;
+
+export const InstallEmail = z.object({ email: z.email().max(254) });
+
+export const TodaySite = z.object({
+  id: z.string(),
+  name: z.string(),
+  domain: z.string(),
+  status: SiteStatus,
+  visits24h: z.number(),
+  pageviews24h: z.number(),
+  lastEventAt: z.string().nullable(),
+});
+export const Today = z.object({ sites: z.array(TodaySite) });
+export type Today = z.infer<typeof Today>;
+
+/** The one-line tracking snippet. `async` so it never blocks the host page. */
+export function buildSnippet(scriptUrl: string, publicKey: string): string {
+  return `<script async src="${scriptUrl}" data-site="${publicKey}"></script>`;
+}
 
 /* ── Session / me ──────────────────────────────────────────────────────────── */
 export const MeOrg = z.object({ id: z.string(), name: z.string(), slug: z.string(), role: Role });

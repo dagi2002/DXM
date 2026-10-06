@@ -61,5 +61,63 @@
 
 **Next: slice 2 — install & verify:** SDK v3, collector, live verification, legacy `/dxm.js` shims.
 
+## 2026-10-06 — Phase 2, slice 2 (install & verify) ✅
+
+**Shipped:**
+- **SDK v3 (`packages/sdk`):**
+  - `p.js` is 4.1 KB gz. Web Vitals load later as `v.js` (3.6 KB gz), once the page is idle.
+  - Delivery: `text/plain` with `credentials: 'omit'` (never preflighted), keepalive fetch plus a `sendBeacon` fallback, backoff, and one request in flight at a time. **Each batch keeps its sequence number across retries and beacon handoff**, so duplicates are dropped server-side.
+  - Visits are per tab and roll over after 30 minutes idle.
+  - Events: SPA pageviews, click points, rage clicks, dead clicks (deduplicated per target), scroll depth, form start/submit/error (names only), JS errors, custom events.
+  - Privacy: query strings allow-listed to UTM tags, fragments dropped, emails, phones and tokens masked in paths. Consent modes and GPC respected, and nothing touches storage before consent.
+  - Telegram Mini App detection. Legacy `data-site-id` / `data-api-url` / `window.dxm.*` still work.
+- **Collector (`apps/collector`):**
+  - Validates against `@pulse/contracts/ingest` and checks `Origin` against the site's allow-list.
+  - Rate limits per visit, IP and site. Drops bots and headless browsers. 64 KB cap.
+  - Enqueues to pg-boss and serves the SDK with immutable versioned URLs.
+  - **Legacy `/collect` is mapped to v3, and its preflight allows `x-dxm-sdk`, which rescues old installs** (audit finding 1).
+- **Worker (`apps/worker`):**
+  - Applies batches inside the org's RLS scope: dedupe, visit upsert, events into **daily partitions**.
+  - Flips the site live and emails owners and admins in their own language.
+  - Cron jobs: close idle visits and compute bounce, keep partitions ahead, purge dedupe markers.
+- **Data:**
+  - `visits` primary key is (site_id, id), which rules out cross-tenant visit injection by construction.
+  - `events` is range-partitioned with RLS on every partition.
+  - Narrow `SECURITY DEFINER` functions handle cross-org lookups and maintenance, so no role gets BYPASSRLS.
+  - A single `migrateAll` applies schema, queues and grants.
+- **API:** `GET /sites/:id/install` (snippet + live status), extra origins (staging/localhost), `POST /sites/:id/install/email` (localized, rate-limited, audited), `GET /today`.
+- **Web:**
+  - The install panel has the snippet with a copy button, step-by-step guides for 7 platforms, live verification (3 s polling until live), troubleshooting tips after 90 s, "email my developer", and extra origins.
+  - Today shows 24-hour visits and pageviews per site.
+  - Route loading indicator. The language toggle responds instantly.
+  - **Only the active language downloads, and email strings never ship to browsers.**
+- **Ops:**
+  - API, collector, worker and migrator build into single self-contained bundles, verified to run from an empty folder.
+  - Dockerfile targets per service. Caddy routes tracking traffic to the collector.
+- **Tests:**
+  - 188 unit, component and integration tests (SDK, collector, worker against Postgres, API).
+  - 12 Playwright runs. These include a **real cross-origin install with sendBeacon enabled**: sign up, add site, visit the demo shop on another origin, the site goes live, Today shows numbers. All run on desktop and 360px, with axe at 0 violations.
+
+**Found and fixed while verifying:**
+- Collector and worker bundles crashed on start: CommonJS `pg` inside an ESM bundle. Fixed with self-contained bundles plus a `createRequire` shim.
+- ICU parsing broke on the literal `</head>` in install emails, and the API mislabelled the crash as "malformed JSON". Both fixed.
+- The site status badge didn't update when verification succeeded.
+- Retries used new sequence numbers, which would have caused duplicates.
+- Dead clicks were reported once per click instead of once per burst.
+- Lazy language loading made the toggle unresponsive until the download finished.
+
+**Decisions:**
+- Web Vitals moved to a deferred `v.js`. web-vitals 6 alone is 3.7 KB gz and wouldn't fit the 5 KB core budget.
+- The first-load JS budget was ratcheted from 220 KB down to 216 KB (measured: 213.4 KB + a ~4 KB locale file).
+- Session-quota enforcement per plan is deferred to billing (slice 7). There is **no ingest quota yet**.
+- Legacy replay uploads are accepted and dropped until replay ships (slice 4).
+
+**Not done yet:**
+- Deploy (needs a VM, a domain and secrets).
+- Docker images not built locally (Docker isn't running on this machine).
+- Retention purge of old partitions (needs the plan/retention model).
+
+**Next: slice 3 — the "what to fix" feed.** Detectors run in the worker (rage/dead clicks, U-turns, form abandonment, JS errors, slow pages, tracking-broken), producing Fix cards, AI explanations and Telegram alerts.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

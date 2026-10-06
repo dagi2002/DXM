@@ -3,7 +3,17 @@ import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Banner, Button, EmptyState, Modal, Segmented, StatTile, StatusBadge, TextField } from './index';
+import {
+  Banner,
+  Button,
+  CopyField,
+  EmptyState,
+  Modal,
+  Segmented,
+  StatTile,
+  StatusBadge,
+  TextField,
+} from './index';
 
 async function expectNoAxeViolations(container: HTMLElement) {
   const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } }); // contrast is tested on tokens
@@ -151,5 +161,19 @@ describe('accessibility', () => {
       </main>,
     );
     await expectNoAxeViolations(container);
+  });
+});
+
+describe('CopyField', () => {
+  it('copies the value and announces it', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(
+      <CopyField value="<script async></script>" label="Snippet" copyLabel="Copy" copiedLabel="Copied" />,
+    );
+    expect(screen.getByLabelText('Snippet')).toHaveTextContent('<script async></script>');
+    await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(writeText).toHaveBeenCalledWith('<script async></script>');
+    expect(await screen.findByText('Copied')).toBeInTheDocument();
   });
 });

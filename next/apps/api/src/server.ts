@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/node';
 import pino from 'pino';
 import { createApp } from './app';
 import { createAuth } from './auth';
-import { ConsoleMailer, ResendMailer } from './mailer';
+import { ConsoleMailer, ResendMailer } from '@pulse/mail';
 
 const env = loadServerEnv();
 const log = pino({

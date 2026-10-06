@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkout (demo)</title>
+    <script>
+      (function () {
+        var key = sessionStorage.getItem('demo_k');
+        var col = sessionStorage.getItem('demo_c') || 'http://localhost:4200';
+        if (!key) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = col + '/sdk/p.js';
+        s.setAttribute('data-site', key);
+        document.head.appendChild(s);
+      })();
+    </script>
+  </head>
+  <body>
+    <main style="max-width: 640px; margin: 0 auto; padding: 16px; font: 16px system-ui">
+      <h1>Checkout</h1>
+      <form
+        id="checkout"
+        name="checkout"
+        onsubmit="
+          event.preventDefault();
+          document.getElementById('done').hidden = false;
+        "
+      >
+        <label>Phone <input name="phone" required pattern="09[0-9]{8}" /></label>
+        <button type="submit">Place order</button>
+      </form>
+      <p id="done" hidden>Order placed</p>
+      <a href="/index.html">← Back</a>
+    </main>
+  </body>
+</html>

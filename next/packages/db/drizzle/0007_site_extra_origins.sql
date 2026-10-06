@@ -1,0 +1,1 @@
+ALTER TABLE "sites" ADD COLUMN "extra_origins" text[] DEFAULT '{}'::text[] NOT NULL;

@@ -1,4 +1,4 @@
-import { Button, EmptyState } from '@pulse/ui';
+import { Button, EmptyState, Spinner } from '@pulse/ui';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   Outlet,
@@ -32,6 +32,15 @@ const SettingsPage = lazyRouteComponent(() => import('./routes/settings'), 'Sett
 
 export interface RouterContext {
   queryClient: QueryClient;
+}
+
+function PendingView() {
+  const { t } = useTranslation();
+  return (
+    <div className="grid min-h-48 place-items-center text-primary">
+      <Spinner size={28} label={t('common.loading')} />
+    </div>
+  );
 }
 
 function NotFound() {
@@ -172,6 +181,9 @@ export function createAppRouter(queryClient: QueryClient) {
     routeTree,
     context: { queryClient },
     defaultPreload: 'intent',
+    // On slow connections a page chunk can take a moment; show progress instead of a frozen screen.
+    defaultPendingMs: 300,
+    defaultPendingComponent: PendingView,
     scrollRestoration: true,
   });
 }

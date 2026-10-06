@@ -1,0 +1,26 @@
+{
+  "name": "@pulse/sdk",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./dist/p.js": "./dist/p.js",
+    "./dist/manifest.json": "./dist/manifest.json"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc -p .",
+    "lint": "eslint src scripts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "web-vitals": "^6.2.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.14.5",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}

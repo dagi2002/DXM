@@ -4,7 +4,7 @@ import pino from 'pino';
 import pg from 'pg';
 import { createApp, type App } from '../src/app';
 import { createAuth } from '../src/auth';
-import { MemoryMailer } from '../src/mailer';
+import { MemoryMailer } from '@pulse/mail';
 
 const user = process.env.USER ?? 'postgres';
 export const TEST_DATABASE_URL =

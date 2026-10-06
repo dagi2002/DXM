@@ -9,6 +9,7 @@ import {
   PageHeader,
   Select,
   Skeleton,
+  StatTile,
   StatusBadge,
   TextField,
   type Tone,
@@ -19,7 +20,9 @@ import { Activity, ChevronRight, Globe, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
-import { sitesQuery, siteQuery, useFormatDate, useMe } from '../lib/queries';
+import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
+import { InstallPanel } from './install';
+import { formatRelative, type Locale } from '@pulse/i18n';
 
 const statusTone: Record<Site['status'], Tone> = { install: 'info', live: 'good', paused: 'warn' };
 
@@ -30,28 +33,32 @@ export function SiteStatus({ status }: { status: Site['status'] }) {
 
 /* ── Today ───────────────────────────────────────────────────────────────── */
 export function TodayPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { orgId, role } = useMe();
   const formatDate = useFormatDate();
   const navigate = useNavigate();
-  const { data: sites, isLoading } = useQuery(sitesQuery(orgId));
-  const count = sites?.length ?? 0;
+  const { data, isLoading } = useQuery(todayQuery(orgId));
+  const sites = data?.sites ?? [];
+  const anyLive = sites.some((s) => s.status === 'live');
+  const locale = i18n.language as Locale;
 
   return (
     <>
       <PageHeader
         title={t('today.title')}
-        summary={isLoading ? ' ' : t('today.summary', { sites: count, date: formatDate(new Date()) })}
+        summary={
+          isLoading ? '\u00a0' : t('today.summary', { sites: sites.length, date: formatDate(new Date()) })
+        }
       />
       {isLoading ? (
         <Skeleton className="h-56" />
-      ) : (
+      ) : sites.length === 0 ? (
         <EmptyState
           icon={<Activity size={22} aria-hidden="true" />}
           title={t('today.empty.title')}
-          body={count === 0 ? t('today.empty.noSites') : t('today.empty.notLive')}
+          body={t('today.empty.noSites')}
           action={
-            count === 0 && canManage(role) ? (
+            canManage(role) ? (
               <Button onPress={() => navigate({ to: '/sites', search: { new: true } })}>
                 <Plus size={18} aria-hidden="true" />
                 {t('today.empty.addSite')}
@@ -59,6 +66,68 @@ export function TodayPage() {
             ) : undefined
           }
         />
+      ) : (
+        <div className="grid gap-5">
+          {anyLive ? <Banner tone="info" title={t('today.collecting')} /> : null}
+          <h2 className="font-display text-lg font-bold">{t('today.sites')}</h2>
+          <ul className="grid gap-4" aria-label={t('today.sites')}>
+            {sites.map((s) => (
+              <li key={s.id}>
+                <Card as="article" className="grid gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        to="/sites/$siteId"
+                        params={{ siteId: s.id }}
+                        className="font-semibold text-text underline-offset-4 hover:underline"
+                      >
+                        {s.name}
+                      </Link>
+                      <p className="text-sm text-text-muted" lang="en">
+                        {s.domain}
+                      </p>
+                    </div>
+                    <SiteStatus status={s.status} />
+                  </div>
+                  {s.status === 'live' ? (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <StatTile
+                          label={t('today.visits24h')}
+                          metric="visitors"
+                          value={s.visits24h}
+                          locale={locale}
+                        />
+                        <StatTile
+                          label={t('today.pageviews24h')}
+                          metric="pageviews"
+                          value={s.pageviews24h}
+                          locale={locale}
+                        />
+                      </div>
+                      <p className="text-sm text-text-muted">
+                        {t('today.lastVisit', {
+                          time: s.lastEventAt ? formatRelative(s.lastEventAt, locale) : t('time.never'),
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-text-muted">{t('today.waitingFor')}</p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => navigate({ to: '/sites/$siteId', params: { siteId: s.id } })}
+                      >
+                        {t('today.finishInstall')}
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </>
   );
@@ -341,11 +410,8 @@ export function SiteDetailPage() {
           ) : null
         }
       />
-      <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
-        <Card as="section">
-          <h2 className="font-display text-lg font-bold">{t('sites.status.install')}</h2>
-          <p className="mt-2 text-text-muted">{t('sites.install.pending')}</p>
-        </Card>
+      <div className="grid items-start gap-4 lg:grid-cols-[2fr_1fr]">
+        <InstallPanel site={site} />
         <Card as="section">
           <dl className="grid gap-3 text-sm">
             <div>
