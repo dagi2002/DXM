@@ -22,6 +22,15 @@ async function unwrap<T>(p: Promise<{ data: T | null; error: { code?: string } |
   return data as T;
 }
 
+/**
+ * Turning two-factor on or off makes Better Auth replace this device's session with a fresh
+ * one, and the fresh session has no active organization. Put the same org back before anything
+ * re-reads `me`, or the settings page would lose its org mid-flow.
+ */
+async function restoreActiveOrg(orgId: string) {
+  await authClient.organization.setActive({ organizationId: orgId });
+}
+
 function useHasPassword() {
   return useQuery({
     queryKey: ['me', 'accounts'],
@@ -32,6 +41,8 @@ function useHasPassword() {
     staleTime: 5 * 60_000,
   });
 }
+
+const sessionsKey = ['me', 'sessions'] as const;
 
 /* ── Backup codes ───────────────────────────────────────────────────────── */
 function BackupCodes({ codes }: { codes: string[] }) {
@@ -123,6 +134,7 @@ type Setup = { totpURI: string; backupCodes: string[] };
 
 function EnableTwoFactor({ onFinished }: { onFinished: () => void }) {
   const { t } = useTranslation();
+  const { orgId } = useMe();
   const [setup, setSetup] = useState<Setup | null>(null);
   const [step, setStep] = useState<'password' | 'scan' | 'codes'>('password');
   const [code, setCode] = useState('');
@@ -153,8 +165,12 @@ function EnableTwoFactor({ onFinished }: { onFinished: () => void }) {
       if (!/^\d{6}$/.test(value)) return setError(t('auth.twoFactor.error.format'));
       setPending(true);
       const { error: err } = await twoFactor.verifyTotp(value);
+      if (err) {
+        setPending(false);
+        return setError(t('auth.twoFactor.error.invalidCode'));
+      }
+      await restoreActiveOrg(orgId);
       setPending(false);
-      if (err) return setError(t('auth.twoFactor.error.invalidCode'));
       setStep('codes');
     };
     return (
@@ -244,7 +260,7 @@ function RegenerateBackupCodes({ onFinished }: { onFinished: () => void }) {
 /* ── Two-step verification card ─────────────────────────────────────────── */
 function TwoFactorCard() {
   const { t } = useTranslation();
-  const { me } = useMe();
+  const { me, orgId } = useMe();
   const qc = useQueryClient();
   const hasPassword = useHasPassword();
   const [dialog, setDialog] = useState<'enable' | 'disable' | 'codes' | null>(null);
@@ -254,7 +270,8 @@ function TwoFactorCard() {
   const close = async (message?: string) => {
     setDialog(null);
     if (message) setNotice(message);
-    await refreshMe(qc);
+    // Turning 2FA on or off rotates this device's session, so the sessions list changes too.
+    await Promise.all([refreshMe(qc), qc.invalidateQueries({ queryKey: sessionsKey })]);
   };
 
   const titles = {
@@ -328,6 +345,7 @@ function TwoFactorCard() {
             danger
             onConfirm={async (password) => {
               await unwrap(twoFactor.disable(password));
+              await restoreActiveOrg(orgId);
               await close(t('settings.security.2fa.disabledNotice'));
             }}
           />
@@ -339,7 +357,6 @@ function TwoFactorCard() {
 }
 
 /* ── Active sessions card ───────────────────────────────────────────────── */
-const sessionsKey = ['me', 'sessions'] as const;
 
 function DeviceIcon({ kind }: { kind: 'mobile' | 'tablet' | 'desktop' }) {
   const Icon = kind === 'mobile' ? Smartphone : kind === 'tablet' ? Tablet : Monitor;

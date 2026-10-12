@@ -21,7 +21,7 @@ export function AuthLayout({
     <div className="min-h-dvh lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       {/* Brand panel — desktop only, so phones on slow data go straight to the form. */}
       <aside className="hidden flex-col justify-between bg-primary p-12 text-on-primary lg:flex xl:p-16">
-        <Logo className="text-on-primary [&>span:first-child]:bg-on-primary [&>span:first-child]:text-primary" />
+        <Logo className="[&>span:first-child]:bg-on-primary [&>span:first-child]:text-primary [&>span:last-child]:text-on-primary" />
         <div className="grid max-w-md gap-8">
           <p className="font-display text-[clamp(2rem,1.2rem+1.8vw,3rem)] leading-[1.08] font-bold tracking-[-0.03em] text-balance">
             {t('app.tagline')}

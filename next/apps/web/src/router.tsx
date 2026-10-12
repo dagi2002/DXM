@@ -170,7 +170,9 @@ const appRoute = createRoute({
     if (!me.activeOrgId) {
       // Fresh session (e.g. after sign-in): activate the first organization.
       await authClient.organization.setActive({ organizationId: me.orgs[0]!.id });
-      me = await context.queryClient.fetchQuery(meQuery);
+      // Bypass staleTime: `me` was usually fetched moments ago (right after sign-in), and a
+      // cached copy without an active org would crash the shell.
+      me = await context.queryClient.fetchQuery({ ...meQuery, staleTime: 0 });
     }
   },
   component: AppShell,
