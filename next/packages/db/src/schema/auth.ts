@@ -1,11 +1,11 @@
 /**
- * Better Auth tables (core + organization + magic link), matching `getAuthTables()` for the
+ * Better Auth tables (core + organization + magic link + two-factor), matching `getAuthTables()` for the
  * options in apps/api/src/auth.ts. Verify with `pnpm --filter @pulse/api tsx scripts/print-auth-tables.ts`
  * after upgrading better-auth. JS keys must match Better Auth field names; columns are snake_case.
  *
  * These tables are global (not org-scoped) and therefore not under row-level security.
  */
-import { boolean, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
 
@@ -17,6 +17,7 @@ export const user = pgTable('user', {
   image: text('image'),
   locale: text('locale').notNull().default('en'),
   calendar: text('calendar').notNull().default('gregorian'),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: ts('created_at').notNull().defaultNow(),
   updatedAt: ts('updated_at').notNull().defaultNow(),
 });
@@ -120,4 +121,26 @@ export const invitation = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (t) => [index('invitation_org_idx').on(t.organizationId), index('invitation_email_idx').on(t.email)],
+);
+
+/**
+ * TOTP secret + backup codes (two-factor plugin). Both are encrypted by Better Auth with the
+ * auth secret before they reach this table. `verified` stays false until the user proves the
+ * authenticator works, so a half-finished setup never gates sign-in.
+ */
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: text('id').primaryKey(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').notNull().default(true),
+    failedVerificationCount: integer('failed_verification_count').notNull().default(0),
+    lockedUntil: ts('locked_until'),
+  },
+  // One TOTP enrollment per user; the plugin looks rows up by user id.
+  (t) => [uniqueIndex('two_factor_user_uq').on(t.userId)],
 );
