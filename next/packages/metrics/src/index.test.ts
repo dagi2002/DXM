@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDelta, formatDuration, formatMetric, formatMoney, rateMetric } from './index';
+import { formatDelta, formatDuration, formatPoints, formatMetric, formatMoney, rateMetric } from './index';
 
 describe('formatMetric', () => {
   it('formats ratios stored as 0–1 as percentages', () => {
@@ -76,6 +76,17 @@ describe('formatDelta', () => {
       text: '4.1 pts',
     });
     expect(formatDelta('bounce_rate', 0.382, 0.341, 'am')?.text).toBe('4.1 ነጥብ');
+  });
+  it('compares scores in absolute points, not percent', () => {
+    expect(formatDelta('health_score', 64, 81)).toEqual({ direction: 'down', sentiment: 'bad', text: '17' });
+    expect(formatDelta('health_score', 81, 64)).toEqual({ direction: 'up', sentiment: 'good', text: '17' });
+    expect(formatDelta('health_score', 70, 0)).toEqual({ direction: 'up', sentiment: 'good', text: '70' });
+    expect(formatDelta('health_score', 80.2, 79.9)).toEqual({
+      direction: 'flat',
+      sentiment: 'neutral',
+      text: '0',
+    });
+    expect(formatPoints(-17, 'am')).toBe('17');
   });
   it('treats tiny changes as flat and handles a zero baseline', () => {
     expect(formatDelta('visitors', 1000, 1002)?.direction).toBe('flat');
