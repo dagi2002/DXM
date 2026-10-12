@@ -145,14 +145,14 @@ export function ReplayPage() {
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section
           aria-label={t('replay.player')}
-          className="overflow-hidden rounded-lg bg-neutral-900 text-neutral-100"
+          className="overflow-hidden rounded-lg border border-border bg-surface text-text"
         >
-          <div className="relative grid min-h-[32rem] place-items-center bg-neutral-950 p-6">
+          <div className="relative grid min-h-[32rem] place-items-center bg-surface-sunken p-6">
             <ReplayPhone label={t('replay.phoneLabel')} />
-            <span className="absolute top-4 left-4 rounded-md bg-white/10 px-2.5 py-1.5 font-mono text-xs">
+            <span className="absolute top-4 left-4 rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-xs text-text-muted">
               {replay.page}
             </span>
-            <span className="absolute top-4 right-4 rounded-md bg-white/10 px-2.5 py-1.5 text-xs">
+            <span className="absolute top-4 right-4 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-text-muted">
               {t('replay.masked')}
             </span>
           </div>
@@ -165,27 +165,27 @@ export function ReplayPage() {
                 total: fmtTime(replay.durationSec),
               })}
             >
-              <div className="absolute inset-x-0 top-2.5 h-1 rounded-full bg-neutral-700" />
+              <div className="absolute inset-x-0 top-2.5 h-1 rounded-full bg-border" />
               <div
-                className="absolute top-2.5 left-0 h-1 rounded-full bg-indigo-300"
+                className="absolute top-2.5 left-0 h-1 rounded-full bg-primary"
                 style={{ width: `calc(${at} * 100%)` }}
               />
               {replay.pageMarks.map((m) => (
                 <div
                   key={m}
-                  className="absolute top-3 h-2.5 w-0.5 bg-neutral-400"
+                  className="absolute top-3 h-2.5 w-0.5 bg-text-faint"
                   style={{ left: `calc(${m} * 100%)` }}
                 />
               ))}
               {replay.frictionAt.map((m) => (
                 <div
                   key={m}
-                  className="absolute top-1.5 size-3 -translate-x-1/2 rounded-full border-2 border-neutral-900 bg-orange-400"
+                  className="absolute top-1.5 size-3 -translate-x-1/2 rounded-full border-2 border-surface bg-bad"
                   style={{ left: `calc(${m} * 100%)` }}
                 />
               ))}
               <div
-                className="absolute top-1 size-4 -translate-x-1/2 rounded-full bg-white"
+                className="absolute top-1 size-4 -translate-x-1/2 rounded-full border-2 border-surface bg-text"
                 style={{ left: `calc(${at} * 100%)` }}
               />
             </div>
@@ -193,7 +193,7 @@ export function ReplayPage() {
               <IconButton
                 label={playing ? t('replay.pause') : t('replay.play')}
                 onPress={() => setPlaying((p) => !p)}
-                className="rounded-full bg-white text-neutral-900 data-[hovered]:bg-neutral-200 data-[hovered]:text-neutral-900"
+                className="rounded-full bg-primary !text-on-primary data-[hovered]:bg-primary-hover"
               >
                 {playing ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
               </IconButton>
@@ -203,7 +203,7 @@ export function ReplayPage() {
               <button
                 type="button"
                 onClick={() => setSpeed((s) => (s === 1 ? 2 : s === 2 ? 4 : 1))}
-                className="min-h-9 rounded-md border border-neutral-700 px-2.5 text-[0.8125rem] outline-none focus-visible:outline-3 focus-visible:outline-indigo-300"
+                className="min-h-9 rounded-md border border-border-strong px-2.5 text-[0.8125rem] outline-none hover:bg-surface-sunken focus-visible:outline-3 focus-visible:outline-primary"
               >
                 {speed}×
               </button>
@@ -212,12 +212,12 @@ export function ReplayPage() {
                   type="checkbox"
                   checked={skipIdle}
                   onChange={(e) => setSkipIdle(e.target.checked)}
-                  className="size-4.5 accent-indigo-300"
+                  className="size-4.5 accent-primary"
                 />
                 {t('replay.skipIdle')}
               </label>
-              <span className="ml-auto flex items-center gap-1.5 text-[0.8125rem] text-neutral-400">
-                <span aria-hidden="true" className="size-2.5 rounded-full bg-orange-400" />
+              <span className="ml-auto flex items-center gap-1.5 text-[0.8125rem] text-text-muted">
+                <span aria-hidden="true" className="size-2.5 rounded-full bg-bad" />
                 {t('replay.friction')}
               </span>
             </div>
