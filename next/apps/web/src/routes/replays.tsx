@@ -1,4 +1,4 @@
-import { Button, EmptyState, IconButton, PageHeader, Skeleton, cx } from '@pulse/ui';
+import { Button, EmptyState, IconButton, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
@@ -9,6 +9,19 @@ import { sampleReplaysQuery, type Replay } from '../lib/sample';
 
 export function ReplayList({ replays }: { replays: Replay[] }) {
   const { t } = useTranslation();
+  if (replays.length === 0) {
+    return (
+      <EmptyState
+        icon={<Play size={22} aria-hidden="true" />}
+        title={t('replays.empty')}
+        action={
+          <Link to="/sites" className={buttonClass()}>
+            {t('replays.empty.action')}
+          </Link>
+        }
+      />
+    );
+  }
   return (
     <ul className="grid gap-3">
       {replays.map((r) => (
@@ -20,7 +33,7 @@ export function ReplayList({ replays }: { replays: Replay[] }) {
           >
             <span
               aria-hidden="true"
-              className="grid size-11 shrink-0 place-items-center rounded-md bg-neutral-900 text-white"
+              className="grid size-11 shrink-0 place-items-center rounded-md bg-primary-soft text-primary"
             >
               <Play size={18} />
             </span>

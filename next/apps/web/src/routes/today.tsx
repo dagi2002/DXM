@@ -302,9 +302,14 @@ export function TodayPage() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section aria-label={t('fix.list')} role="tabpanel" className="grid min-w-0 gap-4">
           {shown.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border-strong px-6 py-10 text-center text-text-muted">
-              {t('fix.emptyTab')}
-            </p>
+            <EmptyState
+              title={t(`fix.empty.${tab}`)}
+              action={
+                <Button onPress={() => setTab(tab === 'open' ? 'verified' : 'open')}>
+                  {t(tab === 'open' ? 'fix.empty.seeVerified' : 'fix.empty.seeOpen')}
+                </Button>
+              }
+            />
           ) : null}
           {shown.map((f, i) =>
             f.status === 'verified' ? (
@@ -391,11 +396,14 @@ export function Delta({
   value,
   previous,
   locale,
+  suffix,
 }: {
   metric: Parameters<typeof formatDelta>[0];
   value: number;
   previous: number;
   locale: Locale;
+  /** Comparison period, e.g. "since last week". */
+  suffix?: string;
 }) {
   const d = formatDelta(metric, value, previous, locale);
   if (!d) return null;
@@ -408,6 +416,7 @@ export function Delta({
     >
       {d.direction === 'up' ? '↑ ' : d.direction === 'down' ? '↓ ' : '→ '}
       {d.text}
+      {suffix ? <span className="font-normal text-text-muted"> {suffix}</span> : null}
     </span>
   );
 }

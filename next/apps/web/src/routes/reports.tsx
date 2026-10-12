@@ -3,14 +3,14 @@ import { formatMetric } from '@pulse/metrics';
 import { CopyField, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { CheckCircle2, Download } from 'lucide-react';
+import { CheckCircle2, Download, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 import { SamplePill } from '../components/pulse';
 import { sampleReportsQuery, type Report } from '../lib/sample';
 import { Delta } from './today';
 
-function TrendChart({ report }: { report: Report }) {
+function TrendChart({ report, locale }: { report: Report; locale: Locale }) {
   const { t } = useTranslation();
   const W = 800;
   const H = 220;
@@ -19,7 +19,7 @@ function TrendChart({ report }: { report: Report }) {
   const x = (i: number) => 80 + (i / (report.trend.length - 1)) * 680;
   const y = (v: number) => 190 - ((v - lo) / (hi - lo)) * 140;
   const last = report.trend.at(-1)!;
-  const pct = (v: number) => formatMetric('conversion_rate', v, 'en');
+  const pct = (v: number) => formatMetric('conversion_rate', v, locale);
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -80,7 +80,7 @@ function TrendChart({ report }: { report: Report }) {
 export function ReportView({ report, locale }: { report: Report; locale: Locale }) {
   const { t } = useTranslation();
   return (
-    <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl bg-surface p-6 shadow-sm sm:p-12 lg:p-16">
+    <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl border border-border bg-surface p-6 sm:p-12 lg:p-16">
       <header className="grid gap-7 border-b border-border pb-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -122,7 +122,7 @@ export function ReportView({ report, locale }: { report: Report; locale: Locale 
           {t('report.trend')}
         </h2>
         <p className="text-sm text-text-muted">{t('report.trendNote')}</p>
-        <TrendChart report={report} />
+        <TrendChart report={report} locale={locale} />
       </section>
 
       <section aria-labelledby="fixed-h">
@@ -183,7 +183,15 @@ export function ReportsPage() {
       {isLoading ? (
         <Skeleton className="h-96" />
       ) : !report ? (
-        <EmptyState title={t('reports.empty')} />
+        <EmptyState
+          icon={<FileText size={22} aria-hidden="true" />}
+          title={t('reports.empty')}
+          action={
+            <Link to="/sites" className={buttonClass()}>
+              {t('reports.empty.action')}
+            </Link>
+          }
+        />
       ) : (
         <div className="grid gap-6">
           <section className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
