@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { IngestBatch, INGEST_MAX_BYTES, type IngestJob } from '@pulse/contracts/ingest';
 import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { Logger } from 'pino';
 import { mapLegacyPayload } from './legacy';
 
@@ -101,12 +102,15 @@ export function createCollector(deps: CollectorDeps) {
     });
   }
 
+  // Enforced while streaming, so a chunked body with no Content-Length can't be buffered unbounded.
+  const limitBody = bodyLimit({
+    maxSize: INGEST_MAX_BYTES,
+    onError: (c) => reply(c, 413, 'payload_too_large'),
+  });
+
   async function ingest(c: Context, parse: (raw: unknown) => IngestBatch | null) {
     const t = now();
-    const declared = Number(c.req.header('content-length') ?? 0);
-    if (declared > INGEST_MAX_BYTES) return reply(c, 413, 'payload_too_large');
     const text = await c.req.text();
-    if (text.length > INGEST_MAX_BYTES) return reply(c, 413, 'payload_too_large');
 
     const ua = c.req.header('user-agent') ?? '';
     if (!ua || BOT_UA.test(ua) || (!deps.allowHeadless && HEADLESS_UA.test(ua))) return reply(c, 204); // silently ignore bots
@@ -141,13 +145,13 @@ export function createCollector(deps: CollectorDeps) {
     return reply(c, 204);
   }
 
-  app.post('/i', (c) =>
+  app.post('/i', limitBody, (c) =>
     ingest(c, (raw) => {
       const r = IngestBatch.safeParse(raw);
       return r.success ? r.data : null;
     }),
   );
-  app.post('/collect', (c) => ingest(c, (raw) => mapLegacyPayload(raw, now())));
+  app.post('/collect', limitBody, (c) => ingest(c, (raw) => mapLegacyPayload(raw, now())));
   // Legacy replay chunks: replay is rebuilt in slice 4; accept and drop so old installs don't retry forever.
   app.post('/collect-replay/replay', (c) => reply(c, 204));
 
