@@ -81,11 +81,13 @@ test('two-step verification: set up, sign in with a code, then with a backup cod
   // Set up.
   await page.getByRole('button', { name: 'Turn on two-step verification' }).click();
   const dialog = page.getByRole('dialog', { name: 'Set up two-step verification' });
+  // Submit with Enter (the phone keyboard's Go key): on CI's 360 px sheet the click target can be
+  // overlapped mid-layout by the focused field.
   await dialog.getByLabel('Current password').fill('wrong password here');
-  await dialog.getByRole('button', { name: 'Continue' }).click();
+  await dialog.getByLabel('Current password').press('Enter');
   await expect(dialog.getByText("That password isn't right.")).toBeVisible();
   await dialog.getByLabel('Current password').fill(PASSWORD);
-  await dialog.getByRole('button', { name: 'Continue' }).click();
+  await dialog.getByLabel('Current password').press('Enter');
 
   await expect(dialog.getByTestId('qr-code')).toBeVisible();
   const setupKey = (await dialog.getByLabel('Setup key').textContent())!;
@@ -146,7 +148,7 @@ test('two-step verification: set up, sign in with a code, then with a backup cod
   await page.getByRole('button', { name: 'Turn off' }).click();
   const off = page.getByRole('dialog', { name: 'Turn off two-step verification?' });
   await off.getByLabel('Current password').fill(PASSWORD);
-  await off.getByRole('button', { name: 'Turn off' }).click();
+  await off.getByLabel('Current password').press('Enter');
   await expect(page.getByText('Two-step verification is off.')).toBeVisible();
   await expect(page.getByText('Off', { exact: true })).toBeVisible();
 });
