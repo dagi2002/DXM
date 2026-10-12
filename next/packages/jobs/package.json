@@ -18,7 +18,7 @@
     "@pulse/contracts": "workspace:*",
     "@pulse/db": "workspace:*",
     "pg": "^8.23.1",
-    "pg-boss": "^12.37.1"
+    "pg-boss": "~12.36.0"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",

@@ -353,8 +353,8 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
       pg-boss:
-        specifier: ^12.37.1
-        version: 12.37.1(@opentelemetry/api@1.9.1)
+        specifier: ~12.36.0
+        version: 12.36.0(@opentelemetry/api@1.9.1)
     devDependencies:
       '@types/pg':
         specifier: ^8.23.1
@@ -3818,8 +3818,8 @@ packages:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
     dev: true
 
-  /pg-boss@12.37.1(@opentelemetry/api@1.9.1):
-    resolution: {integrity: sha512-LghWeOIbMCiLcTY3+8MInXaJ0wk0AOkbeUZ8oE+cGO0uoheGSW3GK57eDqEbrDGpwTIpX9BVphvdvWEDYTcJ9A==}
+  /pg-boss@12.36.0(@opentelemetry/api@1.9.1):
+    resolution: {integrity: sha512-67Jj4xNuv8mkShTzfmsFtJeVa2ChXyrknjlw/WKZCIMuzRTwyHOUGjl2mf5Snrhmb0xglvFbkfAt5+hLtXukag==}
     engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
