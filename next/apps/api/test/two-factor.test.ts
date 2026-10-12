@@ -171,7 +171,9 @@ describe('two-factor sign-in challenge', () => {
     const { c } = await startSignIn('regen@example.et');
     const old = await c.post('/api/auth/two-factor/verify-backup-code', { code: backupCodes[1] });
     expect(old.status).toBe(401);
-    const fresh = await c.post('/api/auth/two-factor/verify-backup-code', { code: regen.body.backupCodes[0] });
+    const fresh = await c.post('/api/auth/two-factor/verify-backup-code', {
+      code: regen.body.backupCodes[0],
+    });
     expect(fresh.status).toBe(200);
   });
 

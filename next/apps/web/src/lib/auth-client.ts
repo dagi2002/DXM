@@ -17,6 +17,17 @@ export function authErrorKey(code: string | undefined): string {
       return 'auth.error.emailTaken';
     case 'PASSWORD_TOO_SHORT':
       return 'auth.error.weakPassword';
+    case 'INVALID_PASSWORD':
+      return 'auth.error.wrongPassword';
+    case 'INVALID_CODE':
+      return 'auth.twoFactor.error.invalidCode';
+    case 'INVALID_BACKUP_CODE':
+      return 'auth.twoFactor.error.invalidBackupCode';
+    case 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE':
+    case 'INVALID_TWO_FACTOR_COOKIE':
+      return 'auth.twoFactor.error.expired';
+    case 'ACCOUNT_TEMPORARILY_LOCKED':
+      return 'auth.twoFactor.error.locked';
     default:
       return 'auth.error.generic';
   }
