@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
 import { useState } from 'react';
+import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { AiBox, Panel, SamplePill, SeverityPill, Sparkline } from '../components/pulse';
 import { todayQuery, useFormatDate, useMe } from '../lib/queries';
@@ -153,6 +154,12 @@ function VerifiedRow({ fix }: { fix: Fix }) {
   );
 }
 
+/** Underlined status tab (React Aria Tabs: roving focus, arrows, Home/End, aria-controls). */
+export const statusTabClass =
+  'inline-flex min-h-11 shrink-0 cursor-default items-center border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-text-muted outline-none data-[hovered]:text-text data-[selected]:border-text data-[selected]:font-semibold data-[selected]:text-text data-[focus-visible]:rounded-sm data-[focus-visible]:outline-3 data-[focus-visible]:-outline-offset-3 data-[focus-visible]:outline-primary';
+export const tabPanelClass =
+  'grid min-w-0 gap-4 rounded-md outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary';
+
 type TodaySite = Today['sites'][number];
 
 function SiteRow({ site, locale }: { site: TodaySite; locale: Locale }) {
@@ -274,113 +281,104 @@ export function TodayPage() {
         </div>
       ) : null}
 
-      <div
-        role="tablist"
-        aria-label={t('fix.statusLabel')}
-        className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
-      >
-        {FIX_STATUSES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={tab === s}
-            onClick={() => setTab(s)}
-            className={cx(
-              'min-h-11 shrink-0 border-b-2 px-3.5 text-sm whitespace-nowrap outline-none focus-visible:bg-primary-soft',
-              tab === s
-                ? 'border-text font-semibold text-text'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {t(`fix.status.${s}`)}
-            {counts[s] ? <span className="ml-1.5 font-medium text-text-muted">{counts[s]}</span> : null}
-          </button>
-        ))}
-      </div>
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as FixStatus)}>
+        <TabList
+          aria-label={t('fix.statusLabel')}
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
+        >
+          {FIX_STATUSES.map((s) => (
+            <Tab key={s} id={s} className={statusTabClass}>
+              {t(`fix.status.${s}`)}
+              {counts[s] ? <span className="ml-1.5 font-medium text-text-muted">{counts[s]}</span> : null}
+            </Tab>
+          ))}
+        </TabList>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <section aria-label={t('fix.list')} role="tabpanel" className="grid min-w-0 gap-4">
-          {shown.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border-strong px-6 py-10 text-center text-text-muted">
-              {t('fix.emptyTab')}
-            </p>
-          ) : null}
-          {shown.map((f, i) =>
-            f.status === 'verified' ? (
-              <VerifiedRow key={f.id} fix={f} />
-            ) : i === 0 && tab === 'open' ? (
-              <FixCard key={f.id} fix={f} locale={locale} />
-            ) : (
-              <FixRow key={f.id} fix={f} />
-            ),
-          )}
-          {tab === 'open' ? verifiedRecent.map((f) => <VerifiedRow key={f.id} fix={f} />) : null}
-        </section>
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          {FIX_STATUSES.map((s) => (
+            <TabPanel key={s} id={s} className={tabPanelClass}>
+              {shown.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border-strong px-6 py-10 text-center text-text-muted">
+                  {t('fix.emptyTab')}
+                </p>
+              ) : null}
+              {shown.map((f, i) =>
+                f.status === 'verified' ? (
+                  <VerifiedRow key={f.id} fix={f} />
+                ) : i === 0 && tab === 'open' ? (
+                  <FixCard key={f.id} fix={f} locale={locale} />
+                ) : (
+                  <FixRow key={f.id} fix={f} />
+                ),
+              )}
+              {tab === 'open' ? verifiedRecent.map((f) => <VerifiedRow key={f.id} fix={f} />) : null}
+            </TabPanel>
+          ))}
 
-        <aside className="grid gap-4 xl:sticky xl:top-6">
-          <Panel title={t('today.sites')} id="today-sites">
-            <ul className="-my-2 grid">
-              {sites.map((s) => (
-                <SiteRow key={s.id} site={s} locale={locale} />
-              ))}
-            </ul>
-            {sites.some((s) => s.lastEventAt) ? (
-              <p className="text-[0.8125rem] text-text-muted">
-                {t('today.lastVisit', {
-                  time: formatRelative(
-                    sites
-                      .map((s) => s.lastEventAt)
-                      .filter((x): x is string => !!x)
-                      .sort()
-                      .at(-1)!,
-                    locale,
-                  ),
-                })}
-              </p>
-            ) : null}
-          </Panel>
-
-          {week ? (
-            <Panel title={t('today.week')} action={<SamplePill />}>
-              <div className="grid gap-1">
-                <span className="text-[0.8125rem] text-text-muted">{t('metric.checkout')}</span>
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                    {formatMetric('conversion_rate', week.conversion.value, locale)}
-                  </span>
-                  <Delta
-                    metric="conversion_rate"
-                    value={week.conversion.value}
-                    previous={week.conversion.previous}
-                    locale={locale}
-                  />
-                </div>
-                <Sparkline values={week.conversion.trend} />
-              </div>
-              <div className="grid gap-1">
-                <span className="text-[0.8125rem] text-text-muted">{t('metric.verifiedFixes')}</span>
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                    {week.verifiedThisMonth.value}
-                  </span>
-                  <span className="text-[0.8125rem] font-semibold text-good">
-                    ↑ {week.verifiedThisMonth.value - week.verifiedThisMonth.previous}
-                  </span>
-                </div>
-              </div>
+          <aside className="grid gap-4 xl:sticky xl:top-6">
+            <Panel title={t('today.sites')} id="today-sites">
+              <ul className="-my-2 grid">
+                {sites.map((s) => (
+                  <SiteRow key={s.id} site={s} locale={locale} />
+                ))}
+              </ul>
+              {sites.some((s) => s.lastEventAt) ? (
+                <p className="text-[0.8125rem] text-text-muted">
+                  {t('today.lastVisit', {
+                    time: formatRelative(
+                      sites
+                        .map((s) => s.lastEventAt)
+                        .filter((x): x is string => !!x)
+                        .sort()
+                        .at(-1)!,
+                      locale,
+                    ),
+                  })}
+                </p>
+              ) : null}
             </Panel>
-          ) : null}
 
-          <section className="flex items-start gap-3.5 rounded-lg border border-border p-5">
-            <Send size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
-            <div className="grid gap-1">
-              <h2 className="text-sm font-semibold">{t('today.telegram.title')}</h2>
-              <p className="text-[0.8125rem] leading-relaxed text-text-muted">{t('today.telegram.body')}</p>
-            </div>
-          </section>
-        </aside>
-      </div>
+            {week ? (
+              <Panel title={t('today.week')} action={<SamplePill />}>
+                <div className="grid gap-1">
+                  <span className="text-[0.8125rem] text-text-muted">{t('metric.checkout')}</span>
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
+                      {formatMetric('conversion_rate', week.conversion.value, locale)}
+                    </span>
+                    <Delta
+                      metric="conversion_rate"
+                      value={week.conversion.value}
+                      previous={week.conversion.previous}
+                      locale={locale}
+                    />
+                  </div>
+                  <Sparkline values={week.conversion.trend} />
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-[0.8125rem] text-text-muted">{t('metric.verifiedFixes')}</span>
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
+                      {week.verifiedThisMonth.value}
+                    </span>
+                    <span className="text-[0.8125rem] font-semibold text-good">
+                      ↑ {week.verifiedThisMonth.value - week.verifiedThisMonth.previous}
+                    </span>
+                  </div>
+                </div>
+              </Panel>
+            ) : null}
+
+            <section className="flex items-start gap-3.5 rounded-lg border border-border p-5">
+              <Send size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+              <div className="grid gap-1">
+                <h2 className="text-sm font-semibold">{t('today.telegram.title')}</h2>
+                <p className="text-[0.8125rem] leading-relaxed text-text-muted">{t('today.telegram.body')}</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </Tabs>
     </>
   );
 }
