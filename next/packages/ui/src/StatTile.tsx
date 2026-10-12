@@ -26,10 +26,8 @@ export function StatTile({
     delta?.direction === 'up' ? ArrowUpRight : delta?.direction === 'down' ? ArrowDownRight : Minus;
   return (
     <div className="rounded-lg border border-border bg-surface p-5">
-      <p className="text-xs font-semibold tracking-wide text-text-faint uppercase [:lang(am)_&]:normal-case [:lang(am)_&]:tracking-normal [:lang(am)_&]:text-sm">
-        {label}
-      </p>
-      <p className="mt-1.5 font-display text-3xl font-bold tracking-tight text-text tabular-nums">
+      <p className="text-[0.8125rem] font-medium text-text-muted [:lang(am)_&]:text-sm">{label}</p>
+      <p className="mt-1 font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em] text-text tabular-nums">
         {formatMetric(metric, value, locale)}
       </p>
       {delta ? (

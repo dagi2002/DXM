@@ -1,19 +1,11 @@
 import { canManage, PLATFORMS, type Platform } from '@pulse/contracts/constants';
 import type { Site, SiteInstall } from '@pulse/contracts';
 import { formatRelative, type Locale } from '@pulse/i18n';
-import {
-  Banner,
-  Button,
-  Card,
-  CopyField,
-  Select,
-  Skeleton,
-  Spinner,
-  StatusBadge,
-  TextField,
-} from '@pulse/ui';
+import { Banner, Button, Card, CopyField, Skeleton, StatusBadge, TextField, cx } from '@pulse/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent } from 'react';
+import { CheckCircle2, Circle } from 'lucide-react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { Label, Radio, RadioGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { installQuery, useMe } from '../lib/queries';
@@ -46,6 +38,20 @@ function Steps({ platform }: { platform: Platform }) {
   );
 }
 
+function CheckItem({ done, children }: { done: boolean; children: ReactNode }) {
+  return (
+    <li className={cx('flex items-center gap-2.5 text-sm', done ? 'text-text' : 'text-text-muted')}>
+      {done ? (
+        <CheckCircle2 size={18} aria-hidden="true" className="shrink-0 text-good" />
+      ) : (
+        <Circle size={18} aria-hidden="true" className="shrink-0 text-text-faint" />
+      )}
+      {children}
+    </li>
+  );
+}
+
+/** The right-hand live check: pulses while waiting, turns green the moment a visit lands. */
 function VerificationStatus({ install }: { install: SiteInstall }) {
   const { t, i18n } = useTranslation();
   const [waitingSince] = useState(() => Date.now());
@@ -54,33 +60,42 @@ function VerificationStatus({ install }: { install: SiteInstall }) {
     const id = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(id);
   }, []);
+  const live = install.status === 'live';
 
-  if (install.status === 'live') {
-    return (
-      <div role="status" className="flex flex-wrap items-center gap-3">
-        <StatusBadge tone="good">{t('install.status.live')}</StatusBadge>
-        {install.lastEventAt ? (
-          <span className="text-sm text-text-muted">
-            {t('install.status.lastVisit', {
-              time: formatRelative(install.lastEventAt, i18n.language as Locale, new Date(now)),
-            })}
-          </span>
-        ) : null}
-      </div>
-    );
-  }
   return (
-    <div className="grid gap-4">
-      <div role="status" className="flex items-start gap-3">
-        <span className="mt-0.5 text-primary">
-          <Spinner size={18} />
-        </span>
-        <div>
-          <p className="font-semibold">{t('install.status.waiting')}</p>
-          <p className="mt-0.5 text-sm text-text-muted">{t('install.status.waitingHelp')}</p>
+    <Card as="section" className="grid gap-5">
+      <h3 className="text-[0.9375rem] font-semibold">{t('install.verify.title')}</h3>
+      {live ? (
+        <div role="status" className="grid gap-2">
+          <StatusBadge tone="good" className="w-fit">
+            {t('install.status.live')}
+          </StatusBadge>
+          {install.lastEventAt ? (
+            <span className="text-sm text-text-muted">
+              {t('install.status.lastVisit', {
+                time: formatRelative(install.lastEventAt, i18n.language as Locale, new Date(now)),
+              })}
+            </span>
+          ) : null}
         </div>
-      </div>
-      {now - waitingSince > TROUBLE_AFTER_MS ? (
+      ) : (
+        <div role="status" className="flex items-start gap-3.5">
+          <span aria-hidden="true" className="relative mt-1.5 size-3 shrink-0">
+            <span className="absolute inset-0 rounded-full bg-primary motion-safe:animate-ping" />
+            <span className="absolute inset-0 rounded-full bg-primary" />
+          </span>
+          <div className="grid gap-0.5">
+            <p className="font-semibold">{t('install.status.waiting')}</p>
+            <p className="text-[0.8125rem] text-text-muted">{t('install.checking')}</p>
+          </div>
+        </div>
+      )}
+      {!live ? <p className="-mt-1 text-sm text-text-muted">{t('install.status.waitingHelp')}</p> : null}
+      <ul className="grid gap-2.5 border-t border-border pt-4">
+        <CheckItem done>{t('install.check.added')}</CheckItem>
+        <CheckItem done={live}>{t('install.check.firstVisit')}</CheckItem>
+      </ul>
+      {!live && now - waitingSince > TROUBLE_AFTER_MS ? (
         <Banner tone="warn" title={t('install.trouble.title')}>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {[1, 2, 3, 4].map((n) => (
@@ -89,7 +104,33 @@ function VerificationStatus({ install }: { install: SiteInstall }) {
           </ul>
         </Banner>
       ) : null}
-    </div>
+    </Card>
+  );
+}
+
+/** Platform picker as a grid of large, tappable choices. */
+function PlatformPicker({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
+  const { t } = useTranslation();
+  return (
+    <RadioGroup value={value} onChange={(v) => onChange(v as Platform)} className="grid gap-2.5">
+      <Label className="text-sm font-semibold text-text">{t('install.platform')}</Label>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+        {GUIDE_PLATFORMS.map((p) => (
+          <Radio
+            key={p}
+            value={p}
+            className={cx(
+              'flex min-h-12 cursor-default items-center rounded-md border border-border bg-surface px-3.5 text-sm text-text transition-colors',
+              'data-[hovered]:border-border-strong',
+              'data-[selected]:border-primary data-[selected]:bg-primary-soft data-[selected]:font-semibold data-[selected]:ring-1 data-[selected]:ring-primary',
+              'outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary',
+            )}
+          >
+            {t(`sites.platform.${p}`)}
+          </Radio>
+        ))}
+      </div>
+    </RadioGroup>
   );
 }
 
@@ -229,40 +270,49 @@ export function InstallPanel({ site }: { site: Site }) {
     if (liveNow && site.status !== 'live') void qc.invalidateQueries({ queryKey: ['orgs', orgId] });
   }, [liveNow, site.status, qc, orgId]);
 
-  if (isLoading || !install) return <Skeleton className="h-64" />;
+  if (isLoading || !install) {
+    return (
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
   const manage = canManage(role);
 
   return (
-    <Card as="section" className="grid gap-6">
-      <div>
-        <h2 className="font-display text-lg font-bold">{t('install.title')}</h2>
-        <p className="mt-1 text-[0.9375rem] text-text-muted">{t('install.subtitle', { tag: HEAD })}</p>
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-w-0 gap-6">
+        <Card as="section" className="grid gap-6 p-6">
+          <div>
+            <h2 className="font-display text-xl font-bold tracking-[-0.01em]">{t('install.title')}</h2>
+            <p className="mt-1.5 max-w-2xl text-[0.9375rem] leading-relaxed text-text-muted">
+              {t('install.subtitle', { tag: HEAD })}
+            </p>
+          </div>
+          <CopyField
+            value={install.snippet}
+            label={t('install.title')}
+            copyLabel={t('install.copy')}
+            copiedLabel={t('install.copied')}
+          />
+          <PlatformPicker value={platform} onChange={setPlatform} />
+          <div className="rounded-md bg-surface-sunken p-4">
+            <Steps platform={platform} />
+          </div>
+          <p className="text-[0.8125rem] text-text-muted">{t('install.privacy')}</p>
+        </Card>
+        {manage ? (
+          <Card as="section" className="grid gap-6 p-6">
+            <EmailDeveloper siteId={site.id} />
+            <hr className="border-border" />
+            <ExtraOrigins site={site} install={install} />
+          </Card>
+        ) : null}
       </div>
-      <VerificationStatus install={install} />
-      <CopyField
-        value={install.snippet}
-        label={t('install.title')}
-        copyLabel={t('install.copy')}
-        copiedLabel={t('install.copied')}
-      />
-      <div className="grid gap-4">
-        <Select
-          label={t('install.platform')}
-          selectedKey={platform}
-          onSelectionChange={(k) => setPlatform(k as Platform)}
-          options={GUIDE_PLATFORMS.map((p) => ({ id: p, label: t(`sites.platform.${p}`) }))}
-          className="max-w-xs"
-        />
-        <Steps platform={platform} />
-      </div>
-      {manage ? (
-        <>
-          <hr className="border-border" />
-          <EmailDeveloper siteId={site.id} />
-          <hr className="border-border" />
-          <ExtraOrigins site={site} install={install} />
-        </>
-      ) : null}
-    </Card>
+      <aside className="order-first grid gap-4 xl:sticky xl:top-6 xl:order-last">
+        <VerificationStatus install={install} />
+      </aside>
+    </div>
   );
 }

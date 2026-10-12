@@ -25,7 +25,15 @@ const ForgotPasswordPage = lazyRouteComponent(auth, 'ForgotPasswordPage');
 const ResetPasswordPage = lazyRouteComponent(auth, 'ResetPasswordPage');
 const OnboardingPage = lazyRouteComponent(onboarding, 'OnboardingPage');
 const AcceptInvitationPage = lazyRouteComponent(onboarding, 'AcceptInvitationPage');
-const TodayPage = lazyRouteComponent(sites, 'TodayPage');
+const TodayPage = lazyRouteComponent(() => import('./routes/today'), 'TodayPage');
+const FixDetailPage = lazyRouteComponent(() => import('./routes/fixes'), 'FixDetailPage');
+const replays = () => import('./routes/replays');
+const ReplaysPage = lazyRouteComponent(replays, 'ReplaysPage');
+const ReplayPage = lazyRouteComponent(replays, 'ReplayPage');
+const reports = () => import('./routes/reports');
+const ReportsPage = lazyRouteComponent(reports, 'ReportsPage');
+const PublicReportPage = lazyRouteComponent(reports, 'PublicReportPage');
+const LandingPage = lazyRouteComponent(() => import('./routes/landing'), 'LandingPage');
 const SitesPage = lazyRouteComponent(sites, 'SitesPage');
 const SiteDetailPage = lazyRouteComponent(sites, 'SiteDetailPage');
 const SettingsPage = lazyRouteComponent(() => import('./routes/settings'), 'SettingsPage');
@@ -88,13 +96,29 @@ const guestOnly = async ({
   if (me) throw redirect({ to: safeRedirect(search.redirect) });
 };
 
+/** Signed out: the public landing page. Signed in: straight into the app. */
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   beforeLoad: async ({ context }) => {
     const me = await context.queryClient.ensureQueryData(meQuery);
-    throw redirect({ to: !me ? '/sign-in' : me.orgs.length === 0 ? '/onboarding' : '/today' });
+    if (me) throw redirect({ to: me.orgs.length === 0 ? '/onboarding' : '/today' });
   },
+  component: LandingPage,
+});
+
+/** The landing page at a stable address, viewable while signed in too. */
+const welcomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/welcome',
+  component: LandingPage,
+});
+
+/** Public, read-only client report share link. */
+const publicReportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/r/$token',
+  component: PublicReportPage,
 });
 
 const signInRoute = createRoute({
@@ -159,6 +183,26 @@ const siteRoute = createRoute({
   path: '/sites/$siteId',
   component: SiteDetailPage,
 });
+const fixRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/fixes/$fixId',
+  component: FixDetailPage,
+});
+const replaysRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/replays',
+  component: ReplaysPage,
+});
+const replayRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/replays/$replayId',
+  component: ReplayPage,
+});
+const reportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/reports',
+  component: ReportsPage,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/settings',
@@ -172,8 +216,19 @@ const routeTree = rootRoute.addChildren([
   forgotRoute,
   resetRoute,
   acceptInvitationRoute,
+  publicReportRoute,
+  welcomeRoute,
   onboardingRoute,
-  appRoute.addChildren([todayRoute, sitesRoute, siteRoute, settingsRoute]),
+  appRoute.addChildren([
+    todayRoute,
+    fixRoute,
+    sitesRoute,
+    siteRoute,
+    replaysRoute,
+    replayRoute,
+    reportsRoute,
+    settingsRoute,
+  ]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

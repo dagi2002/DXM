@@ -415,20 +415,30 @@ export function EmptyState({
 
 export function PageHeader({
   title,
+  eyebrow,
   summary,
   actions,
 }: {
   title: ReactNode;
+  /** Scope line above the title ("Today · Oct 11"). Part of the heading, so it is announced with it. */
+  eyebrow?: ReactNode;
   summary?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="font-display text-[1.75rem] leading-tight font-bold tracking-tight text-text">
-          {title}
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+      <div className="min-w-0 max-w-3xl">
+        <h1 className="font-display text-text">
+          {eyebrow ? (
+            <span className="mb-2 block font-sans text-sm font-medium tracking-normal text-text-muted">
+              {eyebrow}
+            </span>
+          ) : null}
+          <span className="block text-[clamp(1.75rem,1.25rem+1.5vw,2.5rem)] leading-[1.12] font-bold tracking-[-0.02em] text-balance">
+            {title}
+          </span>
         </h1>
-        {summary ? <p className="mt-1 text-[0.9375rem] text-text-muted">{summary}</p> : null}
+        {summary ? <div className="mt-2.5 text-base leading-relaxed text-text-muted">{summary}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
@@ -476,24 +486,27 @@ export function Logo({ className, wordmark = true }: { className?: string; wordm
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-2 font-display text-[0.9375rem] font-bold tracking-tight text-text',
+        'inline-flex items-center gap-2.5 font-display text-[1.0625rem] font-bold tracking-tight text-text',
         className,
       )}
     >
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <span
         aria-hidden="true"
-        className="text-primary"
+        className="grid size-7 shrink-0 place-items-center rounded-[8px] bg-primary text-on-primary"
       >
-        <path d="M3 12h4l3-8 4 16 3-8h4" />
-      </svg>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 13h4l3-7 4 12 3-6h4" />
+        </svg>
+      </span>
       {wordmark ? <span>DXM Pulse</span> : <span className="sr-only">DXM Pulse</span>}
     </span>
   );
