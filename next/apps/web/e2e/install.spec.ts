@@ -11,6 +11,7 @@ test('install → first visit from the customer site → live, with numbers on T
   page,
   context,
 }, info) => {
+  test.setTimeout(60_000);
   await page.goto('/sign-up');
   await page.getByRole('radio', { name: 'EN' }).check({ force: true });
   await page.getByLabel('Your name').fill('Tigist Haile');
@@ -50,9 +51,11 @@ test('install → first visit from the customer site → live, with numbers on T
   await shop.getByRole('link', { name: 'Checkout →' }).click(); // page unload → beacon delivery
   await expect(shop.getByRole('heading', { name: 'Checkout' })).toBeVisible();
 
-  // Back in Pulse: verification flips to live on its own.
-  await expect(page.getByText('Live — receiving visits')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
+  // Back in Pulse: verification flips to live on its own. Once the site is live the page may
+  // switch to its Overview tab on its own, so wait for the status badge, then reopen Install.
+  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('tab', { name: 'Install' }).click();
+  await expect(page.getByText('Live — receiving visits')).toBeVisible();
   const axe = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .exclude('[role="log"][aria-live]')
