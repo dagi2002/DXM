@@ -31,6 +31,7 @@ import {
   Sparkline,
   healthTone,
   statusTabClass,
+  scrollRegionClass,
   tabPanelClass,
 } from '../components/pulse';
 import { sampleInsightsQuery, sampleReplaysQuery } from '../lib/sample';
@@ -372,7 +373,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
                     <b className="font-semibold">{formatMetric('visitors', st.count, locale)}</b>
                   </span>
                 </div>
-                <div className="h-3.5 rounded-full bg-surface-sunken">
+                <div aria-hidden="true" className="h-3.5 rounded-full bg-surface-sunken">
                   <div
                     className={cx('h-3.5 min-w-3.5 rounded-full', i === worst ? 'bg-bad' : 'bg-primary')}
                     style={{ width: `calc(${st.ratio} * 100%)` }}
@@ -384,9 +385,9 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
           <Link
             to="/fixes/$fixId"
             params={{ fixId: 'fix_128' }}
-            className="text-sm font-medium text-primary hover:underline"
+            className="inline-flex min-h-11 w-fit items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            {t('funnel.seeFix')} →
+            {t('funnel.seeFix')} <span aria-hidden="true">&nbsp;→</span>
           </Link>
         </Panel>
 
@@ -395,7 +396,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
             {ins.speed.map((x) => (
               <div key={x.network} className="grid grid-cols-[4rem_1fr_3.5rem] items-center gap-3 text-sm">
                 <span>{x.network}</span>
-                <div className="h-2.5 rounded-full bg-surface-sunken">
+                <div aria-hidden="true" className="h-2.5 rounded-full bg-surface-sunken">
                   <div
                     className={cx('h-2.5 rounded-full', toneBg[lcpTone(x.lcp)])}
                     style={{ width: `calc(${x.lcp / slowest} * 100%)` }}
@@ -403,6 +404,8 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
                 </div>
                 <span className="text-right font-semibold tabular-nums">
                   {formatMetric('lcp', x.lcp, locale)}
+                  {/* The bar's color carries the verdict; say it in words too. */}
+                  <span className="sr-only">, {t(`speed.${lcpTone(x.lcp)}`)}</span>
                 </span>
               </div>
             ))}
@@ -433,7 +436,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
         <h2 id="pages-h" className="border-b border-border px-6 py-4 text-[1.0625rem] font-semibold">
           {t('pages.title')}
         </h2>
-        <div className="overflow-x-auto">
+        <div className={scrollRegionClass} tabIndex={0} role="region" aria-labelledby="pages-h">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead>
               <tr className="text-left text-[0.8125rem] text-text-muted">

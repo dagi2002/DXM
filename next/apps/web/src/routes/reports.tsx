@@ -10,81 +10,136 @@ import { SamplePill } from '../components/pulse';
 import { sampleReportsQuery, type Report } from '../lib/sample';
 import { Delta } from './today';
 
-function TrendChart({ report }: { report: Report }) {
+/**
+ * Weekly checkout completion. The SVG draws only lines and dots; every label is HTML positioned
+ * over it, so text keeps its real size at 360px (SVG text shrank to ~5px) and follows the
+ * Ethiopic type rules. Screen readers get the same numbers as a table.
+ */
+function TrendChart({ report, locale }: { report: Report; locale: Locale }) {
   const { t } = useTranslation();
   const W = 800;
-  const H = 220;
+  const H = 200;
   const lo = 0.25;
   const hi = 0.45;
-  const x = (i: number) => 80 + (i / (report.trend.length - 1)) * 680;
-  const y = (v: number) => 190 - ((v - lo) / (hi - lo)) * 140;
+  const n = report.trend.length;
+  const x = (i: number) => 12 + (i / (n - 1)) * (W - 24);
+  const y = (v: number) => H - 12 - ((v - lo) / (hi - lo)) * (H - 48);
+  const left = (px: number) => `calc(${px / W} * 100%)`;
+  const top = (px: number) => `calc(${px / H} * 100%)`;
   const last = report.trend.at(-1)!;
-  const pct = (v: number) => formatMetric('conversion_rate', v, 'en');
+  const pct = (v: number) => formatMetric('conversion_rate', v, locale);
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      role="img"
-      aria-label={t('report.trendLabel', { values: report.trend.map((p) => pct(p.value)).join(', ') })}
-      className="overflow-visible"
-    >
-      {[lo, 0.35, hi].map((v) => (
-        <g key={v}>
-          <line x1="40" x2="780" y1={y(v)} y2={y(v)} stroke="var(--border)" />
-          <text x="32" y={y(v) + 4} textAnchor="end" fontSize="12" fill="var(--text-muted)">
-            {pct(v)}
-          </text>
-        </g>
-      ))}
-      <polyline
-        points={report.trend.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}
-        fill="none"
-        stroke="var(--primary)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {report.trend.map((p, i) =>
-        p.fix ? (
-          <circle
-            key={p.label}
-            cx={x(i)}
-            cy={y(p.value)}
-            r="6"
-            fill="var(--good)"
-            stroke="var(--surface)"
-            strokeWidth="2"
-          />
-        ) : null,
-      )}
-      <text
-        x={x(report.trend.length - 1)}
-        y={y(last.value) - 14}
-        textAnchor="end"
-        fontSize="14"
-        fontWeight="600"
-        fill="var(--text)"
-      >
-        {pct(last.value)}
-      </text>
-      {report.trend.map((p, i) => (
-        <text key={p.label} x={x(i)} y="214" textAnchor="middle" fontSize="12" fill="var(--text-muted)">
-          {p.label}
-        </text>
-      ))}
-    </svg>
+    <>
+      <div aria-hidden="true" className="grid gap-2 text-xs text-text-muted tabular-nums">
+        <div className="relative pl-12">
+          {[lo, 0.35, hi].map((v) => (
+            <span
+              key={v}
+              className="absolute left-0 w-10 -translate-y-1/2 text-end"
+              style={{ top: top(y(v)) }}
+            >
+              {pct(v)}
+            </span>
+          ))}
+          <div className="relative">
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block overflow-visible">
+              {[lo, 0.35, hi].map((v) => (
+                <line key={v} x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" />
+              ))}
+              <polyline
+                points={report.trend.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              {report.trend.map((p, i) =>
+                p.fix ? (
+                  <circle
+                    key={p.label}
+                    cx={x(i)}
+                    cy={y(p.value)}
+                    r="7"
+                    fill="var(--good)"
+                    stroke="var(--surface)"
+                    strokeWidth="2"
+                  />
+                ) : null,
+              )}
+            </svg>
+            <span
+              className="absolute -translate-x-full -translate-y-full pb-2 text-sm font-semibold text-text"
+              style={{ left: left(x(n - 1)), top: top(y(last.value)) }}
+            >
+              {pct(last.value)}
+            </span>
+          </div>
+        </div>
+        <div className="relative ml-12 h-5">
+          {report.trend.map((p, i) => (
+            <span
+              key={p.label}
+              className={cx(
+                'absolute whitespace-nowrap',
+                i === 0 ? '' : i === n - 1 ? '-translate-x-full' : '-translate-x-1/2',
+                // Every other week on phones, so labels never collide.
+                i % 2 === 1 && i !== n - 1 && 'max-sm:hidden',
+              )}
+              style={{ left: left(x(i)) }}
+            >
+              {p.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <table className="sr-only">
+        <caption>{t('report.trendTable')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t('report.col.week')}</th>
+            <th scope="col">{t('metric.checkout')}</th>
+            <th scope="col">{t('report.fixLive')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.trend.map((p) => (
+            <tr key={p.label}>
+              <th scope="row">{p.label}</th>
+              <td>{pct(p.value)}</td>
+              <td>{p.fix ? '✓' : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 
 /** The client-facing report. The same view renders inside the app and on the public share link. */
-export function ReportView({ report, locale }: { report: Report; locale: Locale }) {
+export function ReportView({
+  report,
+  locale,
+  embedded = false,
+}: {
+  report: Report;
+  locale: Locale;
+  /** Inside the app the page already has an h1, so the report's outline starts one level down. */
+  embedded?: boolean;
+}) {
   const { t } = useTranslation();
+  const Title = embedded ? 'h2' : 'h1';
+  const Section = embedded ? 'h3' : 'h2';
   return (
     <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl bg-surface p-6 shadow-sm sm:p-12 lg:p-16">
       <header className="grid gap-7 border-b border-border pb-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-md border-[1.5px] border-dashed border-border-strong text-[0.625rem] text-text-muted">
+            <span
+              aria-hidden="true"
+              className="grid size-11 place-items-center rounded-md border-[1.5px] border-dashed border-border-strong text-[0.6875rem] text-text-muted"
+            >
               LOGO
             </span>
             <span className="font-semibold">{report.agency}</span>
@@ -95,9 +150,9 @@ export function ReportView({ report, locale }: { report: Report; locale: Locale 
           <span className="text-sm font-semibold text-primary" lang="en">
             {report.site}
           </span>
-          <h1 className="max-w-[40rem] font-display text-[clamp(1.875rem,1.2rem+2.4vw,2.875rem)] leading-[1.08] font-bold tracking-[-0.025em] text-balance">
+          <Title className="max-w-[40rem] font-display text-[clamp(1.875rem,1.2rem+2.4vw,2.875rem)] leading-[1.08] font-bold tracking-[-0.025em] text-balance">
             {report.headline}
-          </h1>
+          </Title>
           <p className="max-w-[40rem] text-[1.0625rem] leading-relaxed text-text-muted">{report.summary}</p>
         </div>
       </header>
@@ -118,17 +173,17 @@ export function ReportView({ report, locale }: { report: Report; locale: Locale 
       </section>
 
       <section aria-labelledby="trend-h" className="grid gap-3">
-        <h2 id="trend-h" className="text-lg font-semibold">
+        <Section id="trend-h" className="text-lg font-semibold">
           {t('report.trend')}
-        </h2>
+        </Section>
         <p className="text-sm text-text-muted">{t('report.trendNote')}</p>
-        <TrendChart report={report} />
+        <TrendChart report={report} locale={locale} />
       </section>
 
       <section aria-labelledby="fixed-h">
-        <h2 id="fixed-h" className="mb-3 text-lg font-semibold">
+        <Section id="fixed-h" className="mb-3 text-lg font-semibold">
           {t('report.fixed')}
-        </h2>
+        </Section>
         <ul>
           {report.fixed.map((f) => (
             <li
@@ -154,9 +209,9 @@ export function ReportView({ report, locale }: { report: Report; locale: Locale 
       </section>
 
       <section aria-labelledby="next-h" className="grid gap-2 rounded-lg bg-surface-sunken p-6">
-        <h2 id="next-h" className="text-lg font-semibold">
+        <Section id="next-h" className="text-lg font-semibold">
           {t('report.next')}
-        </h2>
+        </Section>
         <p className="text-[0.9375rem] leading-relaxed">{report.next}</p>
       </section>
 
@@ -201,6 +256,7 @@ export function ReportsPage() {
                 className={buttonClass('secondary')}
               >
                 {t('reports.openShared')}
+                <span className="sr-only"> {t('common.newTab')}</span>
               </Link>
             </div>
             <CopyField
@@ -211,7 +267,7 @@ export function ReportsPage() {
             />
           </section>
           <div className="rounded-xl bg-surface-sunken p-3 sm:p-6">
-            <ReportView report={report} locale={i18n.language as Locale} />
+            <ReportView report={report} locale={i18n.language as Locale} embedded />
           </div>
         </div>
       )}
