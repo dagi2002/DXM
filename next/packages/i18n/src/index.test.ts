@@ -111,7 +111,7 @@ describe('messages', () => {
       'sites.platform.shopify',
       'sites.platform.react',
       'sites.platform.nextjs',
-      'landing.plan.care.name', // product name: "Pulse Care"
+      'landing.plan.care.name', // product name
     ]);
     for (const [key, en] of Object.entries(messages.en)) {
       const am = (messages.am as Record<string, string>)[key]!;
