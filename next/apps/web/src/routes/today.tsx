@@ -9,7 +9,15 @@ import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { AiBox, Panel, SamplePill, SeverityPill, Sparkline } from '../components/pulse';
+import {
+  AiBox,
+  Panel,
+  SamplePill,
+  SeverityPill,
+  Sparkline,
+  statusTabClass,
+  tabPanelClass,
+} from '../components/pulse';
 import { todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { FIX_STATUSES, sampleFixesQuery, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
 
@@ -153,12 +161,6 @@ function VerifiedRow({ fix }: { fix: Fix }) {
     </article>
   );
 }
-
-/** Underlined status tab (React Aria Tabs: roving focus, arrows, Home/End, aria-controls). */
-export const statusTabClass =
-  'inline-flex min-h-11 shrink-0 cursor-default items-center border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-text-muted outline-none data-[hovered]:text-text data-[selected]:border-text data-[selected]:font-semibold data-[selected]:text-text data-[focus-visible]:rounded-sm data-[focus-visible]:outline-3 data-[focus-visible]:-outline-offset-3 data-[focus-visible]:outline-primary';
-export const tabPanelClass =
-  'grid min-w-0 gap-4 rounded-md outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary';
 
 type TodaySite = Today['sites'][number];
 

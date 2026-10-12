@@ -17,13 +17,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { ChevronRight, Globe, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
 import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { InstallPanel } from './install';
 import { Delta } from './today';
 import { ReplayList } from './replays';
-import { HealthRing, Panel, SamplePill, Sparkline, healthTone } from '../components/pulse';
+import {
+  HealthRing,
+  Panel,
+  SamplePill,
+  Sparkline,
+  healthTone,
+  statusTabClass,
+  tabPanelClass,
+} from '../components/pulse';
 import { sampleInsightsQuery, sampleReplaysQuery } from '../lib/sample';
 import type { Locale } from '@pulse/i18n';
 import { formatMetric } from '@pulse/metrics';
@@ -577,34 +586,27 @@ export function SiteDetailPage() {
           ) : null
         }
       />
-      <div
-        role="tablist"
-        aria-label={t('site.sections')}
-        className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
-      >
-        {SITE_TABS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cx(
-              'min-h-11 shrink-0 border-b-2 px-3.5 text-sm whitespace-nowrap outline-none focus-visible:bg-primary-soft',
-              tab === id
-                ? 'border-text font-semibold text-text'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {t(`site.tab.${id}`)}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel">
-        {tab === 'overview' ? <SiteOverview stats={stats} locale={locale} /> : null}
-        {tab === 'replays' ? <SiteReplays /> : null}
-        {tab === 'install' ? <InstallPanel site={site} /> : null}
-      </div>
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as SiteTab)}>
+        <TabList
+          aria-label={t('site.sections')}
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
+        >
+          {SITE_TABS.map((id) => (
+            <Tab key={id} id={id} className={statusTabClass}>
+              {t(`site.tab.${id}`)}
+            </Tab>
+          ))}
+        </TabList>
+        <TabPanel id="overview" className={tabPanelClass}>
+          <SiteOverview stats={stats} locale={locale} />
+        </TabPanel>
+        <TabPanel id="replays" className={tabPanelClass}>
+          <SiteReplays />
+        </TabPanel>
+        <TabPanel id="install" className={tabPanelClass}>
+          <InstallPanel site={site} />
+        </TabPanel>
+      </Tabs>
       <p className="mt-8 text-sm text-text-muted">
         {t(`sites.platform.${site.platform}`)} · {t('sites.created', { date: formatDate(site.createdAt) })}
       </p>
