@@ -93,7 +93,7 @@ export function ReplayPage() {
         <Link
           to="/fixes/$fixId"
           params={{ fixId: replay.fixId }}
-          className="mb-3 inline-block text-sm font-medium text-primary hover:underline"
+          className="mb-1 inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           ← {t('replay.backToFix', { n: index + 1, total: replays.length })}
         </Link>
@@ -190,7 +190,8 @@ export function ReplayPage() {
               <button
                 type="button"
                 onClick={() => setSpeed((s) => (s === 1 ? 2 : s === 2 ? 4 : 1))}
-                className="min-h-9 rounded-md border border-neutral-700 px-2.5 text-[0.8125rem] outline-none focus-visible:outline-3 focus-visible:outline-indigo-300"
+                aria-label={t('replay.speed', { speed: `${speed}×` })}
+                className="min-h-11 min-w-11 rounded-md border border-neutral-700 px-2.5 text-[0.8125rem] outline-none focus-visible:outline-3 focus-visible:outline-indigo-300"
               >
                 {speed}×
               </button>

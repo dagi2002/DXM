@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Button as RACButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { authClient } from '../lib/auth-client';
+import { useRouteFocus } from '../lib/focus';
 import { useMe } from '../lib/queries';
 import { LanguageSwitch } from './LanguageSwitch';
 
@@ -87,6 +88,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const { me } = useMe();
   const online = useOnline();
+  useRouteFocus();
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[256px_1fr]">
@@ -173,7 +175,7 @@ export function AppShell() {
               key={to}
               to={to}
               className={cx(
-                'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-semibold text-text-faint outline-none focus-visible:bg-primary-soft',
+                'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-semibold text-text-muted outline-none focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary',
               )}
               activeProps={{ className: '!text-primary', 'aria-current': 'page' }}
             >

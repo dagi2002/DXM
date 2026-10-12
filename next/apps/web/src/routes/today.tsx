@@ -6,7 +6,7 @@ import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } fro
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -42,9 +42,17 @@ function FixMeta({ fix }: { fix: Fix }) {
 }
 
 /** The full card for the most important fix: evidence, impact, AI suggestion, next actions. */
-function FixCard({ fix, locale }: { fix: Fix; locale: Locale }) {
+function FixCard({
+  fix,
+  locale,
+  onStatusChange,
+}: {
+  fix: Fix;
+  locale: Locale;
+  onStatusChange: (id: string, status: FixStatus) => void;
+}) {
   const { t } = useTranslation();
-  const setStatus = useSetFixStatus();
+  const setStatus = onStatusChange;
   return (
     <article className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -206,6 +214,24 @@ export function TodayPage() {
   const { data: fixes = [] } = useQuery(sampleFixesQuery);
   const { data: week } = useQuery(sampleWeekQuery);
   const [tab, setTab] = useState<FixStatus>('open');
+  const setStatus = useSetFixStatus();
+  const listRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState('');
+  /**
+   * The changed fix leaves this tab, taking the focused button with it: announce the change and
+   * move focus to the next fix in the list (or the selected tab when the list is now empty).
+   */
+  const changeStatus = (id: string, status: FixStatus) => {
+    setStatus(id, status);
+    setAnnouncement(t('fix.statusNow', { status: t(`fix.status.${status}`) }));
+    requestAnimationFrame(() => {
+      const root = listRef.current;
+      const target =
+        root?.querySelector<HTMLElement>('[role="tabpanel"] a[href]') ??
+        document.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      target?.focus();
+    });
+  };
   const sites = data?.sites ?? [];
   const live = sites.filter((s) => s.status === 'live');
   const eyebrow = t('today.eyebrow', { date: formatDate(new Date()) });
@@ -296,7 +322,10 @@ export function TodayPage() {
           ))}
         </TabList>
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <p role="status" className="sr-only">
+          {announcement}
+        </p>
+        <div ref={listRef} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
           {FIX_STATUSES.map((s) => (
             <TabPanel key={s} id={s} className={tabPanelClass}>
               {shown.length === 0 ? (
@@ -308,7 +337,7 @@ export function TodayPage() {
                 f.status === 'verified' ? (
                   <VerifiedRow key={f.id} fix={f} />
                 ) : i === 0 && tab === 'open' ? (
-                  <FixCard key={f.id} fix={f} locale={locale} />
+                  <FixCard key={f.id} fix={f} locale={locale} onStatusChange={changeStatus} />
                 ) : (
                   <FixRow key={f.id} fix={f} />
                 ),

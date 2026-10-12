@@ -377,5 +377,11 @@
   "landing.plan.care.name": "Pulse Care",
   "landing.plan.care.price": "from ETB 15,000",
   "landing.plan.care.body": "We find the fixes, plan them with you, and verify them every month.",
-  "landing.footer": "© 2026 DXM Pulse · Addis Ababa"
+  "landing.footer": "© 2026 DXM Pulse · Addis Ababa",
+  "common.newTab": "(opens in a new tab)",
+  "replay.speed": "Playback speed {speed}",
+  "fix.statusNow": "Status: {status}",
+  "report.col.week": "Week",
+  "report.fixLive": "Fix went live",
+  "report.trendTable": "Checkout completion by week, as a table"
 }

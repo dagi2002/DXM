@@ -22,15 +22,6 @@
     @apply bg-bg font-sans text-text antialiased;
     font-feature-settings: 'cv11';
   }
-  /* Ethiopic script is dense: more line height, never below 15px (docs/rebuild/02 §2.4). */
-  :lang(am) body,
-  [lang='am'] {
-    line-height: 1.7;
-  }
-  :lang(am) .text-xs,
-  :lang(am) .text-\[0\.8125rem\] {
-    font-size: 0.875rem;
-  }
   ::selection {
     background: var(--primary-soft);
   }
@@ -39,7 +30,55 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      /* Without this, infinite animations (skeleton pulse, install ping) strobe at 0.01ms. */
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/*
+ * Ethiopic script is dense (docs/rebuild/02 §2.4): with :lang(am), body line-height goes to 1.7,
+ * sizes ≤14px get +1px and nothing renders below 14px. Unlayered on purpose: Tailwind's
+ * utilities layer would otherwise win over these overrides. `X:lang(am)` (not `:lang(am) X`)
+ * keeps English islands (`lang="en"` domains, code, the replay wireframe) at their own size.
+ */
+:lang(am) body {
+  line-height: 1.7;
+}
+:is(.text-\[10px\], .text-\[0\.625rem\], .text-\[0\.6875rem\], .text-xs, .text-\[0\.8125rem\]):lang(am) {
+  font-size: 0.875rem;
+}
+.text-sm:lang(am) {
+  font-size: 0.9375rem;
+}
+/* Tailwind's size utilities carry Latin line-heights; Ethiopic body copy keeps ~1.6 unless a
+   leading-* utility asks for something else. */
+:is(
+  .text-\[10px\],
+  .text-\[0\.625rem\],
+  .text-\[0\.6875rem\],
+  .text-xs,
+  .text-\[0\.8125rem\],
+  .text-sm,
+  .text-\[0\.9375rem\],
+  .text-base,
+  .text-\[1\.0625rem\],
+  .text-lg
+):lang(am) {
+  line-height: var(--tw-leading, 1.6);
+}
+/* Fidel needs more room than Latin's tight display leading; headings never clip or collide. */
+:is(h1, h2, h3, .leading-tight, .leading-snug, .leading-\[1\.08\]):lang(am) {
+  line-height: 1.35;
+  letter-spacing: normal;
+}
+/* Wide Ethiopic labels in the 5-up mobile tab bar wrap instead of clipping. */
+nav a:lang(am) {
+  overflow-wrap: anywhere;
+}
+/* Headings focused after navigation are not controls; the page change is the cue. */
+h1[tabindex='-1']:focus {
+  outline: none;
 }

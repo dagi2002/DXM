@@ -78,6 +78,10 @@ export const statusTabClass =
 export const tabPanelClass =
   'grid min-w-0 gap-4 rounded-md outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary';
 
+/** A horizontally scrolling table wrapper: focusable (tabIndex=0) with a visible focus ring. */
+export const scrollRegionClass =
+  'overflow-x-auto outline-none focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary';
+
 const ringTone = (score: number) =>
   score >= 75 ? 'var(--good)' : score >= 50 ? 'var(--warn)' : 'var(--bad)';
 

@@ -377,5 +377,11 @@
   "landing.plan.care.name": "Pulse Care",
   "landing.plan.care.price": "ከ15,000 ብር",
   "landing.plan.care.body": "ጥገናዎቹን እኛ እናገኛለን፣ ከእርስዎ ጋር እናቅዳለን፣ በየወሩም እናረጋግጣለን።",
-  "landing.footer": "© 2026 DXM Pulse · አዲስ አበባ"
+  "landing.footer": "© 2026 DXM Pulse · አዲስ አበባ",
+  "common.newTab": "(በአዲስ ትር ይከፈታል)",
+  "replay.speed": "የማጫወቻ ፍጥነት {speed}",
+  "fix.statusNow": "ሁኔታ፦ {status}",
+  "report.col.week": "ሳምንት",
+  "report.fixLive": "ጥገናው ሥራ ላይ ዋለ",
+  "report.trendTable": "ክፍያ ያጠናቀቁ በየሳምንቱ፣ በሰንጠረዥ"
 }
