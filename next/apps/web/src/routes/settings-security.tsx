@@ -187,6 +187,7 @@ function EnableTwoFactor({ onFinished }: { onFinished: () => void }) {
             <p className="text-[0.8125rem] text-text-muted">{t('settings.security.2fa.setup.manualHelp')}</p>
             <CopyField
               value={groupKey(secret)}
+              wrap
               label={t('settings.security.2fa.setup.manualKey')}
               copyLabel={t('install.copy')}
               copiedLabel={t('install.copied')}

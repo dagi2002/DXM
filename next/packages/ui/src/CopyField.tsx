@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Button } from './components';
+import { Button, cx } from './components';
 
 /** Read-only code with a copy button. Always left-to-right Latin, even inside Amharic UI. */
 export function CopyField({
@@ -8,11 +8,14 @@ export function CopyField({
   label,
   copyLabel,
   copiedLabel,
+  wrap = false,
 }: {
   value: string;
   label: string;
   copyLabel: string;
   copiedLabel: string;
+  /** Wrap long single-line values (keys, tokens) instead of scrolling sideways. */
+  wrap?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -38,7 +41,10 @@ export function CopyField({
         lang="en"
         dir="ltr"
         tabIndex={0}
-        className="overflow-x-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed whitespace-pre text-text outline-none focus-visible:outline-3 focus-visible:outline-primary"
+        className={cx(
+          'overflow-x-auto px-4 py-3 font-mono text-[0.8125rem] leading-relaxed text-text outline-none focus-visible:outline-3 focus-visible:outline-primary',
+          wrap ? 'break-all whitespace-pre-wrap' : 'whitespace-pre',
+        )}
       >
         {value}
       </pre>
