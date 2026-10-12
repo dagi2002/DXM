@@ -129,7 +129,7 @@
 - **Web:** Today and the fix page read the real feed. While an org has no real fixes, the sample feed and its "Sample data" pill stay. Status buttons PATCH real fixes (optimistic, rolled back on error) and stay local for samples. Titles, summaries and chips are built from evidence in English and Amharic.
 - **Tests:** 29 detector unit tests, 9 worker tests against Postgres (idempotency, escalation, per-org numbering, tenant scope, cooldown/regression, dismissed, window, sweep), 13 API integration tests (contract shape, ordering, filters, transitions, CSRF, tenant isolation, roles), 2 web tests for the sample fallback.
 
-**Found and fixed while verifying:** the i18n "untranslated Amharic" test was already red on `rebuild` because "Pulse Care" is a product name; it is now allow-listed.
+**Found while verifying:** the i18n "untranslated Amharic" test was red on `rebuild` ("Pulse Care" is a product name); fixed on `rebuild` in bfa7d2a.
 
 **Not done yet (rest of slice 3):**
 - Form-abandonment detector (`fs` without `fx`, `fe` per field).
