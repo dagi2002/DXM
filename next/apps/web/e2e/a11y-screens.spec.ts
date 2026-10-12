@@ -14,7 +14,8 @@ async function expectAccessible(page: Page, label: string) {
     .exclude('[role="log"][aria-live]')
     .analyze();
   const violations = results.violations.map(
-    (v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => `${n.target.join(' ')} — ${n.failureSummary}`).join(' | ')}`,
+    (v) =>
+      `${v.id} (${v.impact}): ${v.nodes.map((n) => `${n.target.join(' ')} — ${n.failureSummary}`).join(' | ')}`,
   );
   expect(violations, `axe violations on ${label}`).toEqual([]);
 }
@@ -40,6 +41,7 @@ test('public screens: landing and shared report', async ({ page }) => {
 });
 
 test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page }, info) => {
+  test.setTimeout(120_000); // ~20 axe scans
   await page.goto('/sign-up');
   await page.getByRole('radio', { name: 'EN' }).check({ force: true });
   await page.getByLabel('Your name').fill('Tigist Haile');
@@ -109,5 +111,24 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, `${path} (am)`);
+    // docs/rebuild/02 §2.4: Ethiopic text never renders below 14px.
+    const tooSmall = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('body *')]
+        .filter(
+          (el) =>
+            el.matches(':lang(am)') &&
+            !el.closest('[role="img"], [aria-hidden="true"], .sr-only') &&
+            el.checkVisibility() &&
+            [...el.childNodes].some(
+              (n) => n.nodeType === Node.TEXT_NODE && /[\u1200-\u137F]/.test(n.textContent ?? ''),
+            ),
+        )
+        .map((el) => ({
+          text: el.textContent?.trim().slice(0, 30),
+          size: parseFloat(getComputedStyle(el).fontSize),
+        }))
+        .filter((x) => x.size < 14),
+    );
+    expect(tooSmall, `Ethiopic text under 14px on ${path}`).toEqual([]);
   }
 });

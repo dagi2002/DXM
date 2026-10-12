@@ -82,3 +82,12 @@ nav a:lang(am) {
 h1[tabindex='-1']:focus {
   outline: none;
 }
+/*
+ * Below lg the app shell has a sticky top bar and a fixed bottom tab bar. Scroll padding keeps
+ * focused and scrolled-to elements clear of both (WCAG 2.2 — 2.4.11 Focus Not Obscured).
+ */
+@media (width < 64rem) {
+  html:has(#main ~ nav, header + #main) {
+    scroll-padding-block: 4.5rem 5.5rem;
+  }
+}
