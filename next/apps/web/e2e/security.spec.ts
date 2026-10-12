@@ -81,9 +81,9 @@ test('two-step verification: set up, sign in with a code, then with a backup cod
   // Set up.
   await page.getByRole('button', { name: 'Turn on two-step verification' }).click();
   const dialog = page.getByRole('dialog', { name: 'Set up two-step verification' });
-  // Inside the dialog, forms are submitted with Enter (the phone keyboard's Go key). On CI's 360 px
-  // headless run, Chrome keeps the focused field scrolled into view in the bottom sheet, so a
-  // pointer click on the submit button below it lands on the field instead. Real taps blur first.
+  // Inside the bottom-sheet dialog we act with the keyboard (Enter on the field or button), as on a
+  // phone's Go key. In CI's 360 px emulation, once a field has had focus the pointer hit-test lands
+  // one row above the target (visual-viewport offset), so clicks hit the previous control.
   await dialog.getByLabel('Current password').fill('wrong password here');
   await dialog.getByLabel('Current password').press('Enter');
   await expect(dialog.getByText("That password isn't right.")).toBeVisible();
@@ -111,7 +111,7 @@ test('two-step verification: set up, sign in with a code, then with a backup cod
   await expect(done).toBeDisabled();
   await dialog.getByText("I've saved these backup codes").click();
   await page.screenshot({ path: shots(info, 'security-backup-codes') });
-  await done.click();
+  await done.press('Enter');
   await expect(dialog).toBeHidden();
   await expect(page.getByText('On', { exact: true })).toBeVisible();
   await expect(page.getByText('This device', { exact: true })).toBeVisible();
