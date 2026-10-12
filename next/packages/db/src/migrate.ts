@@ -27,6 +27,7 @@ export async function migrateDatabase(
       grant execute on function pulse_ensure_event_partitions(integer) to ${appRole};
       grant execute on function pulse_close_idle_visits(integer) to ${appRole};
       grant execute on function pulse_purge_ingest_dedupe(integer) to ${appRole};
+      grant execute on function pulse_sites_with_recent_activity(integer) to ${appRole};
     `);
   } finally {
     await pool.end();

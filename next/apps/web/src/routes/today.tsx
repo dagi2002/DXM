@@ -3,23 +3,15 @@ import type { Today } from '@pulse/contracts';
 import { formatRelative, type Locale } from '@pulse/i18n';
 import { formatDelta, formatMetric } from '@pulse/metrics';
 import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AiBox, Panel, SamplePill, SeverityPill, Sparkline } from '../components/pulse';
 import { todayQuery, useFormatDate, useMe } from '../lib/queries';
-import { FIX_STATUSES, sampleFixesQuery, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
-
-/** Moves a sample fix through the workflow (open → fixing → fixed → verified, or dismissed). */
-export function useSetFixStatus() {
-  const qc = useQueryClient();
-  return (id: string, status: FixStatus) =>
-    qc.setQueryData(sampleFixesQuery.queryKey, (fixes) =>
-      fixes?.map((f) => (f.id === id ? { ...f, status } : f)),
-    );
-}
+import { useFixes, useSetFixStatus } from '../lib/fixes';
+import { FIX_STATUSES, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
 
 function FixMeta({ fix }: { fix: Fix }) {
   return (
@@ -38,6 +30,7 @@ function FixCard({ fix, locale }: { fix: Fix; locale: Locale }) {
   const setStatus = useSetFixStatus();
   return (
     <article className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
+      {setStatus.error ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <FixMeta fix={fix} />
         <span className="text-[0.8125rem] text-text-muted">
@@ -194,7 +187,7 @@ export function TodayPage() {
   const navigate = useNavigate();
   const locale = i18n.language as Locale;
   const { data, isLoading } = useQuery(todayQuery(orgId));
-  const { data: fixes = [] } = useQuery(sampleFixesQuery);
+  const { fixes, sample } = useFixes();
   const { data: week } = useQuery(sampleWeekQuery);
   const [tab, setTab] = useState<FixStatus>('open');
   const sites = data?.sites ?? [];
@@ -257,7 +250,7 @@ export function TodayPage() {
         })}
         actions={
           <>
-            <SamplePill className="self-center" />
+            {sample ? <SamplePill className="self-center" /> : null}
             {canManage(role) ? (
               <Button onPress={addSite}>
                 <Plus size={18} aria-hidden="true" />

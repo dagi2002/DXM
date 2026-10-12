@@ -1,13 +1,14 @@
 import type { Locale } from '@pulse/i18n';
 import { formatMetric } from '@pulse/metrics';
-import { Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
+import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Mail, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AiBox, Panel, ReplayPhone, SamplePill, SeverityPill } from '../components/pulse';
-import { sampleFixesQuery, type FixStatus } from '../lib/sample';
-import { useSetFixStatus } from './today';
+import { fixQuery, fixesQuery, useFixView, useSetFixStatus } from '../lib/fixes';
+import { useMe } from '../lib/queries';
+import type { Fix, FixStatus } from '../lib/sample';
 
 const FLOW: FixStatus[] = ['open', 'fixing', 'fixed', 'verified'];
 const NEXT: Partial<Record<FixStatus, FixStatus>> = { open: 'fixing', fixing: 'fixed', fixed: 'verified' };
@@ -17,9 +18,21 @@ export function FixDetailPage() {
   const locale = i18n.language as Locale;
   const navigate = useNavigate();
   const { fixId } = useParams({ strict: false }) as { fixId: string };
-  const { data: fixes, isLoading } = useQuery(sampleFixesQuery);
+  const { orgId } = useMe();
+  const toView = useFixView();
+  const feed = useQuery(fixesQuery(orgId));
+  const live = feed.data ? !feed.data.sample : false;
+  // Real fixes load by id (the feed is capped); samples come from the feed itself.
+  const detail = useQuery({ ...fixQuery(orgId, fixId), enabled: live, retry: false });
   const setStatus = useSetFixStatus();
-  const fix = fixes?.find((f) => f.id === fixId);
+  let fix: Fix | undefined;
+  if (feed.data?.sample) fix = feed.data.fixes.find((f) => f.id === fixId);
+  else if (detail.data) {
+    // The feed holds the optimistic status right after a click; prefer it.
+    const listed = feed.data?.fixes.find((f) => f.id === fixId);
+    fix = { ...toView(detail.data.fix), status: listed?.status ?? detail.data.fix.status };
+  }
+  const isLoading = feed.isLoading || (live && detail.isLoading);
 
   if (isLoading) return <Skeleton className="h-96" />;
   if (!fix) {
@@ -56,7 +69,7 @@ export function FixDetailPage() {
         }
         title={fix.title}
         summary={fix.detail ?? fix.summary}
-        actions={<SamplePill />}
+        actions={live ? undefined : <SamplePill />}
       />
 
       <ol aria-label={t('fix.statusLabel')} className="-mt-2 mb-8 flex flex-wrap items-center gap-2">
@@ -222,6 +235,7 @@ export function FixDetailPage() {
             </AiBox>
           ) : null}
           <Panel title={t('fix.nextStep')} id="next-step">
+            {setStatus.error ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
             {next ? (
               <Button className="min-h-12 text-[0.9375rem]" onPress={() => setStatus(fix.id, next)}>
                 {t(`fix.mark.${next}`)}

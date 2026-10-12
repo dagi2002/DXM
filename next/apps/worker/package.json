@@ -14,10 +14,11 @@
     "@pulse/config": "workspace:*",
     "@pulse/contracts": "workspace:*",
     "@pulse/db": "workspace:*",
+    "@pulse/detectors": "workspace:*",
     "@pulse/i18n": "workspace:*",
     "@pulse/jobs": "workspace:*",
-    "pino": "^10.4.0",
-    "@pulse/mail": "workspace:*"
+    "@pulse/mail": "workspace:*",
+    "pino": "^10.4.0"
   },
   "devDependencies": {
     "@types/pg": "^8.15.5",

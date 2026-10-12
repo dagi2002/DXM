@@ -216,7 +216,7 @@
   "nav.replays": "ቅጂዎች",
   "nav.reports": "ሪፖርቶች",
   "sample.label": "የናሙና መረጃ",
-  "sample.tooltip": "ችግር መለያ፣ ቅጂዎችና ሪፖርቶች እስኪጀመሩ ድረስ ይህ ገጽ የናሙና መረጃ ያሳያል።",
+  "sample.tooltip": "ይህ የናሙና መረጃ ነው። Pulse በድረ-ገጾችዎ ላይ እውነተኛ ችግሮችን እንዳገኘ ይተካል፤ ቅጂዎችና ሪፖርቶች ገና ናሙና ናቸው።",
   "today.fixHeadline": "{count, plural, one {# ችግር} other {# ችግሮች}} አሁን የ{site}ን ትዕዛዞች እያሳጡ ነው።",
   "today.fixHeadlineClear": "አሁን የሚጠገን ነገር የለም።",
   "today.fixSummary": "{critical, plural, =0 {አስቸኳይ ችግር የለም} other {# አስቸኳይ}} እና {watch, plural, =0 {የሚከታተል የለም} other {# የሚከታተሉ}} በ{sites, plural, one {ድረ-ገጽዎ} other {# ድረ-ገጾችዎ}} ላይ።",
@@ -377,5 +377,18 @@
   "landing.plan.care.name": "Pulse Care",
   "landing.plan.care.price": "ከ15,000 ብር",
   "landing.plan.care.body": "ጥገናዎቹን እኛ እናገኛለን፣ ከእርስዎ ጋር እናቅዳለን፣ በየወሩም እናረጋግጣለን።",
-  "landing.footer": "© 2026 DXM Pulse · አዲስ አበባ"
+  "landing.footer": "© 2026 DXM Pulse · አዲስ አበባ",
+  "fix.kind.rage_click": "የተደጋገሙ ንክኪዎች",
+  "fix.kind.dead_click": "ምላሽ የሌላቸው ንክኪዎች",
+  "fix.title.rage_click": "ጎብኚዎች በ{page} ላይ “{target}”ን ደጋግመው ይነኩታል",
+  "fix.title.dead_click": "በ{page} ላይ “{target}”ን መንካት ምንም አያደርግም",
+  "fix.summary.rage_click": "ባለፉት {hours} ሰዓታት {visits, plural, one {# ጎብኚ} other {# ጎብኚዎች}} ደጋግመው ነክተውታል። {left, plural, =0 {ከዚህ ገጽ የወጣ የለም።} one {# ከዚህ ገጽ ወጥቷል።} other {# ከዚህ ገጽ ወጥተዋል።}}",
+  "fix.summary.dead_click": "ባለፉት {hours} ሰዓታት {visits, plural, one {# ጎብኚ} other {# ጎብኚዎች}} ነክተውት ምንም አልሆነም። {left, plural, =0 {ከዚህ ገጽ የወጣ የለም።} one {# ከዚህ ገጽ ወጥቷል።} other {# ከዚህ ገጽ ወጥተዋል።}}",
+  "fix.chip.visitors": "{count, plural, one {# ጎብኚ ተጎድቷል} other {# ጎብኚዎች ተጎድተዋል}}",
+  "fix.chip.mostly": "በአብዛኛው {device}",
+  "fix.chip.target": "ክፍል፦ {target}",
+  "fix.device.mobile": "ስልኮች",
+  "fix.device.desktop": "ኮምፒውተሮች",
+  "fix.device.tablet": "ታብሌቶች",
+  "fix.statusError": "ይህን ጥገና ማዘመን አልተቻለም። ገጹን አድሰው እንደገና ይሞክሩ።"
 }

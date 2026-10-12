@@ -10,6 +10,7 @@ The from-scratch rebuild described in [`docs/rebuild/`](../docs/rebuild/README.m
 | `apps/collector` | Public ingest endpoint (`POST /i`, legacy `/collect`) and SDK file server; validates, checks the site's allowed origins, rate-limits, enqueues |
 | `apps/worker` | pg-boss jobs: applies ingest batches (visits + partitioned events), flips sites live, emails owners, closes idle visits, keeps partitions ahead |
 | `packages/sdk` | Tracking script v3: `p.js` (≤5 KB gz) + lazily loaded Web Vitals `v.js`; privacy by default, consent modes, legacy `/dxm.js` compatible |
+| `packages/detectors` | Pure fix detectors (rage and dead clicks so far), named thresholds, upsert/cooldown rules |
 | `packages/jobs` | Queue names, typed payloads, pg-boss setup, `migrateAll` (schema + queues + grants) |
 | `packages/mail` | Mailer interface: memory (tests), console (dev), Resend (production) |
 | `apps/web` | React 19 + Vite app: sign-in/up, onboarding, Today, Sites, Settings (profile, organization, team), English/Amharic, Ethiopian calendar, light/dark |
