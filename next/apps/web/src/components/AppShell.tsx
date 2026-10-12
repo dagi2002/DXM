@@ -1,22 +1,29 @@
 import { Banner, Logo, Select, cx } from '@pulse/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Activity, FileText, Globe, LogOut, PlaySquare, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button as RACButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { authClient } from '../lib/auth-client';
+import { isNavActive } from '../lib/nav';
 import { useMe } from '../lib/queries';
 import { LanguageSwitch } from './LanguageSwitch';
 
 /** Only destinations that actually exist are shown (honest UI). More arrive slice by slice. */
 const NAV = [
-  { to: '/today', key: 'nav.today', icon: Activity },
-  { to: '/sites', key: 'nav.sites', icon: Globe },
-  { to: '/replays', key: 'nav.replays', icon: PlaySquare },
-  { to: '/reports', key: 'nav.reports', icon: FileText },
-  { to: '/settings', key: 'nav.settings', icon: Settings },
+  // A fix opened from the Today feed keeps Today highlighted.
+  { to: '/today', key: 'nav.today', icon: Activity, match: ['/today', '/fixes'] },
+  { to: '/sites', key: 'nav.sites', icon: Globe, match: ['/sites'] },
+  { to: '/replays', key: 'nav.replays', icon: PlaySquare, match: ['/replays'] },
+  { to: '/reports', key: 'nav.reports', icon: FileText, match: ['/reports'] },
+  { to: '/settings', key: 'nav.settings', icon: Settings, match: ['/settings'] },
 ] as const;
+
+function useActiveNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (match: readonly string[]) => isNavActive(pathname, match);
+}
 
 function useOnline() {
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -87,6 +94,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const { me } = useMe();
   const online = useOnline();
+  const isActive = useActiveNav();
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[256px_1fr]">
@@ -106,15 +114,12 @@ export function AppShell() {
           <OrgSwitcher />
         </div>
         <nav aria-label={t('nav.main')} className="grid gap-0.5">
-          {NAV.map(({ to, key, icon: Icon }) => (
+          {NAV.map(({ to, key, icon: Icon, match }) => (
             <Link
               key={to}
               to={to}
-              className={navLinkClass}
-              activeProps={{
-                className: 'bg-primary-soft !text-primary font-semibold',
-                'aria-current': 'page',
-              }}
+              className={cx(navLinkClass, isActive(match) && 'bg-primary-soft !text-primary font-semibold')}
+              aria-current={isActive(match) ? 'page' : undefined}
             >
               <Icon size={20} aria-hidden="true" />
               {t(key)}
@@ -168,14 +173,15 @@ export function AppShell() {
           aria-label={t('nav.main')}
           className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-surface pb-[max(env(safe-area-inset-bottom),8px)] lg:hidden"
         >
-          {NAV.map(({ to, key, icon: Icon }) => (
+          {NAV.map(({ to, key, icon: Icon, match }) => (
             <Link
               key={to}
               to={to}
               className={cx(
                 'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-semibold text-text-faint outline-none focus-visible:bg-primary-soft',
+                isActive(match) && '!text-primary',
               )}
-              activeProps={{ className: '!text-primary', 'aria-current': 'page' }}
+              aria-current={isActive(match) ? 'page' : undefined}
             >
               <Icon size={22} aria-hidden="true" />
               {t(key)}
