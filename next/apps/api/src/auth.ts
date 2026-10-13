@@ -1,11 +1,12 @@
 import type { ServerEnv } from '@pulse/config';
+import { CalendarPref, Locale as LocaleSchema } from '@pulse/contracts';
 import type { Db } from '@pulse/db';
-import { schema } from '@pulse/db';
+import { eq, schema } from '@pulse/db';
 import { isLocale, type Locale } from '@pulse/i18n';
 import { t } from '@pulse/i18n/messages';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { magicLink, organization } from 'better-auth/plugins';
+import { magicLink, organization, twoFactor } from 'better-auth/plugins';
 import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements, memberAc, ownerAc } from 'better-auth/plugins/organization/access';
 import type { Mailer } from '@pulse/mail';
@@ -39,8 +40,14 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
     database: drizzleAdapter(db, { provider: 'pg', schema }),
     user: {
       additionalFields: {
-        locale: { type: 'string', defaultValue: 'en', input: true },
-        calendar: { type: 'string', defaultValue: 'gregorian', input: true },
+        // Settable at sign-up and via /update-user, so only known values are accepted.
+        locale: { type: 'string', defaultValue: 'en', input: true, validator: { input: LocaleSchema } },
+        calendar: {
+          type: 'string',
+          defaultValue: 'gregorian',
+          input: true,
+          validator: { input: CalendarPref },
+        },
       },
     },
     session: {
@@ -95,9 +102,34 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
           });
         },
       }),
+      twoFactor({
+        issuer: 'DXM Pulse',
+        // 30 s TOTP, 6 digits (authenticator-app defaults). Setup is only "on" after the first
+        // code verifies, so a half-finished enrollment can't lock anyone out.
+        backupCodeOptions: { amount: 10, length: 10 },
+        twoFactorCookieMaxAge: 60 * 10,
+        trustDeviceMaxAge: 60 * 60 * 24 * 30,
+      }),
       magicLink({
         expiresIn: 60 * 10,
         sendMagicLink: async ({ email, url }) => {
+          // A magic link proves only the inbox. For accounts with two-factor on, that would skip the
+          // second factor, so we send a "use your password and code" note instead. The HTTP response
+          // is identical either way, so this reveals nothing about the account.
+          const [owner] = await db
+            .select({ twoFactorEnabled: schema.user.twoFactorEnabled, locale: schema.user.locale })
+            .from(schema.user)
+            .where(eq(schema.user.email, email.toLowerCase()))
+            .limit(1);
+          if (owner?.twoFactorEnabled) {
+            const locale = asLocale(owner.locale);
+            await mailer.send({
+              to: email,
+              subject: t(locale, 'email.magic2fa.subject'),
+              text: t(locale, 'email.magic2fa.body', { url: `${env.APP_URL}/sign-in` }),
+            });
+            return;
+          }
           // The recipient may not have an account yet; English with Amharic follow-up is a v1.x item.
           await mailer.send({
             to: email,
@@ -116,6 +148,16 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
         '/sign-up/email': { window: 60, max: 5 },
         '/request-password-reset': { window: 60, max: 5 },
         '/sign-in/magic-link': { window: 60, max: 5 },
+        // Every one of these sends an email or checks a secret: keep them tight.
+        '/send-verification-email': { window: 60, max: 3 },
+        '/reset-password': { window: 60, max: 10 },
+        '/change-password': { window: 60, max: 5 },
+        '/change-email': { window: 60, max: 3 },
+        '/organization/invite-member': { window: 60, max: 20 },
+        // A 6-digit code has 10^6 values: keep guessing slow (the plugin also locks the account
+        // after 10 consecutive failures and burns a challenge after 5).
+        '/two-factor/verify-totp': { window: 60, max: 10 },
+        '/two-factor/verify-backup-code': { window: 60, max: 10 },
       },
     },
     advanced: {

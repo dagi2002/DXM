@@ -10,6 +10,7 @@ The from-scratch rebuild described in [`docs/rebuild/`](../docs/rebuild/README.m
 | `apps/collector` | Public ingest endpoint (`POST /i`, legacy `/collect`) and SDK file server; validates, checks the site's allowed origins, rate-limits, enqueues |
 | `apps/worker` | pg-boss jobs: applies ingest batches (visits + partitioned events), flips sites live, emails owners, closes idle visits, keeps partitions ahead |
 | `packages/sdk` | Tracking script v3: `p.js` (≤5 KB gz) + lazily loaded Web Vitals `v.js`; privacy by default, consent modes, legacy `/dxm.js` compatible |
+| `packages/detectors` | Pure fix detectors (rage and dead clicks so far), named thresholds, upsert/cooldown rules |
 | `packages/jobs` | Queue names, typed payloads, pg-boss setup, `migrateAll` (schema + queues + grants) |
 | `packages/mail` | Mailer interface: memory (tests), console (dev), Resend (production) |
 | `apps/web` | React 19 + Vite app: sign-in/up, onboarding, Today, Sites, Settings (profile, organization, team), English/Amharic, Ethiopian calendar, light/dark |
@@ -25,6 +26,11 @@ The from-scratch rebuild described in [`docs/rebuild/`](../docs/rebuild/README.m
 ## Run it locally
 
 Requires Node 22, pnpm 8+, and a local PostgreSQL 14+.
+
+> **Dev setup gotchas**
+>
+> - **Node version:** run `nvm use` first. The repo's `.nvmrc` (at the repo root; nvm finds it from `next/` too) pins Node 22, and `engines` requires ≥ 22.12.
+> - **`NODE_ENV` must be `development` locally.** `.env` sets `NODE_ENV=development`, but a variable already exported in your shell wins over `.env`. If your shell (or a profile script) has `NODE_ENV=production`, the API switches on its production checks — strong `BETTER_AUTH_SECRET`, `https://` `APP_URL`, a `RESEND_API_KEY` — and refuses to start. Check with `echo $NODE_ENV`; fix with `unset NODE_ENV` (or `export NODE_ENV=development`).
 
 ```bash
 cd next

@@ -5,6 +5,7 @@ import { createDatabase, sql } from '@pulse/db';
 import { createBoss, sendJob } from '@pulse/jobs';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
 import pino from 'pino';
+import { detectSite, sweepDetection } from './detect';
 import { applyIngest } from './ingest';
 import { notifySiteLive } from './notify';
 
@@ -53,10 +54,26 @@ await boss.work('maintenance.purge-dedupe', async () => {
   await db.execute(sql`select pulse_purge_ingest_dedupe(48)`);
 });
 
+// Fix detection (slice 3): a sweep fans out one staggered run per recently active site.
+await boss.work('detect.sweep', async () => {
+  const queued = await sweepDetection(db, boss);
+  if (queued) log.debug({ sites: queued }, 'detection queued');
+});
+await boss.work<{ siteId: string; orgId: string }>('detect.site', async (jobs) => {
+  for (const job of jobs) {
+    const result = await detectSite(db, job.data);
+    if (result.created.length || result.reopened.length || result.escalated.length) {
+      // Telegram / push / email alerts hook in here (slice 3, notifications).
+      log.info({ siteId: job.data.siteId, ...result }, 'fixes detected');
+    }
+  }
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
+await boss.schedule('detect.sweep', '*/2 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 
 // Health endpoint for the orchestrator / uptime checks.

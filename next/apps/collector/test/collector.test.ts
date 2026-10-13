@@ -88,6 +88,23 @@ describe('POST /i', () => {
     expect((await post(a, batch({ vid: 'x' }))).status).toBe(400);
     expect((await post(a, batch({ ev: [{ t: 'cl', ts: 1, p: '/', s: 'a', x: 5, y: 1 }] }))).status).toBe(400); // x must be a 0–1 ratio
     expect((await post(a, 'x'.repeat(70_000))).status).toBe(413);
+    // Chunked upload with no Content-Length: the limit is enforced while streaming.
+    const chunk = new TextEncoder().encode('x'.repeat(16_384));
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        if (sent++ < 64) ctrl.enqueue(chunk);
+        else ctrl.close();
+      },
+    });
+    const chunked = await a.request('/i', {
+      method: 'POST',
+      headers: { origin: ORIGIN, 'user-agent': UA, 'content-type': 'text/plain' },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit);
+    expect(chunked.status).toBe(413);
+    expect(sent).toBeLessThan(64); // stopped reading early instead of buffering ~1 MB
   });
 
   it('quietly drops bots and headless browsers', async () => {

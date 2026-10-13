@@ -119,5 +119,63 @@
 
 **Next: slice 3 — the "what to fix" feed.** Detectors run in the worker (rage/dead clicks, U-turns, form abandonment, JS errors, slow pages, tracking-broken), producing Fix cards, AI explanations and Telegram alerts.
 
+## 2026-10-12 — Phase 2, slice 2.5 (platform screens) ✅
+
+Every screen in the platform design is now built in `apps/web` (commit `4569324`), ahead of the backends that will feed them. Where a backend hasn't shipped, the screen runs on a flagged **sample layer** and says so on screen.
+
+**Shipped:**
+- **Today:** a fix feed. The headline names how many things are costing the lead site orders. The lead fix gets a full card (evidence, estimated impact, AI suggestion, replays, "Mark as fixing", "Dismiss"). Status tabs (Open / Fixing / Fixed / Verified / Dismissed) show counts. Verified fixes appear as "add to client report" rows. The side panel has sites with real 24 h visits, a sample "this week" panel and a Telegram teaser. When a site is live, a banner says visits are real and the fixes are sample data (`today.collecting`).
+- **Fix detail** (`/fixes/$fixId`): status stepper, replay clip with "Play from the moment" and "Next clip", affected visits table, impact maths, AI suggestion with code, and a "Next step" panel that moves the fix through the workflow.
+- **Site page** (`/sites/$siteId`): Overview / Replays / Install tabs. Overview has the health score, key numbers, the telebirr checkout funnel, speed by network and "pages that need you". It mixes real 24 h visits/pageviews with sample insights and labels which is which. A live site opens on Overview, a site still installing opens on Install.
+- **Replays** (`/replays`, `/replays/$replayId`): list and player with timeline, friction marks, AI recap, "back to the fix · clip n of m", previous/next visit.
+- **Reports** (`/reports`) and the **public share view** (`/r/$token`). No sign-in needed. It's read-only, has a language switch and "Download PDF" (print), and shows an "expired" state for unknown tokens.
+- **Landing page** at `/` when signed out (signed in goes to Today or onboarding), and always at `/welcome`. The sign-in/up screens got a brand panel on desktop.
+- **Shell:** 5 tabs (Today, Sites, Replays, Reports, Settings). It's a bottom bar on phones.
+- EN + AM strings for all of it (Amharic still needs a native review).
+
+**The sample layer: `apps/web/src/lib/sample.ts`**
+- It holds typed sample data for fixes (slice 3), replays (slice 4), site insights (slice 5) and client reports (slice 6), plus Today's "this week" panel. Every screen showing it carries the **Sample data** pill (`SamplePill`).
+- It's exposed only as TanStack Query options: `sampleFixesQuery`, `sampleReplaysQuery`, `sampleInsightsQuery`, `sampleReportsQuery`, `sampleWeekQuery`, each with `staleTime: Infinity` and a `queryFn` that returns a deep copy.
+- Fix status changes (`useSetFixStatus` in `routes/today.tsx`) only rewrite the query cache. They live in memory and reset on reload.
+- The interfaces (`Fix`, `Replay`, `SiteInsights`, `Report`) are meant to become the real contracts.
+
+**How to swap a sample for a real API (per slice):**
+1. Add the contract to `packages/contracts` (start from the interface in `sample.ts`) and the endpoint to `apps/api`, e.g. `GET /api/v1/fixes`.
+2. Add a real query next to the others in `lib/queries.ts`, using `api()` and an org-scoped key, e.g. `['fixes', orgId]`. Then point the screens at it instead of the `sample*Query`. Screens read through `useQuery`, so nothing else in the component changes.
+3. Fixes: turn `useSetFixStatus` into a `useMutation` (`PATCH /api/v1/fixes/:id`) that updates the cache optimistically and invalidates on settle, so the status tabs keep moving instantly.
+4. Public report: `/r/$token` needs an **unauthenticated, token-scoped** endpoint that returns only that report (no org data beyond it) and honours expiry.
+5. Remove the `SamplePill` from screens that no longer show sample data, and delete the data and query from `sample.ts`. Once it's empty, delete the file and the `sample.label` string.
+6. Update the e2e in `apps/web/e2e/platform.spec.ts`. It pins sample content (e.g. `fix_128`, `rep_1406`, `demo-september`), so seed equivalent rows in `e2e/prepare-db.ts` or assert on structure instead.
+
+**Tests (task 6):**
+- Got e2e on `rebuild` green again. The sign-in brand panel wordmark failed axe contrast: clsx doesn't merge classes, so the Logo's `text-text` won over `text-on-primary`. The install test also raced the site page switching itself to Overview when the site went live.
+- New `e2e/platform.spec.ts` covers: the landing page at `/` signed out and at `/welcome` (signed in too); `/r/demo-september` without signing in, plus an unknown token; Today → fix detail → replay → back to the fix; "Mark as fixing" moving a fix from Open to Fixing.
+- New unit test `src/lib/i18n-keys.test.ts`: every `t('…')` key in `apps/web/src` exists in `en.json`, and template keys like `` t(`fix.status.${s}`) `` must match at least one message. (en/am parity is already tested in `packages/i18n`.)
+- Playwright: 22 runs (desktop + 360px), all passing.
+
+**Not done yet:** every sample-backed screen still needs its slice (3 fixes, 4 replay, 5 insights, 6 reports). The landing page's "check your site" form only sends people to sign-up for now; it doesn't run a check.
+
+## 2026-10-12 — Phase 2, slice 3, part 1 (fix detection v1: click friction) 🟡
+
+**Shipped:**
+- **Data:** `issues` (one row per site + fingerprint, per-org running number, evidence/impact jsonb, first/last seen, fixed/verified times) and append-only `issue_events` (status history; actor null = the system). Both under forced RLS. Status/severity check constraints. A composite FK makes an issue's site belong to the issue's org. Migrations `0009_issues`, `0010_issues_rls` (renumbered after task 2's `0008_two_factor` at merge).
+- **`packages/detectors` (pure, ADR-007):** rage-click and dead-click detectors over a rolling 24 h window, grouped by page template (ids collapsed to `*`) and element. Thresholds are named constants in `thresholds.ts`: rage ≥ 3 visits (critical at 10), dead ≥ 5 (critical at 25), money pages (checkout/cart/pay/book/sign-up) critical at 5. `planUpsert` decides create / refresh / reopen / skip; a fixed issue ignores occurrences for a 30-minute cooldown, then reopens on regression. Dismissed issues stay dismissed.
+- **Worker:** `detect.sweep` every 2 minutes finds sites with recent activity (narrow SECURITY DEFINER function) and queues one staggered `detect.site` per site (`stately` + singletonKey, so at most one queued and one running per site). `detect.site` runs inside the org's RLS scope, is idempotent, and returns created / reopened / escalated ids for notifications to hook into.
+- **API:** `GET /api/v1/fixes` (filters: status, siteId, limit), `GET /api/v1/fixes/:id` (with history), `PATCH /api/v1/fixes/:id` (status, transition rules in `FIX_TRANSITIONS`, conditional update against concurrent changes). Owners, admins and members; client viewers get 403. Zod contracts in `@pulse/contracts` (`fixes.ts`).
+- **Web:** Today and the fix page read the real feed. While an org has no real fixes, the sample feed and its "Sample data" pill stay. Status buttons PATCH real fixes (optimistic, rolled back on error) and stay local for samples. Titles, summaries and chips are built from evidence in English and Amharic.
+- **Tests:** 29 detector unit tests, 9 worker tests against Postgres (idempotency, escalation, per-org numbering, tenant scope, cooldown/regression, dismissed, window, sweep), 13 API integration tests (contract shape, ordering, filters, transitions, CSRF, tenant isolation, roles), 2 web tests for the sample fallback.
+
+**Found while verifying:** the i18n "untranslated Amharic" test was red on `rebuild` ("Pulse Care" is a product name); fixed on `rebuild` in bfa7d2a.
+
+**Not done yet (rest of slice 3):**
+- Form-abandonment detector (`fs` without `fx`, `fe` per field).
+- Slow-pages detector (p75 LCP/INP per page template and network, from `vt` events).
+- JS-errors detector (`er` grouped by message + source).
+- U-turns and tracking-broken (schedule-driven) detectors.
+- Fix verification job (`issue.verify`: 7 days before vs 3–7 days after `fixed_at`, automatic `verified`).
+- AI explanations and suggested fixes (`ai.recommend`, `ai_artifacts` cache, per-org budget).
+- Telegram alerts (and push/email) for created / escalated / reopened issues, with quiet hours.
+- Revenue-at-risk impact (needs order values) and replay links from `sampleVisitIds` (slice 4).
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

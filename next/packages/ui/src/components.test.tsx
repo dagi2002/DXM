@@ -14,6 +14,8 @@ import {
   StatusBadge,
   TextField,
 } from './index';
+import { Checkbox } from './Checkbox';
+import { QrCode } from './QrCode';
 
 async function expectNoAxeViolations(container: HTMLElement) {
   const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } }); // contrast is tested on tokens
@@ -175,5 +177,41 @@ describe('CopyField', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
     expect(writeText).toHaveBeenCalledWith('<script async></script>');
     expect(await screen.findByText('Copied')).toBeInTheDocument();
+  });
+});
+
+describe('Checkbox', () => {
+  it('toggles with keyboard and exposes checked state', async () => {
+    function Controlled() {
+      const [on, setOn] = useState(false);
+      return (
+        <Checkbox isSelected={on} onChange={setOn}>
+          Trust this device
+        </Checkbox>
+      );
+    }
+    const { container } = render(<Controlled />);
+    const box = screen.getByRole('checkbox', { name: 'Trust this device' });
+    expect(box).not.toBeChecked();
+    await userEvent.tab();
+    await userEvent.keyboard(' ');
+    expect(box).toBeChecked();
+    await expectNoAxeViolations(container);
+  });
+});
+
+describe('QrCode', () => {
+  it('renders a decorative square SVG that changes with the value', () => {
+    const { rerender } = render(
+      <QrCode value="otpauth://totp/DXM%20Pulse:a%40b.et?secret=JBSWY3DPEHPK3PXP" />,
+    );
+    const svg = screen.getByTestId('qr-code');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(w).toBe(h);
+    expect(w).toBeGreaterThanOrEqual(25); // version ≥ 2 + border
+    const first = svg.querySelector('path')!.getAttribute('d');
+    rerender(<QrCode value="otpauth://totp/DXM%20Pulse:c%40d.et?secret=GEZDGNBVGY3TQOJQ" />);
+    expect(screen.getByTestId('qr-code').querySelector('path')!.getAttribute('d')).not.toBe(first);
   });
 });
