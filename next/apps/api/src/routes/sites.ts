@@ -210,6 +210,7 @@ export function siteRoutes(deps: AppDeps) {
     const recent = (emailsSent.get(row.id) ?? []).filter((t) => now - t < 3_600_000);
     if (recent.length >= 5)
       throw new ApiError(429, 'rate_limited', 'Too many emails for this site — try again later');
+    if (emailsSent.size > 10_000) emailsSent.clear(); // bound memory; the window is only an hour
     emailsSent.set(row.id, [...recent, now]);
     const user = c.get('user')!;
     const locale = isLocale(user.locale) ? user.locale : 'en';

@@ -80,6 +80,7 @@ export type SiteCreate = z.input<typeof SiteCreate>;
 export const ExtraOrigin = z
   .string()
   .trim()
+  .max(300)
   .transform((v, ctx) => {
     try {
       const u = new URL(v);
@@ -110,7 +111,7 @@ export const SiteUpdate = z
   .refine((v) => Object.keys(v).length > 0, { message: 'nothing_to_update' });
 export type SiteUpdate = z.input<typeof SiteUpdate>;
 
-export const SiteDelete = z.object({ confirmDomain: z.string() });
+export const SiteDelete = z.object({ confirmDomain: z.string().max(300) });
 
 export const Site = z.object({
   id: z.string(),

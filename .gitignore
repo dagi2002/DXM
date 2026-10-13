@@ -33,3 +33,6 @@ apps/api/data/*.db-wal
 .playwright-browsers/
 playwright-report/
 test-results/
+
+# Turborepo cache (any level)
+.turbo/

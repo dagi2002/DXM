@@ -1,4 +1,5 @@
 import type { ServerEnv } from '@pulse/config';
+import { CalendarPref, Locale as LocaleSchema } from '@pulse/contracts';
 import type { Db } from '@pulse/db';
 import { eq, schema } from '@pulse/db';
 import { isLocale, type Locale } from '@pulse/i18n';
@@ -39,8 +40,14 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
     database: drizzleAdapter(db, { provider: 'pg', schema }),
     user: {
       additionalFields: {
-        locale: { type: 'string', defaultValue: 'en', input: true },
-        calendar: { type: 'string', defaultValue: 'gregorian', input: true },
+        // Settable at sign-up and via /update-user, so only known values are accepted.
+        locale: { type: 'string', defaultValue: 'en', input: true, validator: { input: LocaleSchema } },
+        calendar: {
+          type: 'string',
+          defaultValue: 'gregorian',
+          input: true,
+          validator: { input: CalendarPref },
+        },
       },
     },
     session: {
@@ -141,6 +148,12 @@ export function authOptions(deps: { db: Db; env: ServerEnv; mailer: Mailer }) {
         '/sign-up/email': { window: 60, max: 5 },
         '/request-password-reset': { window: 60, max: 5 },
         '/sign-in/magic-link': { window: 60, max: 5 },
+        // Every one of these sends an email or checks a secret: keep them tight.
+        '/send-verification-email': { window: 60, max: 3 },
+        '/reset-password': { window: 60, max: 10 },
+        '/change-password': { window: 60, max: 5 },
+        '/change-email': { window: 60, max: 3 },
+        '/organization/invite-member': { window: 60, max: 20 },
         // A 6-digit code has 10^6 values: keep guessing slow (the plugin also locks the account
         // after 10 consecutive failures and burns a challenge after 5).
         '/two-factor/verify-totp': { window: 60, max: 10 },
