@@ -1,4 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { loadServerEnv } from '@pulse/config';
+import { authOptions } from '../src/auth';
 import { Client, createTestContext, resetDatabase, signUp, signUpWithOrg } from './helpers';
 
 const ctx = createTestContext();
@@ -142,6 +144,48 @@ describe('preferences', () => {
     const bad = await c.patch('/api/v1/me/preferences', { locale: 'fr' });
     expect(bad.status).toBe(400);
     expect(bad.body.error.code).toBe('validation_failed');
+  });
+
+  it('rejects unknown locale/calendar values through Better Auth endpoints too', async () => {
+    const signUpBad = await new Client(ctx.app).post('/api/auth/sign-up/email', {
+      email: 'odd@example.et',
+      password: 'correct horse battery',
+      name: 'Odd',
+      locale: 'x'.repeat(5000),
+    });
+    expect(signUpBad.status).toBe(400);
+    const c = await signUp(ctx.app, 'upd@example.et');
+    expect((await c.post('/api/auth/update-user', { calendar: 'bogus' })).status).toBe(400);
+    expect((await c.post('/api/auth/update-user', { calendar: 'ethiopian' })).status).toBe(200);
+    expect((await c.get('/api/v1/me')).body.user.calendar).toBe('ethiopian');
+  });
+});
+
+describe('auth rate limits', () => {
+  it('caps every endpoint that sends email or checks a secret', () => {
+    const opts = authOptions({
+      db: ctx.database.db,
+      env: loadServerEnv({
+        NODE_ENV: 'development',
+        DATABASE_URL: 'postgres://u:p@localhost:5432/x',
+        BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret-0123456789',
+      }),
+      mailer: ctx.mailer,
+    });
+    expect(opts.rateLimit.enabled).toBe(true);
+    for (const path of [
+      '/sign-in/email',
+      '/sign-up/email',
+      '/request-password-reset',
+      '/sign-in/magic-link',
+      '/send-verification-email',
+      '/reset-password',
+      '/change-password',
+    ]) {
+      expect(
+        opts.rateLimit.customRules[path as keyof typeof opts.rateLimit.customRules]?.max,
+      ).toBeLessThanOrEqual(10);
+    }
   });
 });
 

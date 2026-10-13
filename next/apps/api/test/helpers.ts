@@ -15,6 +15,7 @@ export const APP_URL = 'http://localhost:5174';
 
 const TABLES = [
   'audit_log',
+  'two_factor',
   'sites',
   'org_plans',
   'invitation',

@@ -9,6 +9,13 @@ describe('safeRedirect (no open redirects)', () => {
     ['/sites/site_1?x=1', '/sites/site_1?x=1'],
     ['//evil.example', '/'],
     ['https://evil.example', '/'],
+    ['/\\evil.example', '/'],
+    ['/\\/evil.example', '/'],
+    ['/\t/evil.example', '/'],
+    ['/\n/evil.example', '/'],
+    ['/%5Cevil.example', '/%5Cevil.example'],
+    ['javascript:alert(1)', '/'],
+    ['/reports#top', '/reports#top'],
     [undefined, '/'],
     [42, '/'],
   ])('%j → %s', (input, expected) => {

@@ -22,7 +22,7 @@ async function prepare() {
   const db = new pg.Client({ connectionString: E2E_ADMIN_DB });
   await db.connect();
   await db.query(
-    'truncate "events", "ingest_dedupe", "visits", "audit_log", "sites", "org_plans", "invitation", "member", "organization", "verification", "account", "session", "user" cascade',
+    'truncate "events", "ingest_dedupe", "visits", "audit_log", "two_factor", "sites", "org_plans", "invitation", "member", "organization", "verification", "account", "session", "user" cascade',
   );
   await db.end();
 }
