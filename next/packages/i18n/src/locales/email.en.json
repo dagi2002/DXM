@@ -10,5 +10,7 @@
   "email.siteLive.subject": "Pulse is now receiving visits from {site}",
   "email.siteLive.body": "We received the first visit from {domain}. Your site is live — issues will show up in Today: {url}",
   "email.install.subject": "Please add DXM Pulse to {domain}",
-  "email.install.body": "{inviter} asked you to add DXM Pulse to {domain}.\n\nPaste this line just before </head> on every page:\n\n{snippet}\n\nIt loads asynchronously, is under 5 KB, and never collects what people type. Step-by-step guides for WordPress, Shopify, Next.js and Telegram Mini Apps: {url}"
+  "email.install.body": "{inviter} asked you to add DXM Pulse to {domain}.\n\nPaste this line just before </head> on every page:\n\n{snippet}\n\nIt loads asynchronously, is under 5 KB, and never collects what people type. Step-by-step guides for WordPress, Shopify, Next.js and Telegram Mini Apps: {url}",
+  "email.magic2fa.subject": "Sign in to Pulse with your password",
+  "email.magic2fa.body": "Someone asked for a sign-in link for this email. Your account uses two-step verification, so email links are turned off for it. Sign in with your password and authenticator code instead: {url}\n\nIf this wasn't you, you can ignore this email."
 }

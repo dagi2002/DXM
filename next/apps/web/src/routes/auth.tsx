@@ -1,13 +1,17 @@
 import { defaultCalendar, type Locale } from '@pulse/i18n';
 import { Banner, Button, TextField } from '@pulse/ui';
+import { Checkbox } from '@pulse/ui/checkbox';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthLayout, TextLink } from '../components/AuthLayout';
 import { PasswordField } from '../components/PasswordField';
+import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
 import { authClient, authErrorKey } from '../lib/auth-client';
+import { MIN_PASSWORD_LENGTH } from '../lib/password-strength';
 import { safeRedirect } from '../lib/redirect';
+import { twoFactor } from '../lib/two-factor';
 import { publicConfigQuery, refreshMe } from '../lib/queries';
 
 function Divider() {
@@ -51,17 +55,39 @@ export function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<'password' | 'magic' | null>(null);
+  const [challenge, setChallenge] = useState(false);
+
+  const finish = async () => {
+    await refreshMe(qc);
+    await navigate({ to: safeRedirect(search.redirect) });
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setPending('password');
-    const { error: err } = await authClient.signIn.email({ email, password });
+    const { data, error: err } = await authClient.signIn.email({ email, password });
     setPending(null);
     if (err) return setError(t(authErrorKey(err.code)));
-    await refreshMe(qc);
-    await navigate({ to: safeRedirect(search.redirect) });
+    if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
+      setPassword('');
+      setNotice(null);
+      return setChallenge(true);
+    }
+    await finish();
   };
+
+  if (challenge) {
+    return (
+      <TwoFactorChallenge
+        onDone={finish}
+        onRestart={(message) => {
+          setChallenge(false);
+          setError(message);
+        }}
+      />
+    );
+  }
 
   const sendMagicLink = async () => {
     setError(null);
@@ -132,6 +158,117 @@ export function SignInPage() {
   );
 }
 
+/**
+ * Second step of a password sign-in for accounts with two-factor on. The server holds a
+ * short-lived, signed challenge cookie; no session exists until a code verifies.
+ */
+function TwoFactorChallenge({
+  onDone,
+  onRestart,
+}: {
+  onDone: () => Promise<void>;
+  onRestart: (message: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [mode, setMode] = useState<'totp' | 'backup'>('totp');
+  const [code, setCode] = useState('');
+  const [trust, setTrust] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const value = mode === 'totp' ? code.replace(/\s+/g, '') : code.trim();
+    if (mode === 'totp' && !/^\d{6}$/.test(value)) return setError(t('auth.twoFactor.error.format'));
+    if (!value) return setError(t('auth.twoFactor.error.invalidBackupCode'));
+    setPending(true);
+    const { error: err } =
+      mode === 'totp'
+        ? await twoFactor.verifyTotp(value, trust)
+        : await twoFactor.verifyBackupCode(value, trust);
+    if (err) {
+      setPending(false);
+      const key = authErrorKey(err.code);
+      // The challenge expired or was burned by too many wrong codes: start over from the password.
+      if (key === 'auth.twoFactor.error.expired') return onRestart(t(key));
+      // An unknown code on a fresh challenge is a wrong code, not a server failure.
+      return setError(
+        t(
+          key === 'auth.error.generic' && err.status === 401
+            ? mode === 'totp'
+              ? 'auth.twoFactor.error.invalidCode'
+              : 'auth.twoFactor.error.invalidBackupCode'
+            : key,
+        ),
+      );
+    }
+    await onDone();
+  };
+
+  const switchMode = () => {
+    setMode((m) => (m === 'totp' ? 'backup' : 'totp'));
+    setCode('');
+    setError(null);
+  };
+
+  return (
+    <AuthLayout
+      title={t('auth.twoFactor.title')}
+      subtitle={t(mode === 'totp' ? 'auth.twoFactor.subtitle' : 'auth.twoFactor.backup.subtitle')}
+      footer={
+        <button
+          type="button"
+          onClick={() => onRestart('')}
+          className="font-semibold text-primary underline-offset-4 outline-none hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          {t('auth.backToSignIn')}
+        </button>
+      }
+    >
+      <form onSubmit={submit} className="grid gap-4" noValidate>
+        {error ? <Banner tone="bad" title={error} /> : null}
+        {mode === 'totp' ? (
+          <TextField
+            key="totp"
+            label={t('auth.twoFactor.code')}
+            name="code"
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            maxLength={7}
+            value={code}
+            onChange={setCode}
+            isRequired
+            autoFocus
+            lang="en"
+          />
+        ) : (
+          <TextField
+            key="backup"
+            label={t('auth.twoFactor.backupCode')}
+            name="backup-code"
+            autoComplete="off"
+            value={code}
+            onChange={setCode}
+            isRequired
+            autoFocus
+            lang="en"
+          />
+        )}
+        <Checkbox isSelected={trust} onChange={setTrust}>
+          {t('auth.twoFactor.trustDevice')}
+        </Checkbox>
+        <Button type="submit" className="w-full" isPending={pending} pendingLabel={t('common.loading')}>
+          {t('auth.twoFactor.verify')}
+        </Button>
+        <Button variant="ghost" className="w-full" onPress={switchMode}>
+          {t(mode === 'totp' ? 'auth.twoFactor.useBackup' : 'auth.twoFactor.useApp')}
+        </Button>
+      </form>
+    </AuthLayout>
+  );
+}
+
 export function SignUpPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -146,7 +283,7 @@ export function SignUpPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 10) return setError(t('auth.error.weakPassword'));
+    if ([...password].length < MIN_PASSWORD_LENGTH) return setError(t('auth.error.weakPassword'));
     setPending(true);
     const locale = i18n.language as Locale;
     const { error: err } = await authClient.signUp.email({
@@ -203,6 +340,7 @@ export function SignUpPage() {
           autoComplete="new-password"
           description={t('auth.password.hint')}
         />
+        <PasswordStrengthMeter password={password} personal={[name, email]} />
         <Button type="submit" className="w-full" isPending={pending} pendingLabel={t('common.loading')}>
           {t('auth.signUp.submit')}
         </Button>
@@ -260,9 +398,11 @@ export function ResetPasswordPage() {
   const [state, setState] = useState<'idle' | 'pending' | 'done' | 'invalid'>(
     search.error || !search.token ? 'invalid' : 'idle',
   );
+  const [submitted, setSubmitted] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (password.length < 10) return;
+    setSubmitted(true);
+    if ([...password].length < MIN_PASSWORD_LENGTH) return;
     setState('pending');
     const { error } = await authClient.resetPassword({ newPassword: password, token: search.token! });
     setState(error ? 'invalid' : 'done');
@@ -281,8 +421,13 @@ export function ResetPasswordPage() {
             onChange={setPassword}
             autoComplete="new-password"
             description={t('auth.password.hint')}
-            errorMessage={password && password.length < 10 ? t('auth.error.weakPassword') : undefined}
+            errorMessage={
+              submitted && [...password].length < MIN_PASSWORD_LENGTH
+                ? t('auth.error.weakPassword')
+                : undefined
+            }
           />
+          <PasswordStrengthMeter password={password} />
           <Button
             type="submit"
             className="w-full"

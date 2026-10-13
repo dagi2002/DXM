@@ -148,7 +148,8 @@ export interface TextFieldProps {
   isRequired?: boolean;
   isDisabled?: boolean;
   autoFocus?: boolean;
-  inputMode?: 'text' | 'email' | 'url';
+  inputMode?: 'text' | 'email' | 'url' | 'numeric';
+  maxLength?: number;
   className?: string;
   endAdornment?: ReactNode;
   lang?: string;

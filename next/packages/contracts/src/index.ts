@@ -167,6 +167,7 @@ export const Me = z.object({
     name: z.string(),
     email: z.string(),
     emailVerified: z.boolean(),
+    twoFactorEnabled: z.boolean(),
     locale: Locale,
     calendar: CalendarPref,
   }),
@@ -174,6 +175,20 @@ export const Me = z.object({
   activeOrgId: z.string().nullable(),
 });
 export type Me = z.infer<typeof Me>;
+
+/** One signed-in device. Tokens never leave the server; sessions are addressed by id. */
+export const ActiveSession = z.object({
+  id: z.string(),
+  userAgent: z.string().nullable(),
+  ipAddress: z.string().nullable(),
+  createdAt: z.string(),
+  /** Last time the session was used (Better Auth refreshes it at most once a day). */
+  lastActiveAt: z.string(),
+  current: z.boolean(),
+});
+export type ActiveSession = z.infer<typeof ActiveSession>;
+export const ActiveSessions = z.object({ sessions: z.array(ActiveSession) });
+export type ActiveSessions = z.infer<typeof ActiveSessions>;
 
 export const PreferencesUpdate = z
   .object({ name: z.string().trim().min(1).max(80), locale: Locale, calendar: CalendarPref })

@@ -20,8 +20,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { meQuery, refreshMe, useFormatDate, useMe } from '../lib/queries';
+import { SecuritySection } from './settings-security';
 
-const TABS = ['profile', 'organization', 'team'] as const;
+const TABS = ['profile', 'security', 'organization', 'team'] as const;
 type TabId = (typeof TABS)[number];
 
 type Theme = 'system' | 'light' | 'dark';
@@ -352,6 +353,9 @@ export function SettingsPage() {
         </TabList>
         <TabPanel id="profile" className="outline-none">
           <ProfileSection />
+        </TabPanel>
+        <TabPanel id="security" className="outline-none">
+          <SecuritySection />
         </TabPanel>
         <TabPanel id="organization" className="outline-none">
           <OrganizationSection />
