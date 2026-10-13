@@ -15,6 +15,16 @@ export const QUEUES = {
   partitions: { name: 'maintenance.partitions', options: { retryLimit: 2 } },
   closeVisits: { name: 'maintenance.close-visits', options: { retryLimit: 1 } },
   purgeDedupe: { name: 'maintenance.purge-dedupe', options: { retryLimit: 2 } },
+  /** Every 2 minutes: find sites with recent activity and queue a detection run for each. */
+  detectSweep: { name: 'detect.sweep', options: { retryLimit: 1 } },
+  /**
+   * One detection run per site. `stately` + singletonKey = siteId keeps at most one queued and one
+   * active run per site, so a slow site can't pile up work.
+   */
+  detectSite: {
+    name: 'detect.site',
+    options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
+  },
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];
@@ -25,6 +35,8 @@ export interface JobPayloads {
   'maintenance.partitions': Record<string, never>;
   'maintenance.close-visits': Record<string, never>;
   'maintenance.purge-dedupe': Record<string, never>;
+  'detect.sweep': Record<string, never>;
+  'detect.site': { siteId: string; orgId: string };
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */

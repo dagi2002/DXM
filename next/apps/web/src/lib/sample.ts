@@ -1,6 +1,7 @@
 /**
- * Sample dataset for screens whose backend hasn't shipped yet (fix detection = slice 3,
- * replay = slice 4, reports = slice 6). Everything here is flagged `sample: true` and every
+ * Sample dataset for screens whose backend hasn't shipped yet (replay = slice 4, reports =
+ * slice 6). Fix detection is live (slice 3): the sample fixes stay as the empty-state feed until an
+ * org has real ones (see lib/fixes.ts). Everything here is flagged `sample: true` and every
  * screen that shows it carries a "Sample data" pill. When a slice lands, replace the matching
  * `queryFn` with an `api()` call — the shapes are meant to become the real contracts.
  */
@@ -396,11 +397,8 @@ const WEEK = {
 
 const later = <T>(value: T) => Promise.resolve(structuredClone(value));
 
-export const sampleFixesQuery = queryOptions({
-  queryKey: ['sample', 'fixes'],
-  queryFn: () => later(FIXES),
-  staleTime: Infinity,
-});
+/** Shown by the fix feed (lib/fixes.ts) until an organization has real fixes. */
+export const loadSampleFixes = () => later(FIXES);
 export const sampleReplaysQuery = queryOptions({
   queryKey: ['sample', 'replays'],
   queryFn: () => later(REPLAYS),

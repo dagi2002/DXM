@@ -1,27 +1,19 @@
 import { canManage, type Role } from '@pulse/contracts/constants';
 import type { Me } from '@pulse/contracts';
 import type { CalendarPref, Locale } from '@pulse/i18n';
-import {
-  Banner,
-  Button,
-  Card,
-  PageHeader,
-  Segmented,
-  Select,
-  Skeleton,
-  StatusBadge,
-  TextField,
-} from '@pulse/ui';
+import { Banner, Button, PageHeader, Segmented, Select, Skeleton, StatusBadge, TextField } from '@pulse/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { Panel } from '../components/pulse';
 import { api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { meQuery, refreshMe, useFormatDate, useMe } from '../lib/queries';
+import { SecuritySection } from './settings-security';
 
-const TABS = ['profile', 'organization', 'team'] as const;
+const TABS = ['profile', 'security', 'organization', 'team'] as const;
 type TabId = (typeof TABS)[number];
 
 type Theme = 'system' | 'light' | 'dark';
@@ -62,10 +54,8 @@ function ProfileSection() {
     save.mutate();
   };
   return (
-    <Card as="section">
-      <h2 className="font-display text-lg font-bold">{t('settings.profile')}</h2>
-      <p className="mt-1 text-sm text-text-muted">{t('settings.profile.subtitle')}</p>
-      <form onSubmit={submit} className="mt-5 grid max-w-md gap-5">
+    <Panel id="settings-profile" title={t('settings.profile')} note={t('settings.profile.subtitle')}>
+      <form onSubmit={submit} className="grid max-w-md gap-5">
         {save.isSuccess ? <Banner tone="good" title={t('common.saved')} /> : null}
         {save.isError ? <Banner tone="bad" title={t('errors.generic.body')} /> : null}
         <TextField label={t('auth.name')} value={name} onChange={setName} autoComplete="name" isRequired />
@@ -103,7 +93,7 @@ function ProfileSection() {
           </Button>
         </div>
       </form>
-    </Card>
+    </Panel>
   );
 }
 
@@ -124,10 +114,9 @@ function OrganizationSection() {
   });
   const manage = canManage(role);
   return (
-    <Card as="section">
-      <h2 className="font-display text-lg font-bold">{t('settings.organization')}</h2>
+    <Panel id="settings-organization" title={t('settings.organization')}>
       <form
-        className="mt-5 grid max-w-md gap-5"
+        className="grid max-w-md gap-5"
         onSubmit={(e) => {
           e.preventDefault();
           save.mutate();
@@ -155,7 +144,7 @@ function OrganizationSection() {
           </div>
         ) : null}
       </form>
-    </Card>
+    </Panel>
   );
 }
 
@@ -215,13 +204,10 @@ function TeamSection() {
   const pending = team.data?.invitations.filter((i) => i.status === 'pending') ?? [];
 
   return (
-    <Card as="section">
-      <h2 className="font-display text-lg font-bold">{t('settings.team')}</h2>
-      <p className="mt-1 text-sm text-text-muted">{t('settings.team.subtitle')}</p>
-
+    <Panel id="settings-team" title={t('settings.team')} note={t('settings.team.subtitle')}>
       {manage ? (
         <form
-          className="mt-5 grid gap-4 rounded-md bg-surface-sunken p-4 sm:grid-cols-[1fr_200px_auto] sm:items-end"
+          className="grid gap-4 rounded-md bg-surface-sunken p-4 sm:grid-cols-[1fr_200px_auto] sm:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             setSentTo(null);
@@ -254,21 +240,13 @@ function TeamSection() {
           <p className="text-xs text-text-muted sm:col-span-3">{t('settings.team.role.help')}</p>
         </form>
       ) : null}
-      {sentTo ? (
-        <div className="mt-4">
-          <Banner tone="good" title={t('settings.team.invited', { email: sentTo })} />
-        </div>
-      ) : null}
-      {invite.isError ? (
-        <div className="mt-4">
-          <Banner tone="bad" title={t('errors.generic.body')} />
-        </div>
-      ) : null}
+      {sentTo ? <Banner tone="good" title={t('settings.team.invited', { email: sentTo })} /> : null}
+      {invite.isError ? <Banner tone="bad" title={t('errors.generic.body')} /> : null}
 
       {team.isLoading ? (
-        <Skeleton className="mt-5 h-24" />
+        <Skeleton className="h-24" />
       ) : (
-        <ul className="mt-5 divide-y divide-border" aria-label={t('settings.team')}>
+        <ul className="divide-y divide-border" aria-label={t('settings.team')}>
           {team.data?.members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-3 py-3">
               <span
@@ -300,9 +278,9 @@ function TeamSection() {
       )}
 
       {pending.length ? (
-        <>
-          <h3 className="mt-6 text-sm font-semibold text-text-muted">{t('settings.team.pending')}</h3>
-          <ul className="mt-2 divide-y divide-border">
+        <div className="mt-2 grid gap-1 border-t border-border pt-4">
+          <h3 className="text-sm font-semibold text-text-muted">{t('settings.team.pending')}</h3>
+          <ul className="divide-y divide-border">
             {pending.map((inv) => (
               <li key={inv.id} className="flex flex-wrap items-center gap-3 py-3">
                 <span className="min-w-0 flex-1 truncate" lang="en">
@@ -320,29 +298,35 @@ function TeamSection() {
               </li>
             ))}
           </ul>
-        </>
+        </div>
       ) : null}
-    </Card>
+    </Panel>
   );
 }
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const { me, activeOrg } = useMe();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { tab?: string };
   const tab: TabId = TABS.includes(search.tab as TabId) ? (search.tab as TabId) : 'profile';
+  // Same underline tabs as Today and Site detail.
   const tabClass =
-    'inline-flex min-h-11 cursor-default items-center rounded-md px-3 text-sm font-semibold text-text-muted outline-none data-[hovered]:text-text data-[selected]:bg-surface data-[selected]:text-text data-[selected]:shadow-sm data-[focus-visible]:outline-3 data-[focus-visible]:outline-primary';
+    'inline-flex min-h-11 shrink-0 cursor-default items-center border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-text-muted outline-none data-[hovered]:text-text data-[selected]:border-text data-[selected]:font-semibold data-[selected]:text-text data-[focus-visible]:bg-primary-soft';
   return (
     <>
-      <PageHeader title={t('settings.title')} />
+      <PageHeader
+        eyebrow={t('settings.title')}
+        title={t('settings.headline', { name: me.user.name, org: activeOrg.name })}
+        summary={t('settings.summary')}
+      />
       <Tabs
         selectedKey={tab}
         onSelectionChange={(k) => navigate({ to: '/settings', search: { tab: String(k) }, replace: true })}
       >
         <TabList
           aria-label={t('settings.title')}
-          className="mb-5 inline-flex flex-wrap gap-1 rounded-md border border-border bg-surface-sunken p-1"
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
         >
           {TABS.map((id) => (
             <Tab key={id} id={id} className={tabClass}>
@@ -352,6 +336,9 @@ export function SettingsPage() {
         </TabList>
         <TabPanel id="profile" className="outline-none">
           <ProfileSection />
+        </TabPanel>
+        <TabPanel id="security" className="outline-none">
+          <SecuritySection />
         </TabPanel>
         <TabPanel id="organization" className="outline-none">
           <OrganizationSection />

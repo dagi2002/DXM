@@ -3,7 +3,7 @@ import type { Today } from '@pulse/contracts';
 import { formatRelative, type Locale } from '@pulse/i18n';
 import { formatDelta, formatMetric } from '@pulse/metrics';
 import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -19,16 +19,8 @@ import {
   tabPanelClass,
 } from '../components/pulse';
 import { todayQuery, useFormatDate, useMe } from '../lib/queries';
-import { FIX_STATUSES, sampleFixesQuery, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
-
-/** Moves a sample fix through the workflow (open → fixing → fixed → verified, or dismissed). */
-export function useSetFixStatus() {
-  const qc = useQueryClient();
-  return (id: string, status: FixStatus) =>
-    qc.setQueryData(sampleFixesQuery.queryKey, (fixes) =>
-      fixes?.map((f) => (f.id === id ? { ...f, status } : f)),
-    );
-}
+import { useFixes, useSetFixStatus } from '../lib/fixes';
+import { FIX_STATUSES, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
 
 function FixMeta({ fix }: { fix: Fix }) {
   return (
@@ -46,15 +38,18 @@ function FixCard({
   fix,
   locale,
   onStatusChange,
+  statusError,
 }: {
   fix: Fix;
   locale: Locale;
   onStatusChange: (id: string, status: FixStatus) => void;
+  statusError?: unknown;
 }) {
   const { t } = useTranslation();
   const setStatus = onStatusChange;
   return (
     <article className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
+      {statusError ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <FixMeta fix={fix} />
         <span className="text-[0.8125rem] text-text-muted">
@@ -211,7 +206,7 @@ export function TodayPage() {
   const navigate = useNavigate();
   const locale = i18n.language as Locale;
   const { data, isLoading } = useQuery(todayQuery(orgId));
-  const { data: fixes = [] } = useQuery(sampleFixesQuery);
+  const { fixes, sample } = useFixes();
   const { data: week } = useQuery(sampleWeekQuery);
   const [tab, setTab] = useState<FixStatus>('open');
   const setStatus = useSetFixStatus();
@@ -292,7 +287,7 @@ export function TodayPage() {
         })}
         actions={
           <>
-            <SamplePill className="self-center" />
+            {sample ? <SamplePill className="self-center" /> : null}
             {canManage(role) ? (
               <Button onPress={addSite}>
                 <Plus size={18} aria-hidden="true" />
@@ -329,15 +324,26 @@ export function TodayPage() {
           {FIX_STATUSES.map((s) => (
             <TabPanel key={s} id={s} className={tabPanelClass}>
               {shown.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border-strong px-6 py-10 text-center text-text-muted">
-                  {t('fix.emptyTab')}
-                </p>
+                <EmptyState
+                  title={t(`fix.empty.${tab}`)}
+                  action={
+                    <Button onPress={() => setTab(tab === 'open' ? 'verified' : 'open')}>
+                      {t(tab === 'open' ? 'fix.empty.seeVerified' : 'fix.empty.seeOpen')}
+                    </Button>
+                  }
+                />
               ) : null}
               {shown.map((f, i) =>
                 f.status === 'verified' ? (
                   <VerifiedRow key={f.id} fix={f} />
                 ) : i === 0 && tab === 'open' ? (
-                  <FixCard key={f.id} fix={f} locale={locale} onStatusChange={changeStatus} />
+                  <FixCard
+                    key={f.id}
+                    fix={f}
+                    locale={locale}
+                    onStatusChange={changeStatus}
+                    statusError={setStatus.error}
+                  />
                 ) : (
                   <FixRow key={f.id} fix={f} />
                 ),
@@ -420,11 +426,14 @@ export function Delta({
   value,
   previous,
   locale,
+  suffix,
 }: {
   metric: Parameters<typeof formatDelta>[0];
   value: number;
   previous: number;
   locale: Locale;
+  /** Comparison period, e.g. "since last week". */
+  suffix?: string;
 }) {
   const d = formatDelta(metric, value, previous, locale);
   if (!d) return null;
@@ -437,6 +446,7 @@ export function Delta({
     >
       {d.direction === 'up' ? '↑ ' : d.direction === 'down' ? '↓ ' : '→ '}
       {d.text}
+      {suffix ? <span className="font-normal text-text-muted"> {suffix}</span> : null}
     </span>
   );
 }

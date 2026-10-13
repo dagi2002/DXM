@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 
 export * from './constants';
+export * from './fixes';
+// Explicit so the Zod schemas win over the same-named types in ./constants.
+export { FixKind, FixSeverity, FixStatus } from './fixes';
 
 /* ── Errors ─────────────────────────────────────────────────────────────────
  * One envelope for every API error (ADR-005). Codes are stable; messages are for humans.
@@ -80,6 +83,7 @@ export type SiteCreate = z.input<typeof SiteCreate>;
 export const ExtraOrigin = z
   .string()
   .trim()
+  .max(300)
   .transform((v, ctx) => {
     try {
       const u = new URL(v);
@@ -110,7 +114,7 @@ export const SiteUpdate = z
   .refine((v) => Object.keys(v).length > 0, { message: 'nothing_to_update' });
 export type SiteUpdate = z.input<typeof SiteUpdate>;
 
-export const SiteDelete = z.object({ confirmDomain: z.string() });
+export const SiteDelete = z.object({ confirmDomain: z.string().max(300) });
 
 export const Site = z.object({
   id: z.string(),
@@ -166,6 +170,7 @@ export const Me = z.object({
     name: z.string(),
     email: z.string(),
     emailVerified: z.boolean(),
+    twoFactorEnabled: z.boolean(),
     locale: Locale,
     calendar: CalendarPref,
   }),
@@ -173,6 +178,20 @@ export const Me = z.object({
   activeOrgId: z.string().nullable(),
 });
 export type Me = z.infer<typeof Me>;
+
+/** One signed-in device. Tokens never leave the server; sessions are addressed by id. */
+export const ActiveSession = z.object({
+  id: z.string(),
+  userAgent: z.string().nullable(),
+  ipAddress: z.string().nullable(),
+  createdAt: z.string(),
+  /** Last time the session was used (Better Auth refreshes it at most once a day). */
+  lastActiveAt: z.string(),
+  current: z.boolean(),
+});
+export type ActiveSession = z.infer<typeof ActiveSession>;
+export const ActiveSessions = z.object({ sessions: z.array(ActiveSession) });
+export type ActiveSessions = z.infer<typeof ActiveSessions>;
 
 export const PreferencesUpdate = z
   .object({ name: z.string().trim().min(1).max(80), locale: Locale, calendar: CalendarPref })

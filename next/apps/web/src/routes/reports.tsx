@@ -3,7 +3,7 @@ import { formatMetric } from '@pulse/metrics';
 import { CopyField, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { CheckCircle2, Download } from 'lucide-react';
+import { CheckCircle2, Download, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 import { SamplePill } from '../components/pulse';
@@ -132,7 +132,7 @@ export function ReportView({
   const Title = embedded ? 'h2' : 'h1';
   const Section = embedded ? 'h3' : 'h2';
   return (
-    <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl bg-surface p-6 shadow-sm sm:p-12 lg:p-16">
+    <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl border border-border bg-surface p-6 sm:p-12 lg:p-16">
       <header className="grid gap-7 border-b border-border pb-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -238,7 +238,15 @@ export function ReportsPage() {
       {isLoading ? (
         <Skeleton className="h-96" />
       ) : !report ? (
-        <EmptyState title={t('reports.empty')} />
+        <EmptyState
+          icon={<FileText size={22} aria-hidden="true" />}
+          title={t('reports.empty')}
+          action={
+            <Link to="/sites" className={buttonClass()}>
+              {t('reports.empty.action')}
+            </Link>
+          }
+        />
       ) : (
         <div className="grid gap-6">
           <section className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">

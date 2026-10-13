@@ -10,5 +10,7 @@
   "email.siteLive.subject": "Pulse ከ{site} ጉብኝቶችን መቀበል ጀምሯል",
   "email.siteLive.body": "ከ{domain} የመጀመሪያውን ጉብኝት ተቀብለናል። ድረ-ገጽዎ ቀጥታ ነው — ችግሮች በ«ዛሬ» ገጽ ላይ ይታያሉ፦ {url}",
   "email.install.subject": "እባክዎ DXM Pulseን በ{domain} ላይ ይጫኑ",
-  "email.install.body": "{inviter} DXM Pulseን በ{domain} ላይ እንዲጭኑ ጠይቀዋል።\n\nይህንን መስመር በእያንዳንዱ ገጽ ላይ ከ</head> በፊት ይለጥፉ፦\n\n{snippet}\n\nገጹን አያዘገይም (ከ5 KB በታች)፣ ሰዎች የሚጽፉትንም አይሰበስብም። ለWordPress፣ Shopify፣ Next.js እና የቴሌግራም ሚኒ አፖች ደረጃ በደረጃ መመሪያ፦ {url}"
+  "email.install.body": "{inviter} DXM Pulseን በ{domain} ላይ እንዲጭኑ ጠይቀዋል።\n\nይህንን መስመር በእያንዳንዱ ገጽ ላይ ከ</head> በፊት ይለጥፉ፦\n\n{snippet}\n\nገጹን አያዘገይም (ከ5 KB በታች)፣ ሰዎች የሚጽፉትንም አይሰበስብም። ለWordPress፣ Shopify፣ Next.js እና የቴሌግራም ሚኒ አፖች ደረጃ በደረጃ መመሪያ፦ {url}",
+  "email.magic2fa.subject": "በይለፍ ቃልዎ ወደ Pulse ይግቡ",
+  "email.magic2fa.body": "አንድ ሰው ለዚህ ኢሜይል የመግቢያ ሊንክ ጠይቋል። መለያዎ ባለሁለት ደረጃ ማረጋገጫ ስለሚጠቀም የኢሜይል ሊንኮች ጠፍተዋል። በምትኩ በይለፍ ቃልዎ እና በአረጋጋጭ መተግበሪያው ኮድ ይግቡ፦ {url}\n\nይህንን ያልጠየቁት እርስዎ ካልሆኑ ይህን ኢሜይል ችላ ማለት ይችላሉ።"
 }

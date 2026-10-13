@@ -115,6 +115,7 @@ export const healthTone = (score: number) => (score >= 75 ? 'good' : score >= 50
 /**
  * The phone in a replay clip: a wireframe of the checkout page, the cookie banner on top of
  * the pay button, and the rage-tap rings. Purely illustrative until real rrweb replay lands.
+ * Semantic tokens only, so the wireframe follows light and dark themes.
  */
 export function ReplayPhone({ scale = 1, label }: { scale?: number; label: string }) {
   return (
@@ -122,42 +123,45 @@ export function ReplayPhone({ scale = 1, label }: { scale?: number; label: strin
       role="img"
       aria-label={label}
       style={{ width: 248 * scale, height: 480 * scale }}
-      className="relative shrink-0 overflow-hidden rounded-[16px] bg-white"
+      className="relative shrink-0 overflow-hidden rounded-[16px] bg-bg ring-1 ring-border-strong"
     >
       <div
         style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: 248, height: 480 }}
         className="relative flex flex-col gap-2.5 px-3.5 py-4"
       >
         <div className="flex items-center justify-between">
-          <div className="h-3 w-18 rounded bg-neutral-900" />
-          <div className="h-3 w-6 rounded bg-neutral-200" />
+          <div className="h-3 w-18 rounded bg-text" />
+          <div className="h-3 w-6 rounded bg-border" />
         </div>
-        <div className="mt-1.5 h-2.5 w-1/2 rounded bg-neutral-200" />
-        <div className="grid gap-2 rounded-lg border border-neutral-200 p-3">
+        <div className="mt-1.5 h-2.5 w-1/2 rounded bg-border" />
+        <div className="grid gap-2 rounded-lg border border-border bg-surface p-3">
           <div className="flex justify-between">
-            <div className="h-2 w-22 rounded-sm bg-neutral-300" />
-            <div className="h-2 w-10 rounded-sm bg-neutral-300" />
+            <div className="h-2 w-22 rounded-sm bg-border-strong" />
+            <div className="h-2 w-10 rounded-sm bg-border-strong" />
           </div>
           <div className="flex justify-between">
-            <div className="h-2 w-18 rounded-sm bg-neutral-300" />
-            <div className="h-2 w-10 rounded-sm bg-neutral-300" />
+            <div className="h-2 w-18 rounded-sm bg-border-strong" />
+            <div className="h-2 w-10 rounded-sm bg-border-strong" />
           </div>
         </div>
         <div className="mt-1.5 grid gap-1.5">
-          <div className="h-8.5 rounded-md border border-neutral-200 bg-neutral-100" />
-          <div className="h-8.5 rounded-md border border-neutral-200 bg-neutral-100" />
+          <div className="h-8.5 rounded-md border border-border bg-surface-sunken" />
+          <div className="h-8.5 rounded-md border border-border bg-surface-sunken" />
         </div>
-        <div className="absolute inset-x-3.5 top-[296px] grid h-10 place-items-center rounded-lg bg-blue-700 text-xs font-semibold text-white">
+        <div
+          className="absolute inset-x-3.5 top-[296px] grid h-10 place-items-center rounded-lg bg-primary text-xs font-semibold text-on-primary"
+          lang="en"
+        >
           Pay with telebirr
         </div>
-        <div className="absolute inset-x-0 bottom-0 grid h-[150px] content-start gap-2.5 bg-neutral-900 p-3.5">
-          <div className="h-2 w-4/5 rounded-sm bg-neutral-600" />
-          <div className="h-2 w-3/5 rounded-sm bg-neutral-600" />
-          <div className="h-6.5 w-14 rounded-md bg-white" />
+        <div className="absolute inset-x-0 bottom-0 grid h-[150px] content-start gap-2.5 bg-border-strong p-3.5">
+          <div className="h-2 w-4/5 rounded-sm bg-text-faint" />
+          <div className="h-2 w-3/5 rounded-sm bg-text-faint" />
+          <div className="h-6.5 w-14 rounded-md bg-text" />
         </div>
-        <span className="absolute top-[322px] left-[112px] size-[30px] rounded-full border-2 border-orange-400 bg-orange-400/25" />
-        <span className="absolute top-[314px] left-[104px] size-[46px] rounded-full border-[1.5px] border-orange-400/50" />
-        <span className="absolute top-[296px] left-[150px] rounded bg-red-700 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        <span className="absolute top-[322px] left-[112px] size-[30px] rounded-full border-2 border-warn bg-warn/25" />
+        <span className="absolute top-[314px] left-[104px] size-[46px] rounded-full border-[1.5px] border-warn/50" />
+        <span className="absolute top-[296px] left-[150px] rounded bg-bad px-1.5 py-0.5 text-[10px] font-bold text-on-primary">
           ×6
         </span>
       </div>

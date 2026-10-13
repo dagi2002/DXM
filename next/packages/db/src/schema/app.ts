@@ -171,3 +171,67 @@ export const ingestDedupe = pgTable(
 export type VisitRow = typeof visits.$inferSelect;
 export type SiteRow = typeof sites.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
+
+const FIX_KINDS = ['rage_click', 'dead_click'] as const;
+const FIX_SEVERITIES = ['critical', 'watch'] as const;
+const FIX_STATUSES = ['open', 'fixing', 'fixed', 'verified', 'dismissed'] as const;
+
+/**
+ * Fix cards (slice 3). One row per (site, fingerprint): detectors upsert by fingerprint, so a
+ * recurring problem refreshes its row instead of piling up duplicates. A fixed issue that comes
+ * back after the cooldown is reopened on the same row.
+ */
+export const issues = pgTable(
+  'issues',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    /** Per-org running number ("Fix #12"). */
+    number: integer('number').notNull(),
+    kind: text('kind', { enum: FIX_KINDS }).notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    severity: text('severity', { enum: FIX_SEVERITIES }).notNull(),
+    status: text('status', { enum: FIX_STATUSES }).notNull().default('open'),
+    evidence: jsonb('evidence').$type<Record<string, unknown>>().notNull(),
+    impact: jsonb('impact').$type<Record<string, unknown>>(),
+    firstSeen: timestamp('first_seen', { withTimezone: true }).notNull(),
+    lastSeen: timestamp('last_seen', { withTimezone: true }).notNull(),
+    fixedAt: timestamp('fixed_at', { withTimezone: true }),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('issues_site_fingerprint_uq').on(t.siteId, t.fingerprint),
+    uniqueIndex('issues_org_number_uq').on(t.orgId, t.number),
+    index('issues_org_status_seen_idx').on(t.orgId, t.status, t.lastSeen),
+  ],
+);
+
+/** Status history for the audit trail and reports. actor null = the system did it. */
+export const issueEvents = pgTable(
+  'issue_events',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    issueId: text('issue_id')
+      .notNull()
+      .references(() => issues.id, { onDelete: 'cascade' }),
+    actorUserId: text('actor_user_id').references(() => user.id, { onDelete: 'set null' }),
+    fromStatus: text('from_status', { enum: FIX_STATUSES }),
+    toStatus: text('to_status', { enum: FIX_STATUSES }).notNull(),
+    /** Why the system changed it: detected | regressed. Null for people. */
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('issue_events_issue_idx').on(t.issueId, t.createdAt)],
+);
+
+export type IssueRow = typeof issues.$inferSelect;
+export type IssueEventRow = typeof issueEvents.$inferSelect;
