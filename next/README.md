@@ -26,6 +26,11 @@ The from-scratch rebuild described in [`docs/rebuild/`](../docs/rebuild/README.m
 
 Requires Node 22, pnpm 8+, and a local PostgreSQL 14+.
 
+> **Dev setup gotchas**
+>
+> - **Node version:** run `nvm use` first. The repo's `.nvmrc` (at the repo root; nvm finds it from `next/` too) pins Node 22, and `engines` requires ≥ 22.12.
+> - **`NODE_ENV` must be `development` locally.** `.env` sets `NODE_ENV=development`, but a variable already exported in your shell wins over `.env`. If your shell (or a profile script) has `NODE_ENV=production`, the API switches on its production checks — strong `BETTER_AUTH_SECRET`, `https://` `APP_URL`, a `RESEND_API_KEY` — and refuses to start. Check with `echo $NODE_ENV`; fix with `unset NODE_ENV` (or `export NODE_ENV=development`).
+
 ```bash
 cd next
 pnpm install
