@@ -16,14 +16,14 @@
     "@pulse/db": "workspace:*",
     "@pulse/i18n": "workspace:*",
     "@pulse/jobs": "workspace:*",
-    "pino": "^10.4.0",
-    "@pulse/mail": "workspace:*"
+    "@pulse/mail": "workspace:*",
+    "pino": "^10.4.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.5",
-    "pg": "^8.16.3",
-    "tsup": "^8.5.0",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1",
+    "tsup": "^8.5.1",
     "tsx": "^4.23.15",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   }
 }

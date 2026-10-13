@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SiteCreate, SiteUpdate, allowedOriginsFor, canManage, normalizeDomain } from './index';
+import { SiteCreate, SiteDelete, SiteUpdate, allowedOriginsFor, canManage, normalizeDomain } from './index';
 
 describe('normalizeDomain', () => {
   it.each([
@@ -61,5 +61,14 @@ describe('canManage', () => {
     expect(canManage('member')).toBe(false);
     expect(canManage('client_viewer')).toBe(false);
     expect(canManage(null)).toBe(false);
+  });
+});
+
+describe('input size bounds', () => {
+  it('rejects oversized extra origins and delete confirmations', () => {
+    const long = `https://${'a'.repeat(300)}.et`;
+    expect(SiteUpdate.safeParse({ extraOrigins: [long] }).success).toBe(false);
+    expect(SiteDelete.safeParse({ confirmDomain: 'x'.repeat(301) }).success).toBe(false);
+    expect(SiteUpdate.safeParse({ extraOrigins: ['https://staging.shop.et'] }).success).toBe(true);
   });
 });
