@@ -155,5 +155,27 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 
 **Not done yet:** every sample-backed screen still needs its slice (3 fixes, 4 replay, 5 insights, 6 reports). The landing page's "check your site" form only sends people to sign-up for now; it doesn't run a check.
 
+## 2026-10-12 — Phase 2, slice 3, part 1 (fix detection v1: click friction) 🟡
+
+**Shipped:**
+- **Data:** `issues` (one row per site + fingerprint, per-org running number, evidence/impact jsonb, first/last seen, fixed/verified times) and append-only `issue_events` (status history; actor null = the system). Both under forced RLS. Status/severity check constraints. A composite FK makes an issue's site belong to the issue's org. Migrations `0009_issues`, `0010_issues_rls` (renumbered after task 2's `0008_two_factor` at merge).
+- **`packages/detectors` (pure, ADR-007):** rage-click and dead-click detectors over a rolling 24 h window, grouped by page template (ids collapsed to `*`) and element. Thresholds are named constants in `thresholds.ts`: rage ≥ 3 visits (critical at 10), dead ≥ 5 (critical at 25), money pages (checkout/cart/pay/book/sign-up) critical at 5. `planUpsert` decides create / refresh / reopen / skip; a fixed issue ignores occurrences for a 30-minute cooldown, then reopens on regression. Dismissed issues stay dismissed.
+- **Worker:** `detect.sweep` every 2 minutes finds sites with recent activity (narrow SECURITY DEFINER function) and queues one staggered `detect.site` per site (`stately` + singletonKey, so at most one queued and one running per site). `detect.site` runs inside the org's RLS scope, is idempotent, and returns created / reopened / escalated ids for notifications to hook into.
+- **API:** `GET /api/v1/fixes` (filters: status, siteId, limit), `GET /api/v1/fixes/:id` (with history), `PATCH /api/v1/fixes/:id` (status, transition rules in `FIX_TRANSITIONS`, conditional update against concurrent changes). Owners, admins and members; client viewers get 403. Zod contracts in `@pulse/contracts` (`fixes.ts`).
+- **Web:** Today and the fix page read the real feed. While an org has no real fixes, the sample feed and its "Sample data" pill stay. Status buttons PATCH real fixes (optimistic, rolled back on error) and stay local for samples. Titles, summaries and chips are built from evidence in English and Amharic.
+- **Tests:** 29 detector unit tests, 9 worker tests against Postgres (idempotency, escalation, per-org numbering, tenant scope, cooldown/regression, dismissed, window, sweep), 13 API integration tests (contract shape, ordering, filters, transitions, CSRF, tenant isolation, roles), 2 web tests for the sample fallback.
+
+**Found while verifying:** the i18n "untranslated Amharic" test was red on `rebuild` ("Pulse Care" is a product name); fixed on `rebuild` in bfa7d2a.
+
+**Not done yet (rest of slice 3):**
+- Form-abandonment detector (`fs` without `fx`, `fe` per field).
+- Slow-pages detector (p75 LCP/INP per page template and network, from `vt` events).
+- JS-errors detector (`er` grouped by message + source).
+- U-turns and tracking-broken (schedule-driven) detectors.
+- Fix verification job (`issue.verify`: 7 days before vs 3–7 days after `fixed_at`, automatic `verified`).
+- AI explanations and suggested fixes (`ai.recommend`, `ai_artifacts` cache, per-org budget).
+- Telegram alerts (and push/email) for created / escalated / reopened issues, with quiet hours.
+- Revenue-at-risk impact (needs order values) and replay links from `sampleVisitIds` (slice 4).
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

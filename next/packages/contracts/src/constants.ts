@@ -46,3 +46,31 @@ export const PLAN_LIMITS: Record<PlanId, { sites: number }> = {
   growth: { sites: 3 },
   agency: { sites: 10 },
 };
+
+/* ── Fixes (detected issues) ────────────────────────────────────────────────── */
+/** Detector kinds that can produce a Fix card. Grows as slice 3 adds detectors. */
+export const FIX_KINDS = ['rage_click', 'dead_click'] as const;
+export type FixKind = (typeof FIX_KINDS)[number];
+
+export const FIX_SEVERITIES = ['critical', 'watch'] as const;
+export type FixSeverity = (typeof FIX_SEVERITIES)[number];
+
+export const FIX_STATUSES = ['open', 'fixing', 'fixed', 'verified', 'dismissed'] as const;
+export type FixStatus = (typeof FIX_STATUSES)[number];
+
+/**
+ * Status changes a person may make. `verified` normally comes from the worker's before/after
+ * check, but a person may confirm it once the issue is marked fixed. Anything can be reopened.
+ */
+export const FIX_TRANSITIONS: Record<FixStatus, readonly FixStatus[]> = {
+  open: ['fixing', 'fixed', 'dismissed'],
+  fixing: ['open', 'fixed', 'dismissed'],
+  fixed: ['open', 'fixing', 'verified'],
+  verified: ['open'],
+  dismissed: ['open'],
+};
+export const canTransitionFix = (from: FixStatus, to: FixStatus): boolean =>
+  FIX_TRANSITIONS[from].includes(to);
+
+/** Roles that can see and work on fixes (client viewers only see shared reports). */
+export const canWorkOnFixes = (role: Role | null | undefined): boolean => !!role && role !== 'client_viewer';

@@ -64,6 +64,20 @@
       "when": 1791815717861,
       "tag": "0008_two_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791872514059,
+      "tag": "0009_issues",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791872515196,
+      "tag": "0010_issues_rls",
+      "breakpoints": true
     }
   ]
 }

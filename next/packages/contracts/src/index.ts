@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 
 export * from './constants';
+export * from './fixes';
+// Explicit so the Zod schemas win over the same-named types in ./constants.
+export { FixKind, FixSeverity, FixStatus } from './fixes';
 
 /* ── Errors ─────────────────────────────────────────────────────────────────
  * One envelope for every API error (ADR-005). Codes are stable; messages are for humans.
