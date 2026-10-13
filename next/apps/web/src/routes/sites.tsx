@@ -288,6 +288,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
                 value={ins.health.score}
                 previous={ins.health.previous}
                 locale={locale}
+                suffix={t('delta.sinceLastWeek')}
               />
             </div>
           </div>

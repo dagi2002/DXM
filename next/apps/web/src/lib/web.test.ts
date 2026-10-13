@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isNavActive } from './nav';
 import { safeRedirect } from './redirect';
 import { slugify } from '../routes/onboarding';
 import { api, ApiError, fieldError, onUnauthenticated } from './api';
@@ -86,5 +87,17 @@ describe('api client', () => {
   it('handles 204 No Content', async () => {
     respond(204);
     await expect(api('/sites/x', { method: 'DELETE' })).resolves.toBeUndefined();
+  });
+});
+
+describe('isNavActive', () => {
+  it('highlights a tab for its own routes and their children', () => {
+    expect(isNavActive('/today', ['/today', '/fixes'])).toBe(true);
+    expect(isNavActive('/fixes/fix_1', ['/today', '/fixes'])).toBe(true);
+    expect(isNavActive('/replays/rep_1', ['/replays'])).toBe(true);
+  });
+  it('ignores lookalike prefixes and other tabs', () => {
+    expect(isNavActive('/fixes-old', ['/today', '/fixes'])).toBe(false);
+    expect(isNavActive('/sites/s_1', ['/replays'])).toBe(false);
   });
 });

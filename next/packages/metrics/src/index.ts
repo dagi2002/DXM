@@ -131,13 +131,20 @@ export function rateMetric(id: MetricId, value: number): Rating | null {
 export interface Delta {
   direction: 'up' | 'down' | 'flat';
   sentiment: Sentiment;
-  /** Formatted magnitude, e.g. "18%" for counts or "4.1 pts" for ratios. */
+  /** Formatted magnitude, e.g. "18%" for counts, "4.1 pts" for ratios or "17" (points) for scores. */
   text: string;
+}
+
+/** Whole points on a 0–100 score: 17 → "17". Scores move in points, never percent. */
+export function formatPoints(points: number, locale: Locale = 'en'): string {
+  return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 0 }).format(
+    Math.abs(Math.round(points)),
+  );
 }
 
 /**
  * Change vs a previous period. Ratios compare in percentage points (no relative-of-a-percent confusion);
- * everything else compares relatively.
+ * scores compare in absolute points ("↓ 17"); everything else compares relatively.
  */
 export function formatDelta(
   id: MetricId,
@@ -157,6 +164,9 @@ export function formatDelta(
   if (metric.unit === 'ratio') {
     magnitude = (current - previous) * 100; // percentage points
     text = `${nf.format(Math.abs(magnitude))} ${locale === 'am' ? 'ነጥብ' : 'pts'}`;
+  } else if (metric.unit === 'score') {
+    magnitude = Math.round(current) - Math.round(previous);
+    text = formatPoints(magnitude, locale);
   } else if (previous === 0) {
     if (current === 0) return { direction: 'flat', sentiment: 'neutral', text: '0' };
     return {
@@ -169,7 +179,7 @@ export function formatDelta(
     text = pct.format(Math.abs(magnitude));
   }
 
-  const FLAT = metric.unit === 'ratio' ? 0.05 : 0.005;
+  const FLAT = metric.unit === 'ratio' ? 0.05 : metric.unit === 'score' ? 1 : 0.005;
   if (Math.abs(magnitude) < FLAT) return { direction: 'flat', sentiment: 'neutral', text };
   const direction = magnitude > 0 ? 'up' : 'down';
   const sentiment: Sentiment =

@@ -107,7 +107,7 @@ export function FixDetailPage() {
           <h2 className="text-[1.0625rem] font-semibold">{t('fix.evidence')}</h2>
           {fix.clip ? (
             <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-surface p-5">
-              <div className="rounded-[22px] border-[6px] border-neutral-900 bg-neutral-900">
+              <div className="rounded-[22px] border-[6px] border-border-strong bg-border-strong">
                 <ReplayPhone scale={0.75} label={t('replay.phoneLabel')} />
               </div>
               <div className="grid min-w-[16rem] flex-1 gap-3">
