@@ -47,6 +47,9 @@ importers:
       '@pulse/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@pulse/insights':
+        specifier: workspace:*
+        version: link:../../packages/insights
       '@pulse/mail':
         specifier: workspace:*
         version: link:../../packages/mail
@@ -263,6 +266,9 @@ importers:
       '@pulse/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@pulse/insights':
+        specifier: workspace:*
+        version: link:../../packages/insights
       '@pulse/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs

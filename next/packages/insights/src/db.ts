@@ -15,6 +15,7 @@ import {
   siteFunnels,
   sites,
   sql,
+  visits,
   withOrg,
   type Db,
   type Tx,
@@ -101,9 +102,11 @@ async function dayVisits(tx: Tx, siteId: string, from: Date, to: Date) {
 async function visitDims(tx: Tx, siteId: string, ids: string[]) {
   const dims = new Map<string, VisitDims>();
   if (!ids.length) return dims;
-  const res = await tx.execute<{ id: string; device: string; network: string | null }>(sql`
-    select id, device, network from visits where site_id = ${siteId} and id = any(${ids})`);
-  for (const r of res.rows) dims.set(r.id, { device: r.device, network: r.network });
+  const rows = await tx
+    .select({ id: visits.id, device: visits.device, network: visits.network })
+    .from(visits)
+    .where(and(eq(visits.siteId, siteId), inArray(visits.id, ids)));
+  for (const r of rows) dims.set(r.id, { device: r.device, network: r.network });
   return dims;
 }
 
@@ -163,7 +166,7 @@ export async function rollupDay(
 ) {
   const from = dayStart(day);
   const to = new Date(from.getTime() + DAY_MS);
-  const visits = await dayVisits(tx, siteId, from, to);
+  const dayRows = await dayVisits(tx, siteId, from, to);
   const evRes = await tx.execute<{
     visit_id: string;
     type: string;
@@ -187,8 +190,8 @@ export async function rollupDay(
   }
   const dims = await visitDims(tx, siteId, [...new Set(vitals.map((v) => v.visitId))]);
 
-  const site = rollupSiteDayRows(visits, events);
-  const pages = rollupPagesDay(visits, events);
+  const site = rollupSiteDayRows(dayRows, events);
+  const pages = rollupPagesDay(dayRows, events);
   const vitalGroups = rollupVitalsDayRows(vitals, dims);
 
   await tx
@@ -219,7 +222,7 @@ async function staleFunnelDays(tx: Tx, siteId: string, hash: string, today: stri
   const res = await tx.execute<{ day: string }>(sql`
     select r.day::text as day from rollup_site_day r
      where r.site_id = ${siteId} and r.visits > 0
-       and r.day > ${today}::date - ${FUNNEL_BACKFILL_DAYS}
+       and r.day > ${today}::date - ${FUNNEL_BACKFILL_DAYS}::int
        and not exists (select 1 from rollup_funnel_day f
                         where f.site_id = r.site_id and f.day = r.day and f.hash = ${hash})
      order by 1`);

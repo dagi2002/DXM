@@ -6,6 +6,8 @@ import { createBoss, sendJob } from '@pulse/jobs';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
 import pino from 'pino';
 import { detectSite, sweepDetection } from './detect';
+import { rollupSite } from '@pulse/insights/db';
+import { sweepInsights } from './insights';
 import { applyIngest } from './ingest';
 import { notifySiteLive } from './notify';
 
@@ -69,11 +71,24 @@ await boss.work<{ siteId: string; orgId: string }>('detect.site', async (jobs) =
   }
 });
 
+// Site insights (slice 5): daily rollups, so dashboards never scan raw events per request.
+await boss.work('insights.sweep', async () => {
+  const queued = await sweepInsights(db, boss);
+  if (queued) log.debug({ sites: queued }, 'insight rollups queued');
+});
+await boss.work<{ siteId: string; orgId: string }>('insights.site', async (jobs) => {
+  for (const job of jobs) {
+    const result = await rollupSite(db, job.data);
+    log.debug({ siteId: job.data.siteId, ...result }, 'insight rollups refreshed');
+  }
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
 await boss.schedule('detect.sweep', '*/2 * * * *');
+await boss.schedule('insights.sweep', '*/10 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 
 // Health endpoint for the orchestrator / uptime checks.

@@ -25,6 +25,13 @@ export const QUEUES = {
     name: 'detect.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
   },
+  /** Every 10 minutes: find sites whose daily rollups need refreshing and queue one run each. */
+  insightsSweep: { name: 'insights.sweep', options: { retryLimit: 1 } },
+  /** Recomputes one site's rollups for today and yesterday (and stale funnel days). */
+  insightsSite: {
+    name: 'insights.site',
+    options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 30 },
+  },
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];
@@ -37,6 +44,8 @@ export interface JobPayloads {
   'maintenance.purge-dedupe': Record<string, never>;
   'detect.sweep': Record<string, never>;
   'detect.site': { siteId: string; orgId: string };
+  'insights.sweep': Record<string, never>;
+  'insights.site': { siteId: string; orgId: string };
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */
