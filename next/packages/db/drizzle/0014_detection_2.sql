@@ -134,6 +134,7 @@ CREATE OR REPLACE FUNCTION pulse_claim_telegram_link(
 )
 RETURNS TABLE (org_id text, org_name text, locale text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+#variable_conflict use_column
 DECLARE c telegram_link_codes%ROWTYPE;
 BEGIN
   IF p_code_hash !~ '^[0-9a-f]{64}$' OR p_chat_id !~ '^-?[0-9]{1,20}$' THEN

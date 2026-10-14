@@ -1,6 +1,9 @@
+import { aiConfigured } from '@pulse/config';
 import {
-  ClickEvidence,
+  FixEvidence,
   FixImpact,
+  FixSuggestion,
+  FixVerification,
   FixListQuery,
   FixStatusUpdate,
   canTransitionFix,
@@ -10,9 +13,11 @@ import {
   type FixList,
 } from '@pulse/contracts';
 import {
+  aiArtifacts,
   and,
   asc,
   desc,
+  inArray,
   eq,
   isNull,
   issueEvents,
@@ -33,7 +38,11 @@ import { ApiError, forbidden, notFound, type AppEnv } from '../http';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-export function toFixDto(row: IssueRow, site: { name: string; domain: string }): Fix {
+export function toFixDto(
+  row: IssueRow,
+  site: { name: string; domain: string },
+  suggestion: FixSuggestion | null = null,
+): Fix {
   return {
     id: row.id,
     number: row.number,
@@ -44,8 +53,10 @@ export function toFixDto(row: IssueRow, site: { name: string; domain: string }):
     severity: row.severity,
     status: row.status,
     // Parsed so a malformed row fails loudly here instead of breaking the UI.
-    evidence: ClickEvidence.parse(row.evidence),
+    evidence: FixEvidence.parse(row.evidence),
     impact: row.impact ? FixImpact.parse(row.impact) : null,
+    verification: row.verification ? FixVerification.parse(row.verification) : null,
+    suggestion,
     firstSeen: row.firstSeen.toISOString(),
     lastSeen: row.lastSeen.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -58,7 +69,36 @@ export function toFixDto(row: IssueRow, site: { name: string; domain: string }):
 const STATUS_ORDER = sql`case ${issues.status} when 'open' then 0 when 'fixing' then 1 when 'fixed' then 2 when 'verified' then 3 else 4 end`;
 const SEVERITY_ORDER = sql`case ${issues.severity} when 'critical' then 0 else 1 end`;
 
-async function loadFix(tx: Tx, id: string): Promise<Fix> {
+/**
+ * Latest AI suggestion per issue. Only read while AI is configured: with AI off, nothing AI-made
+ * reaches the UI, even if older suggestions are stored.
+ */
+async function loadSuggestions(tx: Tx, ids: string[], enabled: boolean) {
+  const out = new Map<string, FixSuggestion>();
+  if (!enabled || !ids.length) return out;
+  const rows = await tx
+    .selectDistinctOn([aiArtifacts.issueId], {
+      issueId: aiArtifacts.issueId,
+      content: aiArtifacts.content,
+      model: aiArtifacts.model,
+      createdAt: aiArtifacts.createdAt,
+    })
+    .from(aiArtifacts)
+    .where(and(inArray(aiArtifacts.issueId, ids), eq(aiArtifacts.kind, 'fix_suggestion')))
+    .orderBy(aiArtifacts.issueId, desc(aiArtifacts.createdAt));
+  for (const r of rows) {
+    const parsed = FixSuggestion.safeParse({
+      text: r.content.text,
+      code: r.content.code ?? null,
+      model: r.model,
+      createdAt: r.createdAt.toISOString(),
+    });
+    if (parsed.success) out.set(r.issueId, parsed.data);
+  }
+  return out;
+}
+
+async function loadFix(tx: Tx, id: string, ai: boolean): Promise<Fix> {
   const [row] = await tx
     .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
     .from(issues)
@@ -66,7 +106,8 @@ async function loadFix(tx: Tx, id: string): Promise<Fix> {
     .where(and(eq(issues.id, id), isNull(sites.deletedAt)))
     .limit(1);
   if (!row) throw notFound('Fix');
-  return toFixDto(row.issue, { name: row.siteName, domain: row.siteDomain });
+  const suggestions = await loadSuggestions(tx, [row.issue.id], ai);
+  return toFixDto(row.issue, { name: row.siteName, domain: row.siteDomain }, suggestions.get(row.issue.id));
 }
 
 /** Client viewers only see shared reports; fixes are the team's working surface. */
@@ -81,12 +122,13 @@ const requireTeam = createMiddleware<AppEnv>(async (c, next) => {
  */
 export function fixRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
+  const ai = aiConfigured(deps.env);
   r.use('*', requireSession(deps), requireOrg(deps), requireTeam);
 
   r.get('/', async (c) => {
     const q = FixListQuery.parse(c.req.query());
-    const rows = await withOrg(deps.db, c.get('orgId')!, (tx) =>
-      tx
+    const { rows, suggestions } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
+      const rows = await tx
         .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
         .from(issues)
         .innerJoin(sites, eq(sites.id, issues.siteId))
@@ -98,17 +140,25 @@ export function fixRoutes(deps: AppDeps) {
           ),
         )
         .orderBy(STATUS_ORDER, SEVERITY_ORDER, desc(issues.lastSeen), asc(issues.number))
-        .limit(q.limit),
-    );
+        .limit(q.limit);
+      const suggestions = await loadSuggestions(
+        tx,
+        rows.map((r) => r.issue.id),
+        ai,
+      );
+      return { rows, suggestions };
+    });
     const body: FixList = {
-      fixes: rows.map((r) => toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain })),
+      fixes: rows.map((r) =>
+        toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, suggestions.get(r.issue.id)),
+      ),
     };
     return c.json(body);
   });
 
   r.get('/:id', async (c) => {
     const body = await withOrg(deps.db, c.get('orgId')!, async (tx): Promise<FixDetail> => {
-      const fix = await loadFix(tx, c.req.param('id'));
+      const fix = await loadFix(tx, c.req.param('id'), ai);
       const history = await tx
         .select({
           fromStatus: issueEvents.fromStatus,
@@ -133,7 +183,7 @@ export function fixRoutes(deps: AppDeps) {
     const { status } = FixStatusUpdate.parse(await c.req.json());
     const actor = c.get('user')!;
     const body = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
-      const current = await loadFix(tx, c.req.param('id'));
+      const current = await loadFix(tx, c.req.param('id'), ai);
       if (current.status === status) return { fix: current };
       if (!canTransitionFix(current.status, status)) {
         throw new ApiError(409, 'conflict', `A fix that is ${current.status} can't be marked ${status}`, {
@@ -147,9 +197,11 @@ export function fixRoutes(deps: AppDeps) {
         .update(issues)
         .set({
           status,
-          ...(status === 'fixed' ? { fixedAt: now, verifiedAt: null } : {}),
+          ...(status === 'fixed' ? { fixedAt: now, verifiedAt: null, verification: null } : {}),
           ...(status === 'verified' ? { verifiedAt: now } : {}),
-          ...(status === 'open' || status === 'fixing' ? { fixedAt: null, verifiedAt: null } : {}),
+          ...(status === 'open' || status === 'fixing'
+            ? { fixedAt: null, verifiedAt: null, verification: null }
+            : {}),
         })
         .where(and(eq(issues.id, current.id), eq(issues.status, current.status)))
         .returning({ id: issues.id });
@@ -168,7 +220,7 @@ export function fixRoutes(deps: AppDeps) {
         fromStatus: current.status,
         toStatus: status,
       });
-      return { fix: await loadFix(tx, current.id) };
+      return { fix: await loadFix(tx, current.id, ai) };
     });
     return c.json(body);
   });
