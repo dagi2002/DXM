@@ -50,6 +50,9 @@ importers:
       '@pulse/mail':
         specifier: workspace:*
         version: link:../../packages/mail
+      '@pulse/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@sentry/node':
         specifier: ^11.6.0
         version: 11.6.0

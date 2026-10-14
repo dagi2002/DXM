@@ -120,6 +120,15 @@ export class Client {
     return { status: res.status, headers: res.headers, body: json as any };
   }
 
+  /** GET returning the raw Response (binary bodies). */
+  raw = (path: string) =>
+    this.app.request(path, {
+      headers: {
+        origin: this.origin,
+        cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
+      },
+    });
+
   get = (path: string) => this.request(path);
   post = (path: string, body: unknown = {}) => this.request(path, { method: 'POST', body });
   patch = (path: string, body: unknown) => this.request(path, { method: 'PATCH', body });

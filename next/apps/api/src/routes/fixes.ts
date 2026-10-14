@@ -30,10 +30,16 @@ import { Hono } from 'hono';
 import type { AppDeps } from '../app';
 import { requireOrg, requireSession } from '../guards';
 import { ApiError, forbidden, notFound, type AppEnv } from '../http';
+import { replayIdsFor } from './replays';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-export function toFixDto(row: IssueRow, site: { name: string; domain: string }): Fix {
+export function toFixDto(
+  row: IssueRow,
+  site: { name: string; domain: string },
+  withReplay: Set<string> = new Set(),
+): Fix {
+  const evidence = ClickEvidence.parse(row.evidence);
   return {
     id: row.id,
     number: row.number,
@@ -44,15 +50,29 @@ export function toFixDto(row: IssueRow, site: { name: string; domain: string }):
     severity: row.severity,
     status: row.status,
     // Parsed so a malformed row fails loudly here instead of breaking the UI.
-    evidence: ClickEvidence.parse(row.evidence),
+    evidence,
     impact: row.impact ? FixImpact.parse(row.impact) : null,
     firstSeen: row.firstSeen.toISOString(),
     lastSeen: row.lastSeen.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     fixedAt: iso(row.fixedAt),
     verifiedAt: iso(row.verifiedAt),
+    replayIds: evidence.sampleVisitIds.filter((v) => withReplay.has(`${row.siteId} ${v}`)),
   };
 }
+
+/** Which of these issues' evidence visits have a playable replay (slice 4). */
+const replaysOf = (tx: Tx, rows: IssueRow[]) =>
+  replayIdsFor(
+    tx,
+    rows.map((r) => ({
+      siteId: r.siteId,
+      visitIds:
+        ClickEvidence.shape.sampleVisitIds.safeParse(
+          (r.evidence as { sampleVisitIds?: unknown }).sampleVisitIds,
+        ).data ?? [],
+    })),
+  );
 
 /** Active work first, then critical before watch, then most recently seen. */
 const STATUS_ORDER = sql`case ${issues.status} when 'open' then 0 when 'fixing' then 1 when 'fixed' then 2 when 'verified' then 3 else 4 end`;
@@ -66,7 +86,11 @@ async function loadFix(tx: Tx, id: string): Promise<Fix> {
     .where(and(eq(issues.id, id), isNull(sites.deletedAt)))
     .limit(1);
   if (!row) throw notFound('Fix');
-  return toFixDto(row.issue, { name: row.siteName, domain: row.siteDomain });
+  return toFixDto(
+    row.issue,
+    { name: row.siteName, domain: row.siteDomain },
+    await replaysOf(tx, [row.issue]),
+  );
 }
 
 /** Client viewers only see shared reports; fixes are the team's working surface. */
@@ -85,8 +109,8 @@ export function fixRoutes(deps: AppDeps) {
 
   r.get('/', async (c) => {
     const q = FixListQuery.parse(c.req.query());
-    const rows = await withOrg(deps.db, c.get('orgId')!, (tx) =>
-      tx
+    const { rows, withReplay } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
+      const rows = await tx
         .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
         .from(issues)
         .innerJoin(sites, eq(sites.id, issues.siteId))
@@ -98,10 +122,17 @@ export function fixRoutes(deps: AppDeps) {
           ),
         )
         .orderBy(STATUS_ORDER, SEVERITY_ORDER, desc(issues.lastSeen), asc(issues.number))
-        .limit(q.limit),
-    );
+        .limit(q.limit);
+      return {
+        rows,
+        withReplay: await replaysOf(
+          tx,
+          rows.map((r) => r.issue),
+        ),
+      };
+    });
     const body: FixList = {
-      fixes: rows.map((r) => toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain })),
+      fixes: rows.map((r) => toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, withReplay)),
     };
     return c.json(body);
   });
