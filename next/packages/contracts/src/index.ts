@@ -3,6 +3,7 @@ import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 
 export * from './constants';
 export * from './fixes';
+export * from './reports';
 // Explicit so the Zod schemas win over the same-named types in ./constants.
 export { FixKind, FixSeverity, FixStatus } from './fixes';
 

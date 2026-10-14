@@ -235,3 +235,63 @@ export const issueEvents = pgTable(
 
 export type IssueRow = typeof issues.$inferSelect;
 export type IssueEventRow = typeof issueEvents.$inferSelect;
+
+/**
+ * Client reports (slice 6). A report is a frozen snapshot: the numbers are computed once, when it
+ * is created, and never recomputed on read, so what a client saw last month stays what they saw.
+ */
+export const reports = pgTable(
+  'reports',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    /** Calendar month, `YYYY-MM` (UTC). */
+    period: text('period').notNull(),
+    /** `auto` = made by the monthly job (one per site and month), `manual` = "Create report". */
+    source: text('source', { enum: ['auto', 'manual'] }).notNull(),
+    snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('reports_org_site_period_idx').on(t.orgId, t.siteId, t.period),
+    // The monthly job makes at most one report per site and month; people may make more.
+    uniqueIndex('reports_site_period_auto_uq')
+      .on(t.siteId, t.period)
+      .where(sql`${t.source} = 'auto'`),
+  ],
+);
+
+/**
+ * Share links for a report. Only a SHA-256 hash of the token is stored: the token itself is shown
+ * once, when the link is made. A link stops working when it expires or is revoked.
+ */
+export const reportShares = pgTable(
+  'report_shares',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    reportId: text('report_id')
+      .notNull()
+      .references(() => reports.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('report_shares_token_hash_uq').on(t.tokenHash),
+    index('report_shares_report_idx').on(t.reportId),
+  ],
+);
+
+export type ReportRow = typeof reports.$inferSelect;
+export type ReportShareRow = typeof reportShares.$inferSelect;
