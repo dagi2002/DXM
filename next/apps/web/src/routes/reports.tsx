@@ -56,7 +56,9 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
   const { t } = useTranslation();
   const W = 800;
   const H = 200;
-  const hi = niceMax(Math.max(...trend.map((p) => p.visits), 0));
+  // Visits per day, so the month's short last week isn't drawn as a collapse.
+  const perDay = (p: ReportSnapshot['trend'][number]) => Math.round(p.visits / p.days);
+  const hi = niceMax(Math.max(...trend.map(perDay), 0));
   const n = trend.length;
   const x = (i: number) => (n === 1 ? W / 2 : 12 + (i / (n - 1)) * (W - 24));
   const y = (v: number) => H - 12 - (v / hi) * (H - 48);
@@ -84,7 +86,7 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
                 <line key={v} x1="0" x2={W} y1={y(v)} y2={y(v)} stroke="var(--border)" />
               ))}
               <polyline
-                points={trend.map((p, i) => `${x(i)},${y(p.visits)}`).join(' ')}
+                points={trend.map((p, i) => `${x(i)},${y(perDay(p))}`).join(' ')}
                 fill="none"
                 stroke="var(--primary)"
                 strokeWidth="2.5"
@@ -97,7 +99,7 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
                   <circle
                     key={p.start}
                     cx={x(i)}
-                    cy={y(p.visits)}
+                    cy={y(perDay(p))}
                     r="7"
                     fill="var(--good)"
                     stroke="var(--surface)"
@@ -108,9 +110,9 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
             </svg>
             <span
               className="absolute -translate-x-full -translate-y-full pb-2 text-sm font-semibold text-text"
-              style={{ left: left(x(n - 1)), top: top(y(last.visits)) }}
+              style={{ left: left(x(n - 1)), top: top(y(perDay(last))) }}
             >
-              {fmt(last.visits)}
+              {fmt(perDay(last))}
             </span>
           </div>
         </div>
@@ -142,7 +144,7 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
         <thead>
           <tr>
             <th scope="col">{t('report.col.week')}</th>
-            <th scope="col">{t('report.kpi.visits')}</th>
+            <th scope="col">{t('report.col.perDay')}</th>
             <th scope="col">{t('report.fixLive')}</th>
           </tr>
         </thead>
@@ -150,7 +152,7 @@ function TrendChart({ trend, locale }: { trend: ReportSnapshot['trend']; locale:
           {trend.map((p) => (
             <tr key={p.start}>
               <th scope="row">{formatDay(p.start, locale)}</th>
-              <td>{fmt(p.visits)}</td>
+              <td>{fmt(perDay(p))}</td>
               <td>{p.fixesShipped ? '✓' : '—'}</td>
             </tr>
           ))}

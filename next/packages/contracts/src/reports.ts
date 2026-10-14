@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  FIX_KINDS,
-  FIX_SEVERITIES,
-  REPORT_SHARE_DEFAULT_DAYS,
-  REPORT_SHARE_MAX_DAYS,
-} from './constants';
+import { FIX_KINDS, FIX_SEVERITIES, REPORT_SHARE_DEFAULT_DAYS, REPORT_SHARE_MAX_DAYS } from './constants';
 
 /**
  * Client reports (slice 6). A report is a frozen snapshot of one site's calendar month. Like the
@@ -16,7 +11,6 @@ import {
 /** Calendar month in UTC, `YYYY-MM`. */
 export const ReportPeriod = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'invalid_period');
 export type ReportPeriod = z.infer<typeof ReportPeriod>;
-
 
 const count = z.number().int().min(0);
 /** A number this month and the same number last month; null = no data to measure it. */
@@ -36,6 +30,8 @@ export type ReportKpis = z.infer<typeof ReportKpis>;
 export const ReportTrendPoint = z.object({
   /** ISO date of the bucket's first day. */
   start: z.string(),
+  /** Days the bucket covers (7, or fewer for the month's last week or a week in progress). */
+  days: z.number().int().min(1).max(7),
   visits: count,
   /** Fixes marked fixed during this bucket. */
   fixesShipped: count,

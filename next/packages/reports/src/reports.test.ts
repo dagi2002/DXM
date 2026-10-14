@@ -151,12 +151,12 @@ describe('assembleSnapshot', () => {
       bounceRate: { value: 0.25, previous: 0.25 },
       lcp: { value: 3100, previous: 4500 },
     });
-    expect(s.trend.map((p) => [p.start, p.visits, p.fixesShipped])).toEqual([
-      ['2026-09-01', 90, 1],
-      ['2026-09-08', 100, 0],
-      ['2026-09-15', 110, 1],
-      ['2026-09-22', 80, 0],
-      ['2026-09-29', 20, 0],
+    expect(s.trend.map((p) => [p.start, p.days, p.visits, p.fixesShipped])).toEqual([
+      ['2026-09-01', 7, 90, 1],
+      ['2026-09-08', 7, 100, 0],
+      ['2026-09-15', 7, 110, 1],
+      ['2026-09-22', 7, 80, 0],
+      ['2026-09-29', 2, 20, 0],
     ]);
     // Oldest fix first; before/after per day.
     expect(s.fixed.map((f) => [f.number, f.before.perDay, f.after.perDay])).toEqual([
@@ -176,7 +176,11 @@ describe('assembleSnapshot', () => {
     );
     expect(s.partial).toBe(true);
     expect(s.enoughData).toBe(false);
-    expect(s.trend.map((p) => p.start)).toEqual(['2026-10-01', '2026-10-08']);
+    // The week in progress counts the days so far (Oct 8 to the 9th at noon = 2 days).
+    expect(s.trend.map((p) => [p.start, p.days])).toEqual([
+      ['2026-10-01', 7],
+      ['2026-10-08', 2],
+    ]);
   });
 
   it('keeps unmeasured numbers null instead of inventing them', () => {

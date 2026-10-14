@@ -319,9 +319,9 @@
   "reports.shareLink": "የማጋሪያ ሊንክ",
   "report.monthly": "ወርሃዊ ሪፖርት · {period}",
   "report.results": "ውጤቶች",
-  "report.trend": "ጉብኝቶች፣ በየሳምንቱ",
+  "report.trend": "የቀን ጉብኝቶች፣ በየሳምንቱ",
   "report.trendNote": "አረንጓዴ ነጥቦች ጥገና ሥራ ላይ የዋለባቸውን ሳምንታት ያሳያሉ።",
-  "report.trendLabel": "ጉብኝቶች በየሳምንቱ፦ {values}",
+  "report.trendLabel": "የቀን ጉብኝቶች በየሳምንቱ፦ {values}",
   "report.fixed": "ያስተካከልናቸው",
   "report.next": "የሚቀጥለው ወር",
   "report.preparedBy": "ያዘጋጀው {agency}",
@@ -382,7 +382,7 @@
   "fix.statusNow": "ሁኔታ፦ {status}",
   "report.col.week": "ሳምንት",
   "report.fixLive": "ጥገናው ሥራ ላይ ዋለ",
-  "report.trendTable": "ጉብኝቶች በየሳምንቱ፣ በሰንጠረዥ",
+  "report.trendTable": "የቀን ጉብኝቶች በየሳምንቱ፣ በሰንጠረዥ",
   "delta.sinceLastWeek": "ካለፈው ሳምንት ወዲህ",
   "fix.empty.open": "አሁን የሚጠገን ነገር የለም — Pulse ድረ-ገጾችዎን በየቀኑ ይፈትሻል።",
   "fix.empty.fixing": "በመጠገን ላይ ያለ ነገር የለም። ከ«ክፍት» አንዱን ይጀምሩ።",
@@ -539,5 +539,6 @@
   "reports.share.once": "አሁኑኑ ይቅዱት፦ ለደህንነት ሲባል ሙሉው ሊንክ የሚታየው አንድ ጊዜ ብቻ ነው።",
   "reports.share.list": "የማጋሪያ ሊንኮች",
   "reports.back": "ሁሉም ሪፖርቶች",
-  "reports.notFound": "ይህ ሪፖርት የለም፣ ወይም ከድረ-ገጹ ጋር ተሰርዟል።"
+  "reports.notFound": "ይህ ሪፖርት የለም፣ ወይም ከድረ-ገጹ ጋር ተሰርዟል።",
+  "report.col.perDay": "የቀን ጉብኝቶች"
 }

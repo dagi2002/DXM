@@ -108,14 +108,17 @@ export function assembleSnapshot(input: SnapshotInput): Snapshot {
     .sort((a, b) => a.fixedAt.getTime() - b.fixedAt.getTime() || a.number - b.number)
     .slice(0, REPORT_FIXED_LIMIT);
 
-  const trend = shown.map((start, i) => ({
-    start: isoDate(start),
-    visits: input.bucketVisits[i] ?? 0,
-    fixesShipped: fixed.filter(
-      (f) =>
-        f.fixedAt >= start && f.fixedAt.getTime() < Math.min(start.getTime() + span, range.end.getTime()),
-    ).length,
-  }));
+  const trend = shown.map((start, i) => {
+    const end = Math.min(start.getTime() + span, range.end.getTime());
+    return {
+      start: isoDate(start),
+      // Whole days the bucket covers so far: the last week of a month is short, and the current
+      // week of a month in progress isn't over, so charts compare visits per day, not raw totals.
+      days: Math.max(1, Math.ceil((Math.min(end, now.getTime()) - start.getTime()) / DAY_MS)),
+      visits: input.bucketVisits[i] ?? 0,
+      fixesShipped: fixed.filter((f) => f.fixedAt >= start && f.fixedAt.getTime() < end).length,
+    };
+  });
 
   const snapshot = {
     version: 1 as const,

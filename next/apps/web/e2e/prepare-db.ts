@@ -79,11 +79,11 @@ async function seedReports(db: pg.Client) {
       lcp: { value: 3100, previous: 4500 },
     },
     trend: [
-      { start: '2026-09-01', visits: 7710, fixesShipped: 0 },
-      { start: '2026-09-08', visits: 7890, fixesShipped: 1 },
-      { start: '2026-09-15', visits: 8020, fixesShipped: 2 },
-      { start: '2026-09-22', visits: 8310, fixesShipped: 1 },
-      { start: '2026-09-29', visits: 2250, fixesShipped: 0 },
+      { start: '2026-09-01', days: 7, visits: 7710, fixesShipped: 0 },
+      { start: '2026-09-08', days: 7, visits: 7890, fixesShipped: 1 },
+      { start: '2026-09-15', days: 7, visits: 8020, fixesShipped: 2 },
+      { start: '2026-09-22', days: 7, visits: 8310, fixesShipped: 1 },
+      { start: '2026-09-29', days: 2, visits: 2250, fixesShipped: 0 },
     ],
     fixed: [
       fix(3, 'rage_click', '/products/*', 'button.size-picker', '2026-09-09T08:00:00.000Z', 46, 2),

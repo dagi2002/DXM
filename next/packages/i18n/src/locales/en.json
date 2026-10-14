@@ -319,9 +319,9 @@
   "reports.shareLink": "Share link",
   "report.monthly": "Monthly report · {period}",
   "report.results": "Results",
-  "report.trend": "Visits, week by week",
+  "report.trend": "Visits per day, week by week",
   "report.trendNote": "Green dots mark weeks when a fix went live.",
-  "report.trendLabel": "Visits by week: {values}",
+  "report.trendLabel": "Visits per day by week: {values}",
   "report.fixed": "What we fixed",
   "report.next": "Next month",
   "report.preparedBy": "Prepared by {agency}",
@@ -382,7 +382,7 @@
   "fix.statusNow": "Status: {status}",
   "report.col.week": "Week",
   "report.fixLive": "Fix went live",
-  "report.trendTable": "Visits by week, as a table",
+  "report.trendTable": "Visits per day by week, as a table",
   "delta.sinceLastWeek": "since last week",
   "fix.empty.open": "Nothing to fix right now — Pulse checks your sites every day.",
   "fix.empty.fixing": "No fixes in progress. Start with one from Open.",
@@ -539,5 +539,6 @@
   "reports.share.once": "Copy it now: for security, the full link is shown only once.",
   "reports.share.list": "Share links",
   "reports.back": "All reports",
-  "reports.notFound": "This report doesn’t exist, or was deleted with its site."
+  "reports.notFound": "This report doesn’t exist, or was deleted with its site.",
+  "report.col.perDay": "Visits per day"
 }
