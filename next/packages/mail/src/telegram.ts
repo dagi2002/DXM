@@ -12,13 +12,16 @@ export interface TelegramClient {
 export class TelegramError extends Error {
   constructor(
     readonly status: number,
-    description: string,
+    readonly description: string,
   ) {
     super(`Telegram responded ${status}: ${description.slice(0, 200)}`);
     this.name = 'TelegramError';
   }
   get permanent() {
-    return this.status === 400 || this.status === 403;
+    return (
+      this.status === 403 ||
+      (this.status === 400 && /chat not found|chat was upgraded/i.test(this.description))
+    );
   }
 }
 

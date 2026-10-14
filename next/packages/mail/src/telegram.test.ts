@@ -74,4 +74,11 @@ describe('HttpTelegramClient', () => {
     expect((err as TelegramError).permanent).toBe(true);
     expect(String((err as Error).message)).not.toContain('SECRET');
   });
+
+  it('treats only a blocked bot or a missing chat as permanent', () => {
+    expect(new TelegramError(403, 'Forbidden').permanent).toBe(true);
+    expect(new TelegramError(400, 'Bad Request: chat not found').permanent).toBe(true);
+    expect(new TelegramError(400, 'Bad Request: message is too long').permanent).toBe(false);
+    expect(new TelegramError(429, 'Too Many Requests').permanent).toBe(false);
+  });
 });

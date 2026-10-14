@@ -1,11 +1,17 @@
 import { createServer } from 'node:http';
-import { loadWorkerEnv } from '@pulse/config';
+import { aiConfigured, loadWorkerEnv } from '@pulse/config';
 import type { IngestJob } from '@pulse/contracts/ingest';
 import { createDatabase, sql } from '@pulse/db';
 import { createBoss, sendJob } from '@pulse/jobs';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
+import { HttpTelegramClient } from '@pulse/mail/telegram';
+import type { TelegramAlertJob } from '@pulse/jobs';
 import pino from 'pino';
+import { AnthropicClient, recommendFix } from './ai';
+import { alertJobFor, sendTelegramAlert } from './alerts';
 import { detectSite, sweepDetection } from './detect';
+import { sweepTracking } from './tracking';
+import { sweepVerification, verifyIssue } from './verify';
 import { applyIngest } from './ingest';
 import { notifySiteLive } from './notify';
 
@@ -16,6 +22,9 @@ const db = database.db;
 const mailer = env.RESEND_API_KEY
   ? new ResendMailer(env.RESEND_API_KEY, env.EMAIL_FROM)
   : new ConsoleMailer(log);
+const telegram = env.TELEGRAM_BOT_TOKEN ? new HttpTelegramClient(env.TELEGRAM_BOT_TOKEN) : null;
+const aiEnabled = aiConfigured(env);
+const ai = aiEnabled ? new AnthropicClient(env.ANTHROPIC_API_KEY!, env.AI_MODEL) : null;
 const boss = createBoss(env.DATABASE_URL, { max: 6 });
 boss.on('error', (err) => log.error({ err }, 'pg-boss error'));
 await boss.start();
@@ -59,13 +68,70 @@ await boss.work('detect.sweep', async () => {
   const queued = await sweepDetection(db, boss);
   if (queued) log.debug({ sites: queued }, 'detection queued');
 });
-await boss.work<{ siteId: string; orgId: string }>('detect.site', async (jobs) => {
-  for (const job of jobs) {
-    const result = await detectSite(db, job.data);
-    if (result.created.length || result.reopened.length || result.escalated.length) {
-      // Telegram / push / email alerts hook in here (slice 3, notifications).
-      log.info({ siteId: job.data.siteId, ...result }, 'fixes detected');
+/** Follow-ups for issues that are news: a Telegram alert, and AI suggestions for new/reopened ones. */
+async function afterDetection(
+  site: { siteId: string; orgId: string },
+  result: { created: string[]; escalated: string[]; reopened: string[] },
+) {
+  const alert = alertJobFor(site, result);
+  if (!alert) return;
+  log.info({ siteId: site.siteId, ...result }, 'fixes detected');
+  if (telegram) await sendJob(boss, 'alert.telegram', alert);
+  if (aiEnabled) {
+    for (const issueId of [...result.created, ...result.reopened]) {
+      await sendJob(boss, 'ai.recommend', { issueId, orgId: site.orgId }, { singletonKey: issueId });
     }
+  }
+}
+
+await boss.work<{ siteId: string; orgId: string }>('detect.site', async (jobs) => {
+  for (const job of jobs) await afterDetection(job.data, await detectSite(db, job.data));
+});
+
+// Tracking-broken runs on a schedule: a broken site produces no activity to trigger on.
+await boss.work('detect.tracking', async () => {
+  for (const r of await sweepTracking(db)) {
+    await afterDetection(r, r);
+    if (r.resumed.length) log.info({ siteId: r.siteId, resumed: r.resumed }, 'tracking resumed');
+  }
+});
+
+// Fix verification: before/after once the after-window is complete.
+await boss.work('issue.verify-sweep', async () => {
+  const queued = await sweepVerification(db, boss);
+  if (queued) log.debug({ issues: queued }, 'verification queued');
+});
+await boss.work<{ issueId: string; orgId: string }>('issue.verify', async (jobs) => {
+  for (const job of jobs) {
+    const result = await verifyIssue(db, job.data);
+    log.info({ issueId: job.data.issueId, status: result.status }, 'fix verification');
+    if (result.status === 'reopened' && result.siteId) {
+      const site = { siteId: result.siteId, orgId: job.data.orgId };
+      await afterDetection(site, { created: [], escalated: [], reopened: [job.data.issueId] });
+    }
+  }
+});
+
+await boss.work<TelegramAlertJob>('alert.telegram', async (jobs) => {
+  for (const job of jobs) {
+    if (!telegram) continue;
+    const result = await sendTelegramAlert(db, telegram, env.APP_URL, job.data);
+    // Quiet hours: send the same job again when they end.
+    if (result.status === 'deferred')
+      await sendJob(boss, 'alert.telegram', job.data, { startAfter: result.until });
+    log.info({ orgId: job.data.orgId, status: result.status }, 'telegram alert');
+  }
+});
+
+await boss.work<{ issueId: string; orgId: string }>('ai.recommend', async (jobs) => {
+  for (const job of jobs) {
+    const result = await recommendFix(
+      db,
+      ai,
+      { enabled: aiEnabled, monthlyBudget: env.AI_MONTHLY_BUDGET },
+      job.data,
+    );
+    log.info({ issueId: job.data.issueId, status: result.status }, 'ai recommendation');
   }
 });
 
@@ -74,6 +140,8 @@ await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
 await boss.schedule('detect.sweep', '*/2 * * * *');
+await boss.schedule('detect.tracking', '23 * * * *');
+await boss.schedule('issue.verify-sweep', '41 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 
 // Health endpoint for the orchestrator / uptime checks.

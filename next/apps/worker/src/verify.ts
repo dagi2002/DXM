@@ -18,6 +18,7 @@ import { recordStatus } from './detect';
 
 export interface VerifyResult {
   status: 'verified' | 'reopened' | 'waiting' | 'not_due' | 'skipped';
+  siteId?: string;
   verification?: FixVerification;
 }
 
@@ -122,7 +123,7 @@ export async function verifyIssue(
       outcome === 'verified' ? 'verified' : 'open',
       outcome === 'verified' ? 'verified' : 'not_verified',
     );
-    return { status: outcome, verification };
+    return { status: outcome, siteId: issue.siteId, verification };
   });
 }
 
