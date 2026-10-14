@@ -376,7 +376,7 @@ export function TodayPage() {
             </Panel>
 
             {week ? (
-              <Panel title={t('today.week')}>
+              <Panel title={t('today.week')} id="today-week">
                 <div className="grid gap-1">
                   <span className="text-[0.8125rem] text-text-muted">{t('insights.visits.7d')}</span>
                   <div className="flex items-baseline gap-2.5">
