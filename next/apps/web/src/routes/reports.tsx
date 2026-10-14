@@ -272,10 +272,14 @@ export function ReportView({
                   </span>
                 </div>
                 <div className="flex flex-auto flex-wrap items-center gap-2.5 text-[0.9375rem]">
-                  <span className="text-text-muted">{text.perDay(f.before.perDay)}</span>
-                  <span aria-hidden="true">→</span>
-                  <span className="sr-only">{t('report.after')}</span>
-                  <span className="font-semibold">{text.perDay(f.after.perDay)}</span>
+                  {text.unmeasured(f) ? null : (
+                    <>
+                      <span className="text-text-muted">{text.perDay(f.before.perDay)}</span>
+                      <span aria-hidden="true">→</span>
+                      <span className="sr-only">{t('report.after')}</span>
+                      <span className="font-semibold">{text.perDay(f.after.perDay)}</span>
+                    </>
+                  )}
                   <span
                     className={cx(
                       'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',

@@ -540,5 +540,6 @@
   "reports.share.list": "Share links",
   "reports.back": "All reports",
   "reports.notFound": "This report doesn’t exist, or was deleted with its site.",
-  "report.col.perDay": "Visits per day"
+  "report.col.perDay": "Visits per day",
+  "report.measure.other": "Checked by the fix’s own verification"
 }

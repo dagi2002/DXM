@@ -540,5 +540,6 @@
   "reports.share.list": "የማጋሪያ ሊንኮች",
   "reports.back": "ሁሉም ሪፖርቶች",
   "reports.notFound": "ይህ ሪፖርት የለም፣ ወይም ከድረ-ገጹ ጋር ተሰርዟል።",
-  "report.col.perDay": "የቀን ጉብኝቶች"
+  "report.col.perDay": "የቀን ጉብኝቶች",
+  "report.measure.other": "በጥገናው የራሱ ማረጋገጫ የተፈተሸ"
 }
