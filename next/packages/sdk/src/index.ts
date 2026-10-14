@@ -62,16 +62,42 @@ function boot() {
     },
   );
 
+  /** Loads an add-on file (v.js, r.js) from wherever p.js came from. */
+  const add = (file: string) => {
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = script.src.replace(/[^/?#]*([?#].*)?$/, file);
+    document.head.appendChild(s);
+  };
+
+  // Session replay (r.js) loads only with consent, and only if the collector samples this visit in.
+  const base = endpoint.slice(0, -2);
+  let replayAsked = false;
+  const replay = () => {
+    if (replayAsked || tracker.consent() !== 'granted' || script.getAttribute('data-replay') === 'off')
+      return;
+    replayAsked = true;
+    dxm._r = { e: base, k: key, vid: tracker.vid, consent: tracker.consent };
+    fetch(`${base}/r/cfg?k=${encodeURIComponent(key)}&vid=${tracker.vid()}`, { credentials: 'omit' })
+      .then((r) => r.json())
+      .then((c: { on?: boolean }) => c.on && add('r.js'))
+      .catch(() => {});
+  };
+  const consent = (c: Consent) => {
+    tracker.setConsent(c);
+    if (c === 'granted') replay();
+  };
+
   const queued = w.dxm?.q ?? [];
   const run = (cmd: string, ...args: unknown[]) => {
     if (cmd === 'track') tracker.track(String(args[0]), args[1] as Record<string, unknown>);
-    else if (cmd === 'consent') tracker.setConsent(args[0] as Consent);
+    else if (cmd === 'consent') consent(args[0] as Consent);
   };
   const dxm = ((cmd: string, ...args: unknown[]) => run(cmd, ...args)) as Dxm;
   dxm.loaded = true;
   dxm.version = '3';
   dxm.track = (name: string, props?: Record<string, unknown>) => tracker.track(name, props);
-  dxm.consent = (c: Consent) => tracker.setConsent(c);
+  dxm.consent = consent;
   // Legacy v1/v2 API: identify() is ignored on purpose (no personal identifiers); privacy.* are now defaults.
   dxm.identify = () => {};
   dxm.privacy = { maskUrls() {}, scrubFields() {}, disableInputCapture() {} };
@@ -80,18 +106,14 @@ function boot() {
   tracker.start();
   for (const c of queued) run(...c);
 
-  // Web Vitals live in a separate file (v.js) fetched once the page is idle.
+  // Web Vitals (v.js) and replay (r.js) are separate files fetched once the page is idle.
   dxm._vital = (name: string, value: number) => tracker.vital(name, value);
-  const loadVitals = () => {
-    const s = document.createElement('script');
-    s.async = true;
-    s.src = script.src.replace(/[^/?#]*([?#].*)?$/, 'v.js');
-    document.head.appendChild(s);
+  const later = () => {
+    add('v.js');
+    replay();
   };
   const idle = () =>
-    'requestIdleCallback' in w
-      ? w.requestIdleCallback(loadVitals, { timeout: 4000 })
-      : setTimeout(loadVitals, 1500);
+    'requestIdleCallback' in w ? w.requestIdleCallback(later, { timeout: 4000 }) : setTimeout(later, 1500);
   if (document.readyState === 'complete') idle();
   else w.addEventListener('load', idle, { once: true });
 }
