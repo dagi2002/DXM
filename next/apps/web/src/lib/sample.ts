@@ -66,29 +66,6 @@ export interface Replay {
   events: ReplayEvent[];
 }
 
-export interface SiteInsights {
-  site: string;
-  headline: string;
-  summary: string;
-  health: { score: number; previous: number };
-  visits: { value: number; previous: number; trend: number[] };
-  conversion: { value: number; previous: number; trend: number[] };
-  lcp: { value: number; previous: number };
-  /** `focus` = the step a fix is linked to (highlighted), not simply the biggest drop. */
-  funnel: { name: string; template: string; focus?: number; steps: { label: string; count: number }[] };
-  speed: { network: string; lcp: number }[];
-  inp: number;
-  cls: number;
-  pages: {
-    path: string;
-    visits: number;
-    bounce: number;
-    lcp: number;
-    fixes: string | null;
-    tone?: 'bad' | 'warn';
-  }[];
-}
-
 export interface Report {
   id: string;
   token: string;
@@ -300,42 +277,6 @@ const REPLAYS: Replay[] = [
   },
 ];
 
-const INSIGHTS: SiteInsights = {
-  site: 'demostore.et',
-  headline: 'Visits are steady, but fewer people finish paying.',
-  summary:
-    'Checkout completion fell from 44% to 38% this week. The drop is on Android and starts at the telebirr step.',
-  health: { score: 62, previous: 79 },
-  visits: { value: 8412, previous: 8167, trend: [20, 18, 22, 16, 17, 14, 15] },
-  conversion: { value: 0.382, previous: 0.443, trend: [44, 43.5, 44, 42.8, 40.5, 38.9, 38.2] },
-  lcp: { value: 3100, previous: 3100 },
-  funnel: {
-    name: 'telebirr checkout',
-    template: 'Ethiopian checkout template · last 7 days',
-    focus: 4,
-    steps: [
-      { label: 'Viewed a product', count: 1204 },
-      { label: 'Added to cart', count: 412 },
-      { label: 'Started checkout', count: 236 },
-      { label: 'Chose telebirr', count: 168 },
-      { label: 'Paid', count: 64 },
-    ],
-  },
-  speed: [
-    { network: 'Wi-Fi', lcp: 1900 },
-    { network: '4G', lcp: 3100 },
-    { network: '3G', lcp: 5400 },
-  ],
-  inp: 180,
-  cls: 0.04,
-  pages: [
-    { path: '/checkout', visits: 236, bounce: 0.12, lcp: 2400, fixes: '1 critical', tone: 'bad' },
-    { path: '/signup', visits: 498, bounce: 0.31, lcp: 2000, fixes: '1 to watch', tone: 'warn' },
-    { path: '/products/habesha-kemis', visits: 1033, bounce: 0.48, lcp: 3600, fixes: null },
-    { path: '/', visits: 3920, bounce: 0.22, lcp: 2800, fixes: null },
-  ],
-};
-
 const REPORTS: Report[] = [
   {
     id: 'rpt_2026_09',
@@ -390,11 +331,6 @@ const REPORTS: Report[] = [
   },
 ];
 
-const WEEK = {
-  conversion: { value: 0.382, previous: 0.443, trend: [44, 43.5, 44, 42.8, 40.5, 38.9, 38.2] },
-  verifiedThisMonth: { value: 4, previous: 2 },
-};
-
 const later = <T>(value: T) => Promise.resolve(structuredClone(value));
 
 /** Shown by the fix feed (lib/fixes.ts) until an organization has real fixes. */
@@ -404,18 +340,8 @@ export const sampleReplaysQuery = queryOptions({
   queryFn: () => later(REPLAYS),
   staleTime: Infinity,
 });
-export const sampleInsightsQuery = queryOptions({
-  queryKey: ['sample', 'insights'],
-  queryFn: () => later(INSIGHTS),
-  staleTime: Infinity,
-});
 export const sampleReportsQuery = queryOptions({
   queryKey: ['sample', 'reports'],
   queryFn: () => later(REPORTS),
-  staleTime: Infinity,
-});
-export const sampleWeekQuery = queryOptions({
-  queryKey: ['sample', 'week'],
-  queryFn: () => later(WEEK),
   staleTime: Infinity,
 });
