@@ -30,6 +30,7 @@ export async function migrateDatabase(
       grant execute on function pulse_sites_with_recent_activity(integer) to ${appRole};
       grant execute on function pulse_shared_report(text) to ${appRole};
       grant execute on function pulse_report_candidates(timestamptz, timestamptz) to ${appRole};
+      grant execute on function pulse_purge_replay_chunks(integer, integer) to ${appRole};
       grant execute on function pulse_sites_for_insights(integer) to ${appRole};
       grant execute on function pulse_issues_due_for_verification(integer, integer, integer) to ${appRole};
       grant execute on function pulse_live_sites() to ${appRole};

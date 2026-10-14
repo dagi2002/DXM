@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { loadCollectorEnv } from '@pulse/config';
 import { createDatabase, sql } from '@pulse/db';
 import { createBoss, sendJob } from '@pulse/jobs';
+import { createBlobStore } from '@pulse/storage';
 import pino from 'pino';
 import { createCollector } from './app';
 
@@ -21,14 +22,30 @@ const app = createCollector({
   sdkDir: process.env.SDK_DIST_DIR ?? fileURLToPath(new URL('../../../packages/sdk/dist', import.meta.url)),
   peerAddress: (c) => getConnInfo(c).remote.address,
   lookupSite: async (key) => {
-    const res = await database.db.execute<{ id: string; org_id: string; allowed_origins: string[] }>(
-      sql`select id, org_id, allowed_origins from pulse_site_by_public_key(${key})`,
-    );
+    const res = await database.db.execute<{
+      id: string;
+      org_id: string;
+      allowed_origins: string[];
+      replay_sample_rate: number;
+    }>(sql`select id, org_id, allowed_origins, replay_sample_rate from pulse_site_by_public_key(${key})`);
     const row = res.rows[0];
-    return row ? { id: row.id, orgId: row.org_id, allowedOrigins: row.allowed_origins } : null;
+    return row
+      ? {
+          id: row.id,
+          orgId: row.org_id,
+          allowedOrigins: row.allowed_origins,
+          replaySampleRate: Number(row.replay_sample_rate),
+        }
+      : null;
   },
   enqueue: async (job) => {
     await sendJob(boss, 'ingest.apply', job);
+  },
+  replays: {
+    store: createBlobStore(env),
+    enqueue: async (job) => {
+      await sendJob(boss, 'replay.chunk', job);
+    },
   },
 });
 

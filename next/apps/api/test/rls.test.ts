@@ -36,6 +36,7 @@ describe('row-level security invariants', () => {
         'issue_events',
         'issues',
         'org_plans',
+        'replay_chunks',
         'report_shares',
         'reports',
         'rollup_funnel_day',

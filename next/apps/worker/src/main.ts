@@ -1,9 +1,11 @@
 import { createServer } from 'node:http';
 import { aiConfigured, loadWorkerEnv } from '@pulse/config';
 import type { IngestJob } from '@pulse/contracts/ingest';
+import type { ReplayChunkJob } from '@pulse/contracts/replays';
 import { createDatabase, sql } from '@pulse/db';
 import { createBoss, sendJob } from '@pulse/jobs';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
+import { createBlobStore } from '@pulse/storage';
 import { HttpTelegramClient } from '@pulse/mail/telegram';
 import type { TelegramAlertJob } from '@pulse/jobs';
 import pino from 'pino';
@@ -17,6 +19,7 @@ import { sweepVerification, verifyIssue } from './verify';
 import { applyIngest } from './ingest';
 import { generateMonthlyReport, sweepMonthlyReports, type MonthlyReportJob } from './reports';
 import { notifySiteLive } from './notify';
+import { applyReplayChunk, purgeReplays } from './replays';
 
 const env = loadWorkerEnv();
 const log = pino({ level: env.LOG_LEVEL });
@@ -25,6 +28,7 @@ const db = database.db;
 const mailer = env.RESEND_API_KEY
   ? new ResendMailer(env.RESEND_API_KEY, env.EMAIL_FROM)
   : new ConsoleMailer(log);
+const blobs = createBlobStore(env);
 const telegram = env.TELEGRAM_BOT_TOKEN ? new HttpTelegramClient(env.TELEGRAM_BOT_TOKEN) : null;
 const aiEnabled = aiConfigured(env);
 const ai = aiEnabled ? new AnthropicClient(env.ANTHROPIC_API_KEY!, env.AI_MODEL) : null;
@@ -45,6 +49,22 @@ await boss.work<IngestJob>('ingest.apply', { batchSize: 20, pollingIntervalSecon
       'ingest applied',
     );
   }
+});
+
+// Session replay (slice 4): the collector wrote the blob; record its metadata.
+await boss.work<ReplayChunkJob>(
+  'replay.chunk',
+  { batchSize: 20, pollingIntervalSeconds: 0.5 },
+  async (jobs) => {
+    for (const job of jobs) {
+      const status = await applyReplayChunk(db, blobs, job.data);
+      log.debug({ siteId: job.data.siteId, seq: job.data.seq, status }, 'replay chunk applied');
+    }
+  },
+);
+await boss.work('maintenance.replay-retention', async () => {
+  const res = await purgeReplays(db, blobs, env.REPLAY_RETENTION_DAYS);
+  if (res.rows) log.info(res, 'old replays deleted');
 });
 
 await boss.work<{ siteId: string; orgId: string }>('site.live', async (jobs) => {
@@ -166,6 +186,7 @@ await boss.work<MonthlyReportJob>('reports.site', async (jobs) => {
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
+await boss.schedule('maintenance.replay-retention', '37 3 * * *');
 await boss.schedule('detect.sweep', '*/2 * * * *');
 await boss.schedule('reports.monthly', '23 4 1 * *'); // 04:23 UTC on the 1st
 await boss.schedule('insights.sweep', '*/10 * * * *');

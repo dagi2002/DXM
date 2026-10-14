@@ -1,4 +1,5 @@
 import type { IngestJob } from '@pulse/contracts/ingest';
+import type { ReplayChunkJob } from '@pulse/contracts/replays';
 import { PgBoss, type ConstructorOptions } from 'pg-boss';
 import pg from 'pg';
 
@@ -11,6 +12,13 @@ export const QUEUES = {
     name: 'ingest.apply',
     options: { retryLimit: 5, retryBackoff: true, retryDelay: 2, deadLetter: 'ingest.dead' },
   },
+  /** Replay chunk metadata; the blob is already in the store when this is queued. */
+  replayChunk: {
+    name: 'replay.chunk',
+    options: { retryLimit: 5, retryBackoff: true, retryDelay: 2, deadLetter: 'ingest.dead' },
+  },
+  /** Daily: delete replay chunks (rows and blobs) past REPLAY_RETENTION_DAYS. */
+  replayRetention: { name: 'maintenance.replay-retention', options: { retryLimit: 2 } },
   siteLive: { name: 'site.live', options: { retryLimit: 5, retryBackoff: true } },
   partitions: { name: 'maintenance.partitions', options: { retryLimit: 2 } },
   closeVisits: { name: 'maintenance.close-visits', options: { retryLimit: 1 } },
@@ -61,6 +69,8 @@ export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];
 
 export interface JobPayloads {
   'ingest.apply': IngestJob;
+  'replay.chunk': ReplayChunkJob;
+  'maintenance.replay-retention': Record<string, never>;
   'site.live': { siteId: string; orgId: string };
   'maintenance.partitions': Record<string, never>;
   'maintenance.close-visits': Record<string, never>;

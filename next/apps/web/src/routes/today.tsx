@@ -97,6 +97,7 @@ function FixCard({
           <Link
             to="/replays/$replayId"
             params={{ replayId: fix.replayIds[0] }}
+            search={{ fix: fix.id }}
             className={buttonClass('secondary')}
           >
             <Play size={16} aria-hidden="true" />

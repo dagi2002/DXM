@@ -363,6 +363,8 @@ export function createTracker(opts: Options, env: Env) {
         void flush();
       }
     },
+    vid: () => visit.id,
+    consent: () => consent,
     /** test helpers */
     _state: () => ({ queue, visit, consent, stopped, backoffUntil, pending }),
   };

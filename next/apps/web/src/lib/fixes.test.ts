@@ -73,6 +73,7 @@ const fix = (over: Partial<Fix>): Fix => ({
   updatedAt: '2026-10-14T08:55:00.000Z',
   fixedAt: null,
   verifiedAt: null,
+  replayIds: [],
   ...over,
 });
 

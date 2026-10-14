@@ -222,7 +222,7 @@ export function toFixView(dto: FixDto, ctx: ViewContext): FixView {
         : v?.outcome === 'reopened' && dto.status === 'open'
           ? t('fix.verify.reopened', { when: checked, before, after })
           : null,
-    replayIds: [],
+    replayIds: dto.replayIds,
   };
 }
 

@@ -20,6 +20,7 @@
     "@pulse/jobs": "workspace:*",
     "@pulse/mail": "workspace:*",
     "@pulse/reports": "workspace:*",
+    "@pulse/storage": "workspace:*",
     "pino": "^10.4.0"
   },
   "devDependencies": {

@@ -8,7 +8,8 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Cross-Origin-Opener-Policy same-origin
-		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		# img/font https: lets session replays show the customer site's own images and fonts (no scripts run).
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' https: data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
 
@@ -17,7 +18,7 @@
 	}
 
 	# Tracking: SDK files and ingest go to the collector (public, cross-origin, no cookies).
-	@collector path /i /collect /collect-replay/replay /sdk/* /dxm.js /dxm.v2.js /v.js
+	@collector path /i /i/replay /i/replay/cfg /collect /collect-replay/replay /sdk/* /dxm.js /dxm.v2.js /v.js /r.js
 	handle @collector {
 		reverse_proxy collector:4200
 	}

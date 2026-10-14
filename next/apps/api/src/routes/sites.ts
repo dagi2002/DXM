@@ -46,6 +46,7 @@ export const toSiteDto = (row: SiteRow): Site => ({
   publicKey: row.publicKey,
   createdAt: row.createdAt.toISOString(),
   verifiedAt: row.verifiedAt?.toISOString() ?? null,
+  replaySampleRate: row.replaySampleRate,
 });
 
 async function planFor(tx: Tx, orgId: string): Promise<PlanId> {

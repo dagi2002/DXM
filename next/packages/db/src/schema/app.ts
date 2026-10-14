@@ -61,6 +61,8 @@ export const sites = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    /** Share of visits recorded as session replays, 0–1 (slice 4). The SDK and collector both honour it. */
+    replaySampleRate: real('replay_sample_rate').notNull().default(1),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
     ...timestamps,
@@ -248,6 +250,41 @@ export const issueEvents = pgTable(
 export type IssueRow = typeof issues.$inferSelect;
 export type IssueEventRow = typeof issueEvents.$inferSelect;
 
+/**
+ * Session replay chunks (slice 4): metadata only. The gzip'd rrweb events live in the blob store
+ * (`@pulse/storage`) at `object_key`. Like visits, the visit id comes from the browser, so rows are
+ * keyed per site. Retention deletes rows and blobs together (maintenance.replay-retention).
+ */
+export const replayChunks = pgTable(
+  'replay_chunks',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    visitId: text('visit_id').notNull(),
+    seq: integer('seq').notNull(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    /** Compressed size as stored. */
+    bytes: integer('bytes').notNull(),
+    objectKey: text('object_key').notNull(),
+    /** rrweb event count and the first/last event times (browser clock) inside the chunk. */
+    events: integer('events').notNull(),
+    firstTs: timestamp('first_ts', { withTimezone: true }).notNull(),
+    lastTs: timestamp('last_ts', { withTimezone: true }).notNull(),
+    /** The chunk starts with a full DOM snapshot, so playback can begin here. */
+    hasSnapshot: boolean('has_snapshot').notNull().default(false),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.siteId, t.visitId, t.seq] }),
+    index('replay_chunks_org_received_idx').on(t.orgId, t.receivedAt),
+    index('replay_chunks_org_visit_idx').on(t.orgId, t.visitId),
+  ],
+);
+
+export type ReplayChunkRow = typeof replayChunks.$inferSelect;
 /* ── Site insights (slice 5) ─────────────────────────────────────────────────
  * Daily per-site rollups, filled by the worker's `insights.site` job. Dashboards and reports read
  * these, never raw events. Days are UTC calendar days. RLS: drizzle/0012_insights.sql.
