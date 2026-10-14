@@ -63,7 +63,7 @@ export function useFixView() {
       updated: formatRelative(new Date(dto.lastSeen), locale, now),
       chips,
       affectedToday: e.visits,
-      replayIds: [],
+      replayIds: dto.replayIds,
     };
   };
 }

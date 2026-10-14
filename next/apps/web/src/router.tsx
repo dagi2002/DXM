@@ -29,7 +29,7 @@ const TodayPage = lazyRouteComponent(() => import('./routes/today'), 'TodayPage'
 const FixDetailPage = lazyRouteComponent(() => import('./routes/fixes'), 'FixDetailPage');
 const replays = () => import('./routes/replays');
 const ReplaysPage = lazyRouteComponent(replays, 'ReplaysPage');
-const ReplayPage = lazyRouteComponent(replays, 'ReplayPage');
+const ReplayPage = lazyRouteComponent(() => import('./routes/replay'), 'ReplayPage');
 const reports = () => import('./routes/reports');
 const ReportsPage = lazyRouteComponent(reports, 'ReportsPage');
 const PublicReportPage = lazyRouteComponent(reports, 'PublicReportPage');
@@ -199,6 +199,12 @@ const replayRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/replays/$replayId',
   component: ReplayPage,
+  /** fix = came from a fix (prev/next walk its clips), site = disambiguates the visit, t = start offset ms. */
+  validateSearch: (s: Record<string, unknown>): { fix?: string; site?: string; t?: number } => ({
+    fix: typeof s.fix === 'string' ? s.fix.slice(0, 64) : undefined,
+    site: typeof s.site === 'string' ? s.site.slice(0, 64) : undefined,
+    t: typeof s.t === 'number' && Number.isFinite(s.t) && s.t >= 0 ? Math.round(s.t) : undefined,
+  }),
 });
 const reportsRoute = createRoute({
   getParentRoute: () => appRoute,

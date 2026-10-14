@@ -23,7 +23,7 @@ import { api, ApiError, fieldError } from '../lib/api';
 import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { InstallPanel } from './install';
 import { Delta } from './today';
-import { ReplayList } from './replays';
+import { ReplayBrowser } from '../components/replay-list';
 import {
   HealthRing,
   Panel,
@@ -34,7 +34,7 @@ import {
   scrollRegionClass,
   tabPanelClass,
 } from '../components/pulse';
-import { sampleInsightsQuery, sampleReplaysQuery } from '../lib/sample';
+import { sampleInsightsQuery } from '../lib/sample';
 import type { Locale } from '@pulse/i18n';
 import { formatMetric } from '@pulse/metrics';
 
@@ -487,17 +487,12 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
   );
 }
 
-function SiteReplays() {
+function SiteReplays({ siteId }: { siteId: string }) {
   const { t } = useTranslation();
-  const { data: replays } = useQuery(sampleReplaysQuery);
-  if (!replays) return <Skeleton className="h-64" />;
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[0.9375rem] text-text-muted">{t('replays.intro')}</p>
-        <SamplePill />
-      </div>
-      <ReplayList replays={replays} />
+      <p className="text-[0.9375rem] text-text-muted">{t('replays.intro')}</p>
+      <ReplayBrowser siteId={siteId} />
     </div>
   );
 }
@@ -605,7 +600,7 @@ export function SiteDetailPage() {
           <SiteOverview stats={stats} locale={locale} />
         </TabPanel>
         <TabPanel id="replays" className={tabPanelClass}>
-          <SiteReplays />
+          <SiteReplays siteId={siteId} />
         </TabPanel>
         <TabPanel id="install" className={tabPanelClass}>
           <InstallPanel site={site} />

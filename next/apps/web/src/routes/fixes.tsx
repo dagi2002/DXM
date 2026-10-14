@@ -138,6 +138,7 @@ export function FixDetailPage() {
                     <Link
                       to="/replays/$replayId"
                       params={{ replayId: fix.replayIds[0] }}
+                      search={{ fix: fix.id }}
                       className={buttonClass('primary')}
                     >
                       <Play size={16} aria-hidden="true" />
@@ -148,6 +149,7 @@ export function FixDetailPage() {
                     <Link
                       to="/replays/$replayId"
                       params={{ replayId: fix.replayIds[1] }}
+                      search={{ fix: fix.id }}
                       className={buttonClass('secondary')}
                     >
                       {t('fix.nextClip', { n: 2, total: fix.replayIds.length })}
@@ -157,9 +159,22 @@ export function FixDetailPage() {
               </div>
             </div>
           ) : (
-            <p className="rounded-lg border border-dashed border-border-strong p-6 text-sm text-text-muted">
-              {fix.summary}
-            </p>
+            <div className="grid gap-3 rounded-lg border border-dashed border-border-strong p-6">
+              <p className="text-sm text-text-muted">{fix.summary}</p>
+              {fix.replayIds[0] ? (
+                <Link
+                  to="/replays/$replayId"
+                  params={{ replayId: fix.replayIds[0] }}
+                  search={{ fix: fix.id }}
+                  className={cx(buttonClass('primary'), 'w-fit')}
+                >
+                  <Play size={16} aria-hidden="true" />
+                  {t('fix.watchReplays', { count: fix.replayIds.length })}
+                </Link>
+              ) : (
+                <p className="text-sm text-text-muted">{t('fix.noReplays')}</p>
+              )}
+            </div>
           )}
 
           {fix.visits?.length ? (
