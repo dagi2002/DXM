@@ -50,6 +50,9 @@ importers:
       '@pulse/mail':
         specifier: workspace:*
         version: link:../../packages/mail
+      '@pulse/reports':
+        specifier: workspace:*
+        version: link:../../packages/reports
       '@sentry/node':
         specifier: ^11.6.0
         version: 11.6.0
@@ -269,6 +272,9 @@ importers:
       '@pulse/mail':
         specifier: workspace:*
         version: link:../../packages/mail
+      '@pulse/reports':
+        specifier: workspace:*
+        version: link:../../packages/reports
       pino:
         specifier: ^10.4.0
         version: 10.4.0

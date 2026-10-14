@@ -112,7 +112,8 @@ export function assembleSnapshot(input: SnapshotInput): Snapshot {
     start: isoDate(start),
     visits: input.bucketVisits[i] ?? 0,
     fixesShipped: fixed.filter(
-      (f) => f.fixedAt >= start && f.fixedAt.getTime() < Math.min(start.getTime() + span, range.end.getTime()),
+      (f) =>
+        f.fixedAt >= start && f.fixedAt.getTime() < Math.min(start.getTime() + span, range.end.getTime()),
     ).length,
   }));
 

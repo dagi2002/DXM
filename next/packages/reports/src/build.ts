@@ -1,16 +1,5 @@
 import type { FixKind, ReportSnapshot } from '@pulse/contracts';
-import {
-  and,
-  eq,
-  inArray,
-  isNull,
-  issues,
-  lt,
-  organization,
-  sites,
-  sql,
-  type Tx,
-} from '@pulse/db';
+import { and, eq, inArray, isNull, issues, lt, organization, sites, sql, type Tx } from '@pulse/db';
 import { normalizePath } from '@pulse/detectors';
 import { periodRange, previousPeriod } from './period';
 import { assembleSnapshot, fixWindows, type FixedIssueInput, type OpenIssueInput } from './snapshot';

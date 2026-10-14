@@ -18,6 +18,7 @@
     "@pulse/i18n": "workspace:*",
     "@pulse/jobs": "workspace:*",
     "@pulse/mail": "workspace:*",
+    "@pulse/reports": "workspace:*",
     "pino": "^10.4.0"
   },
   "devDependencies": {

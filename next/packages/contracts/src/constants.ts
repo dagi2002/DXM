@@ -74,3 +74,6 @@ export const canTransitionFix = (from: FixStatus, to: FixStatus): boolean =>
 
 /** Roles that can see and work on fixes (client viewers only see shared reports). */
 export const canWorkOnFixes = (role: Role | null | undefined): boolean => !!role && role !== 'client_viewer';
+
+/** Roles that can make, read and share client reports. Client viewers get share links instead. */
+export const canWorkOnReports = (role: Role | null | undefined): boolean => canWorkOnFixes(role);
