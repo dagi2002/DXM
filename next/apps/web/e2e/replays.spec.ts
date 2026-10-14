@@ -110,6 +110,13 @@ test('records a short visit on the customer site and plays it back, masked', asy
 
   // Timeline marks from the visit's events, and the clock moves when playing.
   await expect(page.getByRole('button', { name: /Opened \// }).first()).toBeVisible();
+  // The desktop rail's account box must stay inside the rail even with a long email
+  // (it used to overflow and sit on top of this page's Play button).
+  if (info.project.name === 'desktop') {
+    const rail = await page.locator('aside').first().boundingBox();
+    const signOut = await page.locator('aside').getByRole('button', { name: 'Sign out' }).boundingBox();
+    expect(signOut!.x + signOut!.width).toBeLessThanOrEqual(rail!.x + rail!.width);
+  }
   await page.getByRole('button', { name: 'Play', exact: true }).click({ timeout: 15_000 });
   await expect(page.getByTestId('replay-clock')).not.toHaveText(/^0:00 \//, { timeout: 10_000 });
   await page.getByRole('button', { name: 'Pause', exact: true }).click({ timeout: 15_000 });

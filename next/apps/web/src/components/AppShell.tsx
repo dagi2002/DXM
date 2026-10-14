@@ -128,7 +128,8 @@ export function AppShell() {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto grid gap-3 rounded-lg bg-surface-sunken p-3">
+        {/* grid-cols-1 = minmax(0, 1fr): a long email truncates instead of widening the rail over the page. */}
+        <div className="mt-auto grid min-w-0 grid-cols-1 gap-3 rounded-lg bg-surface-sunken p-3">
           <LanguageSwitch persist />
           <div className="flex items-center gap-3 border-t border-border pt-3">
             <span
