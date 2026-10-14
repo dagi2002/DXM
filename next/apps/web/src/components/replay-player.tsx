@@ -143,25 +143,31 @@ export default function ReplayPlayer({ detail, seek }: ReplayPlayerProps) {
   return (
     <section
       aria-label={t('replay.player')}
-      className="overflow-hidden rounded-lg border border-border bg-surface text-text"
+      className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface text-text"
     >
-      <div
-        ref={stage}
-        className="relative grid h-[32rem] place-items-center overflow-hidden bg-surface-sunken"
-      >
+      {/* The recording keeps its own viewport size; it is positioned absolutely and scaled, so it
+          never widens the page layout (a 1440px recording on a phone included). */}
+      <div ref={stage} className="relative h-[32rem] overflow-hidden bg-surface-sunken">
         <div
           aria-hidden="true"
           style={
             viewport
-              ? { width: viewport.width, height: viewport.height, transform: `scale(${scale})` }
+              ? {
+                  width: viewport.width,
+                  height: viewport.height,
+                  transform: `translate(-50%, -50%) scale(${scale})`,
+                }
               : undefined
           }
-          className="pulse-replay shrink-0 origin-center overflow-hidden rounded-md bg-surface shadow-sm"
+          className="absolute top-1/2 left-1/2 origin-center overflow-hidden rounded-md bg-surface shadow-sm"
         >
           <div ref={host} />
         </div>
         {state !== 'ready' ? (
-          <p role="status" className="absolute inset-x-6 text-center text-sm text-text-muted">
+          <p
+            role="status"
+            className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-sm text-text-muted"
+          >
             {state === 'loading' ? t('replay.loading') : t('replay.loadFailed')}
           </p>
         ) : null}

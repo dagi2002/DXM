@@ -93,6 +93,11 @@ test('records a short visit on the customer site and plays it back, masked', asy
   await expect(page.getByText('Loading the recording…')).toBeHidden({ timeout: 15_000 });
   await expect(page.getByText('This recording couldn’t be loaded', { exact: false })).toHaveCount(0);
 
+  // The recording keeps its own viewport size but must never widen the page around it.
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+    .toBeLessThanOrEqual(0);
+
   const frame = page.frameLocator('.replayer-wrapper iframe');
   await expect(frame.getByText('Sofa')).toBeAttached();
   await expect(frame.locator('#who')).not.toContainText('Tigist');
