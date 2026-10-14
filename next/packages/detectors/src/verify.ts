@@ -89,7 +89,11 @@ const rate = (affected: number, exposed: number): VerificationMeasure => ({
  * how many did (affected). Uses the same grouping as the detectors, so before and after are
  * counted exactly the way the issue was found.
  */
-export function measureIssue(kind: FixKind, evidence: FixEvidence, input: DetectorInput): VerificationMeasure {
+export function measureIssue(
+  kind: FixKind,
+  evidence: FixEvidence,
+  input: DetectorInput,
+): VerificationMeasure {
   const visitsWith = (pred: (path: string | null, type: string) => boolean) => {
     const ids = new Set<string>();
     for (const e of input.events) if (pred(normalizePath(e.path), e.type)) ids.add(e.visitId);

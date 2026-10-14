@@ -54,7 +54,11 @@ export function speedStats(input: DetectorInput): Map<string, SpeedStats> {
 }
 
 /** p75 of a speed group (all networks). */
-export const p75Of = (s: SpeedStats) => percentile([...s.visits.values()].map((v) => v.value), SLOW_PERCENTILE);
+export const p75Of = (s: SpeedStats) =>
+  percentile(
+    [...s.visits.values()].map((v) => v.value),
+    SLOW_PERCENTILE,
+  );
 
 /**
  * Page templates where the p75 LCP or INP is poor — overall, or on any one network with enough

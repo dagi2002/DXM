@@ -1,6 +1,11 @@
 import type { FixSeverity } from '@pulse/contracts';
 import { normalizePath } from './paths';
-import { MAX_SAMPLE_VISITS, MONEY_PATH_CRITICAL_VISITS, MONEY_PATH_RE, TOP_BROWSER_MIN_SHARE } from './thresholds';
+import {
+  MAX_SAMPLE_VISITS,
+  MONEY_PATH_CRITICAL_VISITS,
+  MONEY_PATH_RE,
+  TOP_BROWSER_MIN_SHARE,
+} from './thresholds';
 import type { DetectorInput } from './types';
 
 /** Visits per day, from a count over a window of `windowHours`. One decimal. */

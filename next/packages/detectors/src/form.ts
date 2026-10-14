@@ -39,7 +39,10 @@ const formName = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().s
 export function formStats(input: DetectorInput): Map<string, FormStats> {
   const end = windowEnd(input).getTime();
   const graceMs = FORM_ABANDON_GRACE_MINUTES * 60_000;
-  const forms = new Map<string, { path: string; form: string; fingerprint: string; visits: Map<string, VisitForm> }>();
+  const forms = new Map<
+    string,
+    { path: string; form: string; fingerprint: string; visits: Map<string, VisitForm> }
+  >();
   for (const e of input.events) {
     if (e.type !== 'fs' && e.type !== 'fx' && e.type !== 'fe') continue;
     const path = normalizePath(e.path);
