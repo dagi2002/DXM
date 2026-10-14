@@ -13,15 +13,13 @@ import { useTranslation } from 'react-i18next';
 import {
   AiBox,
   Panel,
-  SamplePill,
   SeverityPill,
   Sparkline,
   statusTabClass,
   tabPanelClass,
 } from '../components/pulse';
-import { todayQuery, useFormatDate, useMe } from '../lib/queries';
+import { todayQuery, useFormatDate, useMe, weekQuery } from '../lib/queries';
 import { FIX_STATUSES, useFixes, useSetFixStatus, type FixView as Fix } from '../lib/fixes';
-import { sampleWeekQuery } from '../lib/sample';
 import { telegramQuery } from '../lib/telegram';
 
 function FixMeta({ fix }: { fix: Fix }) {
@@ -206,7 +204,7 @@ export function TodayPage() {
   const locale = i18n.language as Locale;
   const { data, isLoading } = useQuery(todayQuery(orgId));
   const { fixes } = useFixes();
-  const { data: week } = useQuery(sampleWeekQuery);
+  const { data: week } = useQuery(weekQuery(orgId));
   const { data: telegram } = useQuery(telegramQuery(orgId));
   const [tab, setTab] = useState<FixStatus>('open');
   const setStatus = useSetFixStatus();
@@ -375,33 +373,55 @@ export function TodayPage() {
             </Panel>
 
             {week ? (
-              <Panel title={t('today.week')} action={<SamplePill />}>
+              <Panel title={t('today.week')} id="today-week">
                 <div className="grid gap-1">
-                  <span className="text-[0.8125rem] text-text-muted">{t('metric.checkout')}</span>
+                  <span className="text-[0.8125rem] text-text-muted">{t('insights.visits.7d')}</span>
                   <div className="flex items-baseline gap-2.5">
                     <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                      {formatMetric('conversion_rate', week.conversion.value, locale)}
+                      {formatMetric('visitors', week.visits.value, locale)}
                     </span>
                     <Delta
-                      metric="conversion_rate"
-                      value={week.conversion.value}
-                      previous={week.conversion.previous}
+                      metric="visitors"
+                      value={week.visits.value}
+                      previous={week.visits.previous}
                       locale={locale}
                     />
                   </div>
-                  <Sparkline values={week.conversion.trend} />
+                  <Sparkline values={week.visits.trend} />
                 </div>
+                {week.conversion ? (
+                  <div className="grid gap-1">
+                    <span className="text-[0.8125rem] text-text-muted">{t('metric.funnelsCompletion')}</span>
+                    <div className="flex items-baseline gap-2.5">
+                      <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
+                        {formatMetric('conversion_rate', week.conversion.value, locale)}
+                      </span>
+                      {week.conversion.previous !== null ? (
+                        <Delta
+                          metric="conversion_rate"
+                          value={week.conversion.value}
+                          previous={week.conversion.previous}
+                          locale={locale}
+                        />
+                      ) : null}
+                    </div>
+                    <Sparkline values={week.conversion.trend.filter((x): x is number => x !== null)} />
+                  </div>
+                ) : null}
                 <div className="grid gap-1">
                   <span className="text-[0.8125rem] text-text-muted">{t('metric.verifiedFixes')}</span>
                   <div className="flex items-baseline gap-2.5">
                     <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                      {week.verifiedThisMonth.value}
+                      {formatMetric('visitors', week.verifiedThisMonth.value, locale)}
                     </span>
-                    <span className="text-[0.8125rem] font-semibold text-good">
-                      ↑ {week.verifiedThisMonth.value - week.verifiedThisMonth.previous}
+                    <span className="text-[0.8125rem] text-text-muted">
+                      {t('today.verifiedLastMonth', { count: week.verifiedThisMonth.previous })}
                     </span>
                   </div>
                 </div>
+                {week.visits.value === 0 ? (
+                  <p className="text-[0.8125rem] text-text-muted">{t('today.weekEmpty')}</p>
+                ) : null}
               </Panel>
             ) : null}
 

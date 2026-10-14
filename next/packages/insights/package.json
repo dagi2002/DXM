@@ -1,0 +1,24 @@
+{
+  "name": "@pulse/insights",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./db": "./src/db.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pulse/contracts": "workspace:*",
+    "@pulse/db": "workspace:*",
+    "@pulse/detectors": "workspace:*",
+    "@pulse/metrics": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.4"
+  }
+}

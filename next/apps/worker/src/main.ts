@@ -10,6 +10,8 @@ import pino from 'pino';
 import { AnthropicClient, recommendFix } from './ai';
 import { alertJobFor, sendTelegramAlert } from './alerts';
 import { detectSite, sweepDetection } from './detect';
+import { rollupSite } from '@pulse/insights/db';
+import { sweepInsights } from './insights';
 import { sweepTracking } from './tracking';
 import { sweepVerification, verifyIssue } from './verify';
 import { applyIngest } from './ingest';
@@ -135,11 +137,24 @@ await boss.work<{ issueId: string; orgId: string }>('ai.recommend', async (jobs)
   }
 });
 
+// Site insights (slice 5): daily rollups, so dashboards never scan raw events per request.
+await boss.work('insights.sweep', async () => {
+  const queued = await sweepInsights(db, boss);
+  if (queued) log.debug({ sites: queued }, 'insight rollups queued');
+});
+await boss.work<{ siteId: string; orgId: string }>('insights.site', async (jobs) => {
+  for (const job of jobs) {
+    const result = await rollupSite(db, job.data);
+    log.debug({ siteId: job.data.siteId, ...result }, 'insight rollups refreshed');
+  }
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
 await boss.schedule('detect.sweep', '*/2 * * * *');
+await boss.schedule('insights.sweep', '*/10 * * * *');
 await boss.schedule('detect.tracking', '23 * * * *');
 await boss.schedule('issue.verify-sweep', '41 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too

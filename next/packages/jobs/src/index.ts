@@ -25,6 +25,13 @@ export const QUEUES = {
     name: 'detect.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
   },
+  /** Every 10 minutes: find sites whose daily rollups need refreshing and queue one run each. */
+  insightsSweep: { name: 'insights.sweep', options: { retryLimit: 1 } },
+  /** Recomputes one site's rollups for today and yesterday (and stale funnel days). */
+  insightsSite: {
+    name: 'insights.site',
+    options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 30 },
+  },
   /** Hourly: live sites that went quiet (tracking-broken), and quiet ones that came back. */
   detectTracking: { name: 'detect.tracking', options: { retryLimit: 1 } },
   /** Hourly: queue a before/after check for every fixed issue whose after-window is complete. */
@@ -56,6 +63,8 @@ export interface JobPayloads {
   'maintenance.purge-dedupe': Record<string, never>;
   'detect.sweep': Record<string, never>;
   'detect.site': { siteId: string; orgId: string };
+  'insights.sweep': Record<string, never>;
+  'insights.site': { siteId: string; orgId: string };
   'detect.tracking': Record<string, never>;
   'issue.verify-sweep': Record<string, never>;
   'issue.verify': { issueId: string; orgId: string };
