@@ -322,7 +322,7 @@ describe('share links', () => {
 
     const { rows } = await adminQuery(`select * from report_shares where report_id = $1`, [report.id]);
     expect(rows).toHaveLength(1);
-    expect(rows[0].token_hash).toBe(sha256(created.token));
+    expect(rows[0]!.token_hash).toBe(sha256(created.token));
     // The plain token appears in no column.
     expect(JSON.stringify(rows[0])).not.toContain(created.token);
 

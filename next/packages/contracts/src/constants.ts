@@ -77,3 +77,10 @@ export const canWorkOnFixes = (role: Role | null | undefined): boolean => !!role
 
 /** Roles that can make, read and share client reports. Client viewers get share links instead. */
 export const canWorkOnReports = (role: Role | null | undefined): boolean => canWorkOnFixes(role);
+
+/* ── Client reports ─────────────────────────────────────────────────────────── */
+/** Fewer visits than this in a month and a report says "Not enough visits yet" instead of numbers. */
+export const REPORT_MIN_VISITS = 30;
+/** Share links: default and maximum lifetime, in days. */
+export const REPORT_SHARE_DEFAULT_DAYS = 30;
+export const REPORT_SHARE_MAX_DAYS = 90;

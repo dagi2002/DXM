@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { FIX_KINDS, FIX_SEVERITIES } from './constants';
+import {
+  FIX_KINDS,
+  FIX_SEVERITIES,
+  REPORT_SHARE_DEFAULT_DAYS,
+  REPORT_SHARE_MAX_DAYS,
+} from './constants';
 
 /**
  * Client reports (slice 6). A report is a frozen snapshot of one site's calendar month. Like the
@@ -12,11 +17,6 @@ import { FIX_KINDS, FIX_SEVERITIES } from './constants';
 export const ReportPeriod = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'invalid_period');
 export type ReportPeriod = z.infer<typeof ReportPeriod>;
 
-/** Fewer visits than this in a month and the report says "Not enough visits yet" instead of numbers. */
-export const REPORT_MIN_VISITS = 30;
-/** Share links: default and maximum lifetime. */
-export const REPORT_SHARE_DEFAULT_DAYS = 30;
-export const REPORT_SHARE_MAX_DAYS = 90;
 
 const count = z.number().int().min(0);
 /** A number this month and the same number last month; null = no data to measure it. */
