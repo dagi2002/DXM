@@ -25,6 +25,10 @@ export const QUEUES = {
     name: 'detect.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
   },
+  /** On the 1st of each month: queue one report build per site visited last month. */
+  reportsMonthly: { name: 'reports.monthly', options: { retryLimit: 2 } },
+  /** One frozen monthly report per site (idempotent; singletonKey = site:period). */
+  reportsSite: { name: 'reports.site', options: { retryLimit: 3, retryBackoff: true, retryDelay: 60 } },
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];
@@ -37,6 +41,8 @@ export interface JobPayloads {
   'maintenance.purge-dedupe': Record<string, never>;
   'detect.sweep': Record<string, never>;
   'detect.site': { siteId: string; orgId: string };
+  'reports.monthly': Record<string, never>;
+  'reports.site': { siteId: string; orgId: string; period: string };
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */
