@@ -16,6 +16,7 @@
     "@pulse/db": "workspace:*",
     "@pulse/detectors": "workspace:*",
     "@pulse/i18n": "workspace:*",
+    "@pulse/insights": "workspace:*",
     "@pulse/jobs": "workspace:*",
     "@pulse/mail": "workspace:*",
     "@pulse/storage": "workspace:*",

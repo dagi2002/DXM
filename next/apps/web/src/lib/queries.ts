@@ -1,4 +1,13 @@
-import type { Me, Site, SiteInstall, Today } from '@pulse/contracts';
+import type {
+  InsightsRange,
+  Me,
+  Site,
+  SiteFunnel,
+  SiteInsights,
+  SiteInstall,
+  Today,
+  WeekSummary,
+} from '@pulse/contracts';
 import { formatDate, type CalendarPref, type Locale } from '@pulse/i18n';
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -69,4 +78,28 @@ export const todayQuery = (orgId: string) =>
     queryKey: ['orgs', orgId, 'today'],
     queryFn: ({ signal }) => api<Today>('/today', { signal }),
     refetchInterval: 60_000,
+  });
+
+/** Site insights from the daily rollups (refreshed by the worker every 10 minutes). */
+export const siteInsightsQuery = (orgId: string, siteId: string, range: InsightsRange) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'sites', siteId, 'insights', range],
+    queryFn: ({ signal }) => api<SiteInsights>(`/sites/${siteId}/insights?range=${range}`, { signal }),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+export const siteFunnelQuery = (orgId: string, siteId: string) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'sites', siteId, 'funnel'],
+    queryFn: ({ signal }) => api<SiteFunnel>(`/sites/${siteId}/funnel`, { signal }),
+  });
+
+/** Today's "this week" panel across the organization's sites. */
+export const weekQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'insights', 'week'],
+    queryFn: ({ signal }) => api<WeekSummary>('/insights/week', { signal }),
+    staleTime: 60_000,
+    retry: (n, e) => !(e instanceof ApiError && e.status === 403) && n < 2,
   });

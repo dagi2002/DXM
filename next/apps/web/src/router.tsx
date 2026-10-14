@@ -14,6 +14,7 @@ import { AppShell } from './components/AppShell';
 import { authClient } from './lib/auth-client';
 import { meQuery } from './lib/queries';
 import { safeRedirect } from './lib/redirect';
+import type { ReplaySearch } from './lib/replays';
 
 // Every page is its own chunk: the first load only ships the shell for the route you open.
 const auth = () => import('./routes/auth');
@@ -200,11 +201,9 @@ const replayRoute = createRoute({
   path: '/replays/$replayId',
   component: ReplayPage,
   /** fix = came from a fix (prev/next walk its clips), site = disambiguates the visit, t = start offset ms. */
-  validateSearch: (s: Record<string, unknown>): { fix?: string; site?: string; t?: number } => ({
-    fix: typeof s.fix === 'string' ? s.fix.slice(0, 64) : undefined,
-    site: typeof s.site === 'string' ? s.site.slice(0, 64) : undefined,
-    t: typeof s.t === 'number' && Number.isFinite(s.t) && s.t >= 0 ? Math.round(s.t) : undefined,
-  }),
+  // Typed here and checked in the lazy replay page (readReplaySearch), so the parsing stays out
+  // of the first-load bundle.
+  validateSearch: (s: Record<string, unknown>) => s as ReplaySearch,
 });
 const reportsRoute = createRoute({
   getParentRoute: () => appRoute,

@@ -9,14 +9,21 @@ import ReplayPlayer from '../components/replay-player';
 import { ApiError } from '../lib/api';
 import { fixQuery } from '../lib/fixes';
 import { useMe } from '../lib/queries';
-import { fmtClock, replayQuery, replaysQuery, useMarkLabel, useReplayView } from '../lib/replays';
+import {
+  fmtClock,
+  readReplaySearch,
+  replayQuery,
+  replaysQuery,
+  useMarkLabel,
+  useReplayView,
+} from '../lib/replays';
 
 export function ReplayPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { orgId } = useMe();
   const { replayId } = useParams({ strict: false }) as { replayId: string };
-  const search = useSearch({ strict: false }) as { fix?: string; site?: string; t?: number };
+  const search = readReplaySearch(useSearch({ strict: false }) as Record<string, unknown>);
   const view = useReplayView();
   const markLabel = useMarkLabel();
   const [seek, setSeek] = useState<{ at: number; n: number } | undefined>(

@@ -1,5 +1,5 @@
 import { canManage, PLATFORMS, type Platform } from '@pulse/contracts/constants';
-import type { Site, Today } from '@pulse/contracts';
+import type { Site } from '@pulse/contracts';
 import {
   Banner,
   Button,
@@ -9,7 +9,6 @@ import {
   Select,
   Skeleton,
   StatusBadge,
-  cx,
   TextField,
   type Tone,
 } from '@pulse/ui';
@@ -22,21 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
 import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { InstallPanel } from './install';
-import { Delta } from './today';
 import { ReplayBrowser } from '../components/replay-list';
-import {
-  HealthRing,
-  Panel,
-  SamplePill,
-  Sparkline,
-  healthTone,
-  statusTabClass,
-  scrollRegionClass,
-  tabPanelClass,
-} from '../components/pulse';
-import { sampleInsightsQuery } from '../lib/sample';
+import { statusTabClass, tabPanelClass } from '../components/pulse';
+import { SiteOverview } from './site-overview';
 import type { Locale } from '@pulse/i18n';
-import { formatMetric } from '@pulse/metrics';
 
 const statusTone: Record<Site['status'], Tone> = { install: 'info', live: 'good', paused: 'warn' };
 
@@ -240,252 +228,9 @@ export function SitesPage() {
   );
 }
 
-/* ── Site overview (sample insights until rollups ship) ───────────────────── */
+/* ── Site detail tabs ────────────────────────────────────────────────────── */
 const SITE_TABS = ['overview', 'replays', 'install'] as const;
 type SiteTab = (typeof SITE_TABS)[number];
-
-const lcpTone = (ms: number) => (ms <= 2500 ? 'good' : ms <= 4000 ? 'warn' : 'bad');
-const toneText = { good: 'text-good', warn: 'text-warn', bad: 'text-bad' } as const;
-const toneBg = { good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad' } as const;
-
-function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; locale: Locale }) {
-  const { t } = useTranslation();
-  const { data: ins } = useQuery(sampleInsightsQuery);
-  if (!ins) return <Skeleton className="h-96" />;
-  const pct = new Intl.NumberFormat(locale === 'am' ? 'am-ET' : 'en', {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  });
-  const first = ins.funnel.steps[0]?.count ?? 1;
-  const steps = ins.funnel.steps.map((st, i) => {
-    const prev = ins.funnel.steps[i - 1]?.count;
-    return { ...st, ratio: st.count / first, drop: prev ? 1 - st.count / prev : 0 };
-  });
-  const worst = ins.funnel.focus ?? steps.reduce((w, st, i) => (st.drop > (steps[w]?.drop ?? 0) ? i : w), 0);
-  const slowest = Math.max(...ins.speed.map((x) => x.lcp));
-  const health = healthTone(ins.health.score);
-
-  return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid max-w-3xl gap-1.5">
-          <h2 className="font-display text-2xl leading-tight font-bold tracking-[-0.02em] text-balance">
-            {ins.headline}
-          </h2>
-          <p className="text-[0.9375rem] leading-relaxed text-text-muted">{ins.summary}</p>
-        </div>
-        <SamplePill />
-      </div>
-
-      {stats ? (
-        <p className="text-sm text-text-muted">
-          {t('site.realToday', {
-            visits: formatMetric('visitors', stats.visits24h, locale),
-            pageviews: formatMetric('pageviews', stats.pageviews24h, locale),
-          })}
-        </p>
-      ) : null}
-
-      <section aria-label={t('site.keyNumbers')} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="grid content-start gap-2.5 rounded-lg border border-border bg-surface p-5">
-          <span className="text-[0.8125rem] font-medium text-text-muted">{t('metric.health')}</span>
-          <div className="flex items-center gap-3.5">
-            <HealthRing score={ins.health.score} label={t('metric.healthOf', { score: ins.health.score })} />
-            <div className="grid gap-0.5">
-              <span className={cx('font-semibold', toneText[health])}>{t(`health.${health}`)}</span>
-              <Delta
-                metric="health_score"
-                value={ins.health.score}
-                previous={ins.health.previous}
-                locale={locale}
-                suffix={t('delta.sinceLastWeek')}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="grid content-start gap-1 rounded-lg border border-border bg-surface p-5">
-          <span className="text-[0.8125rem] font-medium text-text-muted">{t('today.totals.visits')}</span>
-          <div className="flex items-baseline gap-2.5">
-            <span className="font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em] tabular-nums">
-              {formatMetric('visitors', ins.visits.value, locale)}
-            </span>
-            <Delta
-              metric="visitors"
-              value={ins.visits.value}
-              previous={ins.visits.previous}
-              locale={locale}
-            />
-          </div>
-          <Sparkline values={ins.visits.trend} />
-        </div>
-        <div className="grid content-start gap-1 rounded-lg border border-border bg-surface p-5">
-          <span className="text-[0.8125rem] font-medium text-text-muted">{t('metric.checkout')}</span>
-          <div className="flex items-baseline gap-2.5">
-            <span className="font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em] tabular-nums">
-              {formatMetric('conversion_rate', ins.conversion.value, locale)}
-            </span>
-            <Delta
-              metric="conversion_rate"
-              value={ins.conversion.value}
-              previous={ins.conversion.previous}
-              locale={locale}
-            />
-          </div>
-          <Sparkline values={ins.conversion.trend} />
-        </div>
-        <div className="grid content-start gap-1 rounded-lg border border-border bg-surface p-5">
-          <span className="text-[0.8125rem] font-medium text-text-muted">{t('metric.lcpPhones')}</span>
-          <div className="flex items-baseline gap-2.5">
-            <span className="font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em] tabular-nums">
-              {formatMetric('lcp', ins.lcp.value, locale)}
-            </span>
-            <Delta metric="lcp" value={ins.lcp.value} previous={ins.lcp.previous} locale={locale} />
-          </div>
-          <span className={cx('text-[0.8125rem]', toneText[lcpTone(ins.lcp.value)])}>
-            {t(`speed.${lcpTone(ins.lcp.value)}`)}
-          </span>
-        </div>
-      </section>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Panel
-          id="funnel"
-          title={ins.funnel.name}
-          note={ins.funnel.template}
-          action={
-            steps[worst] ? (
-              <StatusBadge tone="bad">
-                {t('funnel.lostAt', { share: pct.format(steps[worst].drop), step: steps[worst].label })}
-              </StatusBadge>
-            ) : null
-          }
-        >
-          <ol className="grid gap-3.5">
-            {steps.map((st, i) => (
-              <li key={st.label} className="grid gap-1.5">
-                <div className="flex justify-between gap-3 text-sm">
-                  <span className={cx(i === steps.length - 1 && 'font-semibold')}>{st.label}</span>
-                  <span className="tabular-nums">
-                    {i > 0 ? (
-                      <span className={cx(i === worst ? 'font-semibold text-bad' : 'text-text-muted')}>
-                        −{pct.format(st.drop)} ·{' '}
-                      </span>
-                    ) : null}
-                    <b className="font-semibold">{formatMetric('visitors', st.count, locale)}</b>
-                  </span>
-                </div>
-                <div aria-hidden="true" className="h-3.5 rounded-full bg-surface-sunken">
-                  <div
-                    className={cx('h-3.5 min-w-3.5 rounded-full', i === worst ? 'bg-bad' : 'bg-primary')}
-                    style={{ width: `calc(${st.ratio} * 100%)` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ol>
-          <Link
-            to="/fixes/$fixId"
-            params={{ fixId: 'fix_128' }}
-            className="inline-flex min-h-11 w-fit items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {t('funnel.seeFix')} <span aria-hidden="true">&nbsp;→</span>
-          </Link>
-        </Panel>
-
-        <Panel id="speed" title={t('speed.title')} note={t('speed.note')}>
-          <div className="grid gap-3.5">
-            {ins.speed.map((x) => (
-              <div key={x.network} className="grid grid-cols-[4rem_1fr_3.5rem] items-center gap-3 text-sm">
-                <span>{x.network}</span>
-                <div aria-hidden="true" className="h-2.5 rounded-full bg-surface-sunken">
-                  <div
-                    className={cx('h-2.5 rounded-full', toneBg[lcpTone(x.lcp)])}
-                    style={{ width: `calc(${x.lcp / slowest} * 100%)` }}
-                  />
-                </div>
-                <span className="text-right font-semibold tabular-nums">
-                  {formatMetric('lcp', x.lcp, locale)}
-                  {/* The bar's color carries the verdict; say it in words too. */}
-                  <span className="sr-only">, {t(`speed.${lcpTone(x.lcp)}`)}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-          <dl className="grid grid-cols-2 gap-3 border-t border-border pt-4 text-sm">
-            <div className="grid gap-0.5">
-              <dt className="text-[0.8125rem] text-text-muted">{t('speed.inp')}</dt>
-              <dd className="font-semibold">
-                {formatMetric('inp', ins.inp, locale)}{' '}
-                <span className="font-medium text-good">{t('speed.goodShort')}</span>
-              </dd>
-            </div>
-            <div className="grid gap-0.5">
-              <dt className="text-[0.8125rem] text-text-muted">{t('speed.cls')}</dt>
-              <dd className="font-semibold">
-                {formatMetric('cls', ins.cls, locale)}{' '}
-                <span className="font-medium text-good">{t('speed.goodShort')}</span>
-              </dd>
-            </div>
-          </dl>
-        </Panel>
-      </div>
-
-      <section
-        aria-labelledby="pages-h"
-        className="overflow-hidden rounded-lg border border-border bg-surface"
-      >
-        <h2 id="pages-h" className="border-b border-border px-6 py-4 text-[1.0625rem] font-semibold">
-          {t('pages.title')}
-        </h2>
-        <div className={scrollRegionClass} tabIndex={0} role="region" aria-labelledby="pages-h">
-          <table className="w-full min-w-[40rem] border-collapse text-sm">
-            <thead>
-              <tr className="text-left text-[0.8125rem] text-text-muted">
-                <th scope="col" className="px-6 py-2.5 font-medium">
-                  {t('pages.col.page')}
-                </th>
-                <th scope="col" className="px-2.5 py-2.5 font-medium">
-                  {t('today.totals.visits')}
-                </th>
-                <th scope="col" className="px-2.5 py-2.5 font-medium">
-                  {t('pages.col.bounce')}
-                </th>
-                <th scope="col" className="px-2.5 py-2.5 font-medium">
-                  {t('pages.col.load')}
-                </th>
-                <th scope="col" className="px-6 py-2.5 font-medium">
-                  {t('pages.col.fixes')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ins.pages.map((pg) => (
-                <tr key={pg.path} className="border-t border-border">
-                  <td className="px-6 py-3 font-mono text-[0.8125rem]" lang="en">
-                    {pg.path}
-                  </td>
-                  <td className="px-2.5 py-3 tabular-nums">{formatMetric('visitors', pg.visits, locale)}</td>
-                  <td className="px-2.5 py-3 tabular-nums">
-                    {formatMetric('bounce_rate', pg.bounce, locale)}
-                  </td>
-                  <td className="px-2.5 py-3 tabular-nums">{formatMetric('lcp', pg.lcp, locale)}</td>
-                  <td
-                    className={cx(
-                      'px-6 py-3',
-                      pg.tone ? `font-semibold ${toneText[pg.tone]}` : 'text-text-muted',
-                    )}
-                  >
-                    {pg.fixes ?? '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
-}
 
 function SiteReplays({ siteId }: { siteId: string }) {
   const { t } = useTranslation();
@@ -597,7 +342,7 @@ export function SiteDetailPage() {
           ))}
         </TabList>
         <TabPanel id="overview" className={tabPanelClass}>
-          <SiteOverview stats={stats} locale={locale} />
+          <SiteOverview orgId={orgId} siteId={siteId} stats={stats} locale={locale} canEdit={manage} />
         </TabPanel>
         <TabPanel id="replays" className={tabPanelClass}>
           <SiteReplays siteId={siteId} />

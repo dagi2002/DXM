@@ -72,6 +72,33 @@ function checkBlobStore(
     }
   }
 }
+const flag = z
+  .enum(['0', '1', 'true', 'false'])
+  .default('0')
+  .transform((v) => v === '1' || v === 'true');
+
+/** Telegram alerts. No token = alerts are off and Settings says so. */
+const telegramEnv = {
+  /** Bot token from @BotFather. Secret: never logged. */
+  TELEGRAM_BOT_TOKEN: optionalString,
+  /** The bot's @username (without @), for the "open in Telegram" link. */
+  TELEGRAM_BOT_USERNAME: optionalString,
+  /** Shared secret Telegram sends with webhook calls (setWebhook secret_token). */
+  TELEGRAM_WEBHOOK_SECRET: optionalString,
+};
+
+/** AI suggestions. Off by default; on only with AI_ENABLED=1 and a key. */
+const aiEnv = {
+  AI_ENABLED: flag,
+  ANTHROPIC_API_KEY: optionalString,
+  AI_MODEL: z.string().default('claude-sonnet-4-5'),
+  /** AI calls per organization per calendar month (UTC). */
+  AI_MONTHLY_BUDGET: z.coerce.number().int().min(0).default(100),
+};
+
+/** AI is usable only when switched on *and* configured. */
+export const aiConfigured = (env: { AI_ENABLED: boolean; ANTHROPIC_API_KEY?: string }) =>
+  env.AI_ENABLED && Boolean(env.ANTHROPIC_API_KEY);
 
 export const serverEnvSchema = z
   .object({
@@ -102,10 +129,26 @@ export const serverEnvSchema = z
     /** Number of reverse proxies in front of the API (Caddy = 1). Drives client-IP detection. */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
     ...blobStoreShape,
+    ...telegramEnv,
+    ...aiEnv,
   })
   .superRefine((env, ctx) => {
     checkBlobStore(env, ctx);
+    if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TELEGRAM_BOT_USERNAME'],
+        message: 'is required when TELEGRAM_BOT_TOKEN is set',
+      });
+    }
     if (env.NODE_ENV !== 'production') return;
+    if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_WEBHOOK_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TELEGRAM_WEBHOOK_SECRET'],
+        message: 'is required in production when TELEGRAM_BOT_TOKEN is set',
+      });
+    }
     const secret = env.BETTER_AUTH_SECRET;
     if (PLACEHOLDER.test(secret) || entropyBits(secret) < 128) {
       ctx.addIssue({
@@ -196,6 +239,8 @@ export const workerEnvSchema = z
     SENTRY_DSN: optionalString,
     WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
     ...blobStoreShape,
+    ...telegramEnv,
+    ...aiEnv,
   })
   .superRefine(checkBlobStore);
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

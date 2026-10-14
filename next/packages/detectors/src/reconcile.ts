@@ -1,5 +1,5 @@
 import type { FixSeverity, FixStatus } from '@pulse/contracts';
-import type { Finding } from './click';
+import type { Finding } from './types';
 import { REGRESSION_COOLDOWN_MINUTES } from './thresholds';
 
 /** The parts of a stored issue that decide what a new finding does to it. */
