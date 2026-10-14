@@ -108,7 +108,7 @@ export function AppShell() {
       </a>
 
       {/* Desktop rail */}
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-4 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-border bg-surface px-4 py-5 lg:flex">
         <div className="px-2">
           <Logo />
         </div>
