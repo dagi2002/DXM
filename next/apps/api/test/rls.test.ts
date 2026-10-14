@@ -28,7 +28,19 @@ describe('row-level security invariants', () => {
                     where a.attrelid = c.oid and a.attname = 'org_id' and not a.attisdropped)
       order by 1`);
     expect(rows.map((r) => r.table)).toEqual(
-      expect.arrayContaining(['audit_log', 'events', 'ingest_dedupe', 'org_plans', 'sites', 'visits']),
+      expect.arrayContaining([
+        'audit_log',
+        'events',
+        'ingest_dedupe',
+        'org_plans',
+        'rollup_funnel_day',
+        'rollup_page_day',
+        'rollup_site_day',
+        'rollup_vitals_day',
+        'site_funnels',
+        'sites',
+        'visits',
+      ]),
     );
     const unprotected = rows.filter((r) => !r.rls || !r.forced || r.policies === 0).map((r) => r.table);
     expect(unprotected).toEqual([]);
@@ -49,7 +61,15 @@ describe('row-level security invariants', () => {
     const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
     await client.connect();
     try {
-      for (const table of ['sites', 'audit_log', 'visits', 'events', 'org_plans']) {
+      for (const table of [
+        'sites',
+        'audit_log',
+        'visits',
+        'events',
+        'org_plans',
+        'rollup_site_day',
+        'site_funnels',
+      ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);
       }
