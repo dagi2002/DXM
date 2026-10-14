@@ -72,3 +72,17 @@ describe('input size bounds', () => {
     expect(SiteUpdate.safeParse({ extraOrigins: ['https://staging.shop.et'] }).success).toBe(true);
   });
 });
+
+describe('replaySampled', () => {
+  it('is all-or-nothing at the edges and roughly proportional in between', async () => {
+    const { replaySampled } = await import('./replays');
+    const ids = Array.from({ length: 4000 }, (_, i) => `visit_${i.toString(36)}_abc`);
+    expect(ids.every((id) => replaySampled(id, 1))).toBe(true);
+    expect(ids.some((id) => replaySampled(id, 0))).toBe(false);
+    const share = ids.filter((id) => replaySampled(id, 0.25)).length / ids.length;
+    expect(share).toBeGreaterThan(0.2);
+    expect(share).toBeLessThan(0.3);
+    // stable per visit
+    expect(replaySampled('visit_same_1234', 0.5)).toBe(replaySampled('visit_same_1234', 0.5));
+  });
+});

@@ -32,9 +32,11 @@ import {
 } from '@pulse/db';
 import { createMiddleware } from 'hono/factory';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { AppDeps } from '../app';
 import { requireOrg, requireSession } from '../guards';
 import { ApiError, forbidden, notFound, type AppEnv } from '../http';
+import { replayIdsFor } from './replays';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
@@ -42,7 +44,9 @@ export function toFixDto(
   row: IssueRow,
   site: { name: string; domain: string },
   suggestion: FixSuggestion | null = null,
+  withReplay: Set<string> = new Set(),
 ): Fix {
+  const evidence = FixEvidence.parse(row.evidence);
   return {
     id: row.id,
     number: row.number,
@@ -53,7 +57,7 @@ export function toFixDto(
     severity: row.severity,
     status: row.status,
     // Parsed so a malformed row fails loudly here instead of breaking the UI.
-    evidence: FixEvidence.parse(row.evidence),
+    evidence,
     impact: row.impact ? FixImpact.parse(row.impact) : null,
     verification: row.verification ? FixVerification.parse(row.verification) : null,
     suggestion,
@@ -62,8 +66,24 @@ export function toFixDto(
     updatedAt: row.updatedAt.toISOString(),
     fixedAt: iso(row.fixedAt),
     verifiedAt: iso(row.verifiedAt),
+    replayIds: ('sampleVisitIds' in evidence ? evidence.sampleVisitIds : []).filter((v) =>
+      withReplay.has(`${row.siteId} ${v}`),
+    ),
   };
 }
+
+/** Which of these issues' evidence visits have a playable replay (slice 4). */
+const replaysOf = (tx: Tx, rows: IssueRow[]) =>
+  replayIdsFor(
+    tx,
+    rows.map((r) => ({
+      siteId: r.siteId,
+      visitIds:
+        z
+          .array(z.string())
+          .safeParse((r.evidence as { sampleVisitIds?: unknown } | null)?.sampleVisitIds).data ?? [],
+    })),
+  );
 
 /** Active work first, then critical before watch, then most recently seen. */
 const STATUS_ORDER = sql`case ${issues.status} when 'open' then 0 when 'fixing' then 1 when 'fixed' then 2 when 'verified' then 3 else 4 end`;
@@ -107,7 +127,12 @@ async function loadFix(tx: Tx, id: string, ai: boolean): Promise<Fix> {
     .limit(1);
   if (!row) throw notFound('Fix');
   const suggestions = await loadSuggestions(tx, [row.issue.id], ai);
-  return toFixDto(row.issue, { name: row.siteName, domain: row.siteDomain }, suggestions.get(row.issue.id));
+  return toFixDto(
+    row.issue,
+    { name: row.siteName, domain: row.siteDomain },
+    suggestions.get(row.issue.id),
+    await replaysOf(tx, [row.issue]),
+  );
 }
 
 /** Client viewers only see shared reports; fixes are the team's working surface. */
@@ -127,7 +152,7 @@ export function fixRoutes(deps: AppDeps) {
 
   r.get('/', async (c) => {
     const q = FixListQuery.parse(c.req.query());
-    const { rows, suggestions } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
+    const { rows, suggestions, withReplay } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
       const rows = await tx
         .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
         .from(issues)
@@ -146,12 +171,23 @@ export function fixRoutes(deps: AppDeps) {
         rows.map((r) => r.issue.id),
         ai,
       );
-      return { rows, suggestions };
+      const withReplay = await replaysOf(
+        tx,
+        rows.map((r) => r.issue),
+      );
+      return { rows, suggestions, withReplay };
     });
     // One malformed row must not take down the whole feed: skip it and say so in the logs.
     const fixes = rows.flatMap((r) => {
       try {
-        return [toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, suggestions.get(r.issue.id))];
+        return [
+          toFixDto(
+            r.issue,
+            { name: r.siteName, domain: r.siteDomain },
+            suggestions.get(r.issue.id),
+            withReplay,
+          ),
+        ];
       } catch (err) {
         c.get('log').error({ err, issueId: r.issue.id }, 'malformed issue row skipped');
         return [];

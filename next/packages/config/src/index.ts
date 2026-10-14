@@ -35,6 +35,43 @@ const optionalString = z
   .optional()
   .transform((v) => (v && v.trim() !== '' ? v.trim() : undefined));
 
+/**
+ * Blob storage for replay chunks (shared by api, collector and worker). Local disk today;
+ * BLOB_STORE=s3 + S3_* moves to S3 / R2 / MinIO with no code change.
+ */
+const blobStoreShape = {
+  BLOB_STORE: z.enum(['local', 's3']).default('local'),
+  /** Root folder for LocalDiskBlobStore. Required in production when BLOB_STORE=local. */
+  REPLAY_DIR: optionalString,
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_BUCKET: optionalString,
+  S3_REGION: optionalString,
+  S3_ACCESS_KEY_ID: optionalString,
+  S3_SECRET_ACCESS_KEY: optionalString,
+  /** Days to keep replay chunks before the maintenance job deletes them. */
+  REPLAY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+};
+
+function checkBlobStore(
+  env: { NODE_ENV: string; BLOB_STORE: 'local' | 's3'; REPLAY_DIR?: string | undefined } & Record<
+    string,
+    unknown
+  >,
+  ctx: z.RefinementCtx,
+) {
+  if (env.BLOB_STORE === 'local' && env.NODE_ENV === 'production' && !env.REPLAY_DIR) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['REPLAY_DIR'],
+      message: 'is required in production with BLOB_STORE=local',
+    });
+  }
+  if (env.BLOB_STORE === 's3') {
+    for (const k of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY']) {
+      if (!env[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'is required with BLOB_STORE=s3' });
+    }
+  }
+}
 const flag = z
   .enum(['0', '1', 'true', 'false'])
   .default('0')
@@ -91,10 +128,12 @@ export const serverEnvSchema = z
     COLLECTOR_PUBLIC_URL: z.string().url().default('http://localhost:4200'),
     /** Number of reverse proxies in front of the API (Caddy = 1). Drives client-IP detection. */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+    ...blobStoreShape,
     ...telegramEnv,
     ...aiEnv,
   })
   .superRefine((env, ctx) => {
+    checkBlobStore(env, ctx);
     if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
       ctx.addIssue({
         code: 'custom',
@@ -167,8 +206,10 @@ export const collectorEnvSchema = z
       .enum(['0', '1', 'true', 'false'])
       .default('0')
       .transform((v) => v === '1' || v === 'true'),
+    ...blobStoreShape,
   })
   .superRefine((env, ctx) => {
+    checkBlobStore(env, ctx);
     if (env.NODE_ENV === 'production' && env.COLLECTOR_ALLOW_HEADLESS) {
       ctx.addIssue({
         code: 'custom',
@@ -187,18 +228,21 @@ export function loadCollectorEnv(source: Record<string, string | undefined> = pr
 }
 
 /** Environment for the background worker. */
-export const workerEnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  DATABASE_URL: z.string().url(),
-  APP_URL: z.string().url().default('http://localhost:5174'),
-  EMAIL_FROM: z.string().default('DXM Pulse <hello@dxmpulse.et>'),
-  RESEND_API_KEY: optionalString,
-  SENTRY_DSN: optionalString,
-  WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
-  ...telegramEnv,
-  ...aiEnv,
-});
+export const workerEnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+    DATABASE_URL: z.string().url(),
+    APP_URL: z.string().url().default('http://localhost:5174'),
+    EMAIL_FROM: z.string().default('DXM Pulse <hello@dxmpulse.et>'),
+    RESEND_API_KEY: optionalString,
+    SENTRY_DSN: optionalString,
+    WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
+    ...blobStoreShape,
+    ...telegramEnv,
+    ...aiEnv,
+  })
+  .superRefine(checkBlobStore);
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 export function loadWorkerEnv(source: Record<string, string | undefined> = process.env): WorkerEnv {

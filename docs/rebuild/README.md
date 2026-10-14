@@ -8,6 +8,7 @@
 | [03-architecture.md](./03-architecture.md) + [adr/](./adr) | Target architecture and 12 decision records |
 | [04-migration-plan.md](./04-migration-plan.md) | URL/SDK compatibility, SQLite → Postgres, cutover and rollback |
 | [05-behavior-contracts.md](./05-behavior-contracts.md) | 45 behavior contracts from the 138 existing tests that the rebuild must preserve (or deliberately change) |
+| [06-replay-privacy.md](./06-replay-privacy.md) | Session replay: consent, masking defaults, storage (local disk → S3 by config), retention, visitor deletion |
 | [insights.md](./insights.md) | Site insights: the health score definition, rollups, funnels and the insights API |
 | [progress.md](./progress.md) | Running log of decisions and status |
 

@@ -19,6 +19,7 @@
     "@pulse/insights": "workspace:*",
     "@pulse/jobs": "workspace:*",
     "@pulse/mail": "workspace:*",
+    "@pulse/storage": "workspace:*",
     "pino": "^10.4.0"
   },
   "devDependencies": {

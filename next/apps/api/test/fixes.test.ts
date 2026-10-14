@@ -114,6 +114,7 @@ describe('GET /api/v1/fixes', () => {
       updatedAt: body.fixes[0]!.updatedAt,
       fixedAt: null,
       verifiedAt: null,
+      replayIds: [],
     });
   });
 

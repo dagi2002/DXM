@@ -21,9 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
 import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { InstallPanel } from './install';
-import { ReplayList } from './replays';
-import { SamplePill, statusTabClass, tabPanelClass } from '../components/pulse';
-import { sampleReplaysQuery } from '../lib/sample';
+import { ReplayBrowser } from '../components/replay-list';
+import { statusTabClass, tabPanelClass } from '../components/pulse';
 import { SiteOverview } from './site-overview';
 import type { Locale } from '@pulse/i18n';
 
@@ -233,17 +232,12 @@ export function SitesPage() {
 const SITE_TABS = ['overview', 'replays', 'install'] as const;
 type SiteTab = (typeof SITE_TABS)[number];
 
-function SiteReplays() {
+function SiteReplays({ siteId }: { siteId: string }) {
   const { t } = useTranslation();
-  const { data: replays } = useQuery(sampleReplaysQuery);
-  if (!replays) return <Skeleton className="h-64" />;
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[0.9375rem] text-text-muted">{t('replays.intro')}</p>
-        <SamplePill />
-      </div>
-      <ReplayList replays={replays} />
+      <p className="text-[0.9375rem] text-text-muted">{t('replays.intro')}</p>
+      <ReplayBrowser siteId={siteId} />
     </div>
   );
 }
@@ -351,7 +345,7 @@ export function SiteDetailPage() {
           <SiteOverview orgId={orgId} siteId={siteId} stats={stats} locale={locale} canEdit={manage} />
         </TabPanel>
         <TabPanel id="replays" className={tabPanelClass}>
-          <SiteReplays />
+          <SiteReplays siteId={siteId} />
         </TabPanel>
         <TabPanel id="install" className={tabPanelClass}>
           <InstallPanel site={site} />

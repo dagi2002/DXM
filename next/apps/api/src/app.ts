@@ -12,9 +12,11 @@ import { ZodError } from 'zod';
 import { CLIENT_IP_HEADER, type Auth } from './auth';
 import { ApiError, errorBody, type AppEnv } from './http';
 import type { Mailer } from '@pulse/mail';
+import { createBlobStore, type BlobStore } from '@pulse/storage';
 import { fixRoutes } from './routes/fixes';
 import { insightRoutes } from './routes/insights';
 import { meRoutes } from './routes/me';
+import { replayRoutes } from './routes/replays';
 import { siteRoutes } from './routes/sites';
 import { telegramRoutes, telegramWebhook } from './routes/telegram';
 import { todayRoutes } from './routes/today';
@@ -25,6 +27,8 @@ export interface AppDeps {
   auth: Auth;
   mailer: Mailer;
   log: Logger;
+  /** Replay blobs (slice 4). Defaults to the store the env configures. */
+  blobs?: BlobStore;
   /** Sends Telegram messages (link confirmations, tests). Absent without a bot token. */
   telegram?: TelegramClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
@@ -150,6 +154,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/sites', siteRoutes(deps));
   app.route('/api/v1/today', todayRoutes(deps));
   app.route('/api/v1/fixes', fixRoutes(deps));
+  app.route('/api/v1/replays', replayRoutes({ ...deps, blobs: deps.blobs ?? createBlobStore(env) }));
   app.route('/api/v1/insights', insightRoutes(deps));
   app.route('/api/v1/telegram/webhook', telegramWebhook(deps));
   app.route('/api/v1/telegram', telegramRoutes(deps));

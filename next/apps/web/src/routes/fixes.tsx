@@ -147,13 +147,16 @@ export function FixDetailPage() {
                 <Link
                   to="/replays/$replayId"
                   params={{ replayId: fix.replayIds[0] }}
+                  search={{ fix: fix.id }}
                   className={buttonClass('primary')}
                 >
                   <Play size={16} aria-hidden="true" />
-                  {t('fix.playMoment')}
+                  {t('fix.watchReplays', { count: fix.replayIds.length })}
                 </Link>
               </div>
-            ) : null}
+            ) : (
+              <p className="text-sm text-text-muted">{t('fix.noReplays')}</p>
+            )}
           </div>
         </div>
 

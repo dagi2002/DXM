@@ -17,6 +17,7 @@
     "@pulse/db": "workspace:*",
     "@pulse/jobs": "workspace:*",
     "@pulse/sdk": "workspace:*",
+    "@pulse/storage": "workspace:*",
     "hono": "^4.13.13",
     "pino": "^10.4.0",
     "zod": "^4.6.6"

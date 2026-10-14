@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -15,6 +16,8 @@ const DEMO_PORT = 4301;
 export const COLLECTOR_URL = `http://localhost:${COLLECTOR_PORT}`;
 export const DEMO_URL = `http://localhost:${DEMO_PORT}`;
 const API_READY = `http://localhost:${API_PORT}/readyz`;
+/** Replay blobs (LocalDiskBlobStore), shared by collector (writes), worker (retention) and API (reads). */
+const REPLAY_DIR = resolve('.e2e-replays');
 
 export default defineConfig({
   testDir: './e2e',
@@ -44,6 +47,7 @@ export default defineConfig({
         API_URL: APP_URL,
         BETTER_AUTH_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0123456789abcdef',
         COLLECTOR_PUBLIC_URL: COLLECTOR_URL,
+        REPLAY_DIR,
       },
     },
     {
@@ -60,6 +64,7 @@ export default defineConfig({
         COLLECTOR_PORT: String(COLLECTOR_PORT),
         // Playwright's Chromium identifies as headless; let it through in tests only.
         COLLECTOR_ALLOW_HEADLESS: '1',
+        REPLAY_DIR,
       },
     },
     {
@@ -68,7 +73,14 @@ export default defineConfig({
       reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { NODE_ENV: 'test', LOG_LEVEL: 'warn', DATABASE_URL: E2E_DB, APP_URL, WORKER_HEALTH_PORT: '4251' },
+      env: {
+        NODE_ENV: 'test',
+        LOG_LEVEL: 'warn',
+        DATABASE_URL: E2E_DB,
+        APP_URL,
+        WORKER_HEALTH_PORT: '4251',
+        REPLAY_DIR,
+      },
     },
     {
       // A stand-in customer website on its own origin.

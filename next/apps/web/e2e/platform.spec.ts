@@ -4,7 +4,8 @@ import { SEEDED, seedIssues } from './seed';
 /**
  * Platform screens: the public pages (landing, shared report) and the fix flow on Today. Fixes
  * are real: the tests seed issues the way the worker's detectors write them (e2e/seed.ts).
- * Replays and reports still run on the flagged sample layer (src/lib/sample.ts).
+ * Replays are real too (covered end to end in replays.spec.ts). Reports still run on the
+ * flagged sample layer (src/lib/sample.ts).
  */
 
 async function signUpWithSite(page: Page, info: TestInfo, tag: string) {
@@ -91,6 +92,10 @@ test('Today → fix detail and back, on real fixes', async ({ page }, info) => {
   await expect(page.getByRole('heading', { level: 1, name: SEEDED.lead })).toBeVisible();
   await expect(page.getByText(/Fix #\d+/)).toBeVisible();
   await expect(page.getByText('Suggested fix · AI')).toHaveCount(0);
+
+  // Seeded fixes have no recordings; real replays are covered end to end in replays.spec.ts.
+  await expect(page.getByRole('link', { name: /^Watch \d+ replays?$/ })).toHaveCount(0);
+  await expect(page.getByText('No recordings of this problem yet.', { exact: false })).toBeVisible();
 
   await page.getByRole('link', { name: 'Today' }).first().click();
   await expect(page).toHaveURL(/\/today$/);

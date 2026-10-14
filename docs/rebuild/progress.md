@@ -233,5 +233,33 @@ Task 8 of parallel plan 2 (`task/8-insights`). The site Overview and Today's "th
 - Amharic review of the new strings.
 - The first-load JS budget is at 215.9 KB of 216 KB (baseline `rebuild`: 215.7 KB).
 
+## 2026-10-14 — Phase 2, slice 4 (session replay) ✅ (task 7)
+
+**Shipped:**
+- **SDK:** `r.js`, a separate lazy file (rrweb record 2.1.7, pinned). `p.js` asks the collector `GET /i/replay/cfg` once consent is granted and loads `r.js` only for sampled visits. **Core p.js: 4,087 → 4,243 B gzip (budget 5,120). r.js: 24.8 KB gzip** (budget 40 KB, never loaded for unsampled or unconsented visits).
+  - Masked by default: all text and all inputs; `data-dxm-unmask` allowlist (never passwords), `data-dxm-block`; Meta URLs scrubbed like events.
+  - `checkoutEveryNms` 5 min, gzip via `CompressionStream` (plain JSON fallback, gzipped by the collector), chunks ≤ 500 KB (split when bigger), monotonic `seq` per visit across page loads. The first snapshot ships after 1.5 s and page-hide chunks go out immediately as plain JSON, so short visits stay playable.
+  - Stops on consent withdrawal and on 400/403/404/503 from the collector; `data-replay="off"` opts a site out.
+- **Collector:** `POST /i/replay?k&vid&seq` with the same key, Origin and token-bucket checks as events (own buckets: 30/min per visit, 120/min per IP, 3,000/min per site), the streaming body limit (512 KB) plus an 8 MB inflate cap (gzip bombs), and an rrweb shape check. Blob first, then metadata is queued (`replay.chunk`); the blob is removed if queuing fails. Serves `/sdk/r.js`. Routes live under `/i/` so `/r/$token` stays the public report URL.
+- **Storage (`@pulse/storage`):** `BlobStore` interface; `LocalDiskBlobStore` (atomic writes, id-only keys, no traversal) is what runs today. `S3BlobStore` (SigV4 via aws4fetch, path-style, presigned GETs) sits behind `BLOB_STORE=s3` + `S3_*`, so moving to R2/S3 is config only. `REPLAY_DIR` is required in production; the compose file mounts a shared `replays` volume.
+- **Data (migration `0011_replays`):** `replay_chunks` (metadata only, PK site+visit+seq, forced RLS + policy, site/org composite FK, size and seq checks), `sites.replay_sample_rate` (0–1, default 1), `pulse_site_by_public_key` returns the rate, `pulse_purge_replay_chunks` (SECURITY DEFINER) for retention.
+- **Worker:** `replay.chunk` records metadata idempotently (drops the blob if the site vanished); `maintenance.replay-retention` daily at 03:37 deletes rows then blobs past `REPLAY_RETENTION_DAYS` (default 30).
+- **API:** `GET /api/v1/replays` (siteId, friction, fixId, page), `GET /api/v1/replays/:visitId` (summary, timeline marks from events, chunk URLs: signed when the store can, else the streaming route), `GET /api/v1/replays/:visitId/chunks/:seq`, `DELETE /api/v1/replays/:visitId` (owners/admins, audited, deletes blobs). Team-only (client viewers 403). Fixes now return `replayIds`: the evidence `sampleVisitIds` that have a playable replay.
+- **Web:** Replays list and the site Replays tab are real (with an "only visits with friction" filter); the sample replays are gone. The player route has its own chunk with rrweb (62 KB gzip, not in first load; first load 215.8 KB, budget 216): sandboxed playback scaled to fit, timeline with page and friction marks, seek slider, speed, skip idle, "Play from the moment", clickable "What happened" list, prev/next, and "Back to the fix · clip n of m" when opened from a fix. The AI recap is hidden until task 10's AI flag.
+- **Docs:** [06-replay-privacy.md](./06-replay-privacy.md) (consent, masking, storage, retention, visitor deletion). Caddy routes `/i/replay*` and `/r.js` to the collector, and the CSP allows `https:` images and fonts so replays show the customer's own assets.
+- **Tests:** storage 18 (local + S3 against a fake), collector 12 new (limits, gzip bomb, tenant paths, sampling, rate limit, cleanup), worker 6 new (idempotency, cross-org FK, RLS, retention), API 6 new (filters, marks, streaming, tenant isolation incl. chunk route, roles, delete), SDK 7 new (masking options, seq across pages/visits, consent, splitting, early/at-hide flush). E2E `replays.spec.ts`: a real visit on the demo site is recorded in Chromium, the **stored chunks** are checked for leaks (typed phone number, masked personal details, key in URL), and it plays back in Pulse (desktop + 360px, axe clean). Playwright: 34 runs, all passing.
+
+**Decisions:**
+- Replay id = visit id (`?site=` disambiguates in the theoretical case of the same random id on two sites).
+- Default sample rate 1 (every consented visit): pilot traffic is small and every recording is useful. Lower it per site as volume grows.
+- No plan gating for replay yet (billing is slice 7); the sample rate is the control.
+- Server-side events, not the recording, drive the timeline marks, so the list can filter on friction without opening blobs.
+
+**Not done yet:**
+- `S3BlobStore` is unit-tested against a fake but has not run against a real bucket.
+- Delete-recording button in the player (the API exists), and a sample-rate control in site settings (API only).
+- Fix detail still shows the sample "clip" story for sample fixes; real fixes link their replays.
+- Amharic strings for the new replay screens need a native review.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

@@ -15,14 +15,15 @@ services:
 
   migrate:
     image: ${PULSE_MIGRATE_IMAGE:-pulse-migrate:latest}
-    env_file: /etc/pulse/pulse.env  # needs DATABASE_ADMIN_URL (owner role)
+    env_file: /etc/pulse/pulse.env # needs DATABASE_ADMIN_URL (owner role)
     depends_on: { postgres: { condition: service_healthy } }
     restart: 'no'
 
   api:
     image: ${PULSE_API_IMAGE:-pulse-api:latest}
     env_file: /etc/pulse/pulse.env
-    environment: { TRUST_PROXY_HOPS: '1' }
+    environment: { TRUST_PROXY_HOPS: '1', REPLAY_DIR: /var/lib/pulse/replays }
+    volumes: [replays:/var/lib/pulse/replays]
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
@@ -30,7 +31,8 @@ services:
   collector:
     image: ${PULSE_COLLECTOR_IMAGE:-pulse-collector:latest}
     env_file: /etc/pulse/pulse.env
-    environment: { TRUST_PROXY_HOPS: '1' }
+    environment: { TRUST_PROXY_HOPS: '1', REPLAY_DIR: /var/lib/pulse/replays }
+    volumes: [replays:/var/lib/pulse/replays]
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
@@ -38,6 +40,9 @@ services:
   worker:
     image: ${PULSE_WORKER_IMAGE:-pulse-worker:latest}
     env_file: /etc/pulse/pulse.env
+    # Replay blobs live on local disk for now (BLOB_STORE=local); BLOB_STORE=s3 + S3_* moves them.
+    environment: { REPLAY_DIR: /var/lib/pulse/replays }
+    volumes: [replays:/var/lib/pulse/replays]
     depends_on:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
@@ -52,6 +57,7 @@ services:
 
 volumes:
   pgdata:
+  replays:
   caddy_data:
   caddy_config:
 

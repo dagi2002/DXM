@@ -8,13 +8,15 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
-const BUDGETS: Record<string, number> = { 'p.js': 5 * 1024, 'v.js': 4.5 * 1024 };
+/** r.js (session replay, rrweb record) is lazy and only loads for sampled, consented visits. */
+const BUDGETS: Record<string, number> = { 'p.js': 5 * 1024, 'v.js': 4.5 * 1024, 'r.js': 40 * 1024 };
 const out = new URL('../dist/', import.meta.url);
 mkdirSync(out, { recursive: true });
 
 for (const [entry, file] of [
   ['index.ts', 'p.js'],
   ['vitals.ts', 'v.js'],
+  ['replay-entry.ts', 'r.js'],
 ] as const) {
   await build({
     entryPoints: [fileURLToPath(new URL(`../src/${entry}`, import.meta.url))],
