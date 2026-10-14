@@ -538,7 +538,7 @@
   "funnel.setUp": "ፋነል አዘጋጅ",
   "funnel.useTemplate": "አብነት ቀይር",
   "funnel.remove": "ፋነሉን አስወግድ",
-  "funnel.recomputing": "ለአዲሶቹ ደረጃዎች ጉብኝቶችን እየቆጠርን ነው — ቁጥሮቹ በ10 ደቂቃ ገደማ ውስጥ ይታደሳሉ።",
+  "funnel.recomputing": "ለአዲሶቹ ደረጃዎች ጉብኝቶችን እየቆጠርን ነው — ቁጥሮቹ በ15 ደቂቃ ገደማ ውስጥ ይታደሳሉ።",
   "funnel.noEntries": "በዚህ ጊዜ ውስጥ እስካሁን ማንም ወደዚህ ፋነል አልገባም።",
   "pages.col.trouble": "ችግር",
   "pages.trouble": "{friction} የተቸገሩ · {errors} ስህተት የገጠማቸው",

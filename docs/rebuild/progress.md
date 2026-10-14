@@ -177,9 +177,32 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 - Telegram alerts (and push/email) for created / escalated / reopened issues, with quiet hours.
 - Revenue-at-risk impact (needs order values) and replay links from `sampleVisitIds` (slice 4).
 
-## 2026-10-14 — Phase 2, slice 5 (site insights) 🟡
+## 2026-10-14 — Phase 2, slice 5 (site insights) ✅
 
-Task 8 of parallel plan 2 (`task/8-insights`). In progress.
+Task 8 of parallel plan 2 (`task/8-insights`). The site Overview and Today's "this week" panel now run on real data; the sample insights and sample week are gone from `sample.ts`. Definitions are in [insights.md](./insights.md).
+
+**Shipped:**
+- **Health score:** one definition, documented in `insights.md` and implemented once (`healthScore()` in `packages/insights`): speed (p75 LCP/INP/CLS against Google thresholds) 40%, friction (visits with rage/dead clicks) 35%, errors (visits with JS errors) 25%; parts without data are left out and the rest renormalised; no score under 30 visits.
+- **`packages/insights` (pure, unit-tested):** percentile per contract 21 (`floor((n-1)×p)`), p75 vitals by device and network, "pages that need you" ranking, funnels (ordered step matching with a linear-time `*` glob — no user regex), the Ethiopian funnel templates (telebirr/Chapa checkout, lead form, Telegram hand-off), week-over-week deltas, day aggregation for the rollup job, and `computeSiteInsights` / `computeWeekSummary`.
+- **Data (`0012_insights`):** `rollup_site_day`, `rollup_page_day`, `rollup_vitals_day` (raw final values per day, since percentiles don't add across days), `rollup_funnel_day` (counts tagged with the funnel's step hash) and `site_funnels`. All forced RLS, composite `(site_id, org_id)` FKs to `sites`, and a narrow SECURITY DEFINER `pulse_sites_for_insights()` for the sweep.
+- **Worker:** `insights.sweep` every 10 minutes queues one `insights.site` per site with recent visits or a funnel that hasn't been rolled up (stately, singleton per site, staggered). `insights.site` recomputes today and yesterday (UTC) from raw rows inside the org's RLS scope (idempotent), and re-rolls up to 30 recent days when the funnel's steps change.
+- **API:** `GET /api/v1/sites/:id/insights?range=7d|30d`, `GET/PUT/DELETE /api/v1/sites/:id/funnel` (owners/admins change it; audit-logged), `GET /api/v1/insights/week`. Contracts in `@pulse/contracts` (`insights.ts`). Members read; client viewers get 404 (they don't see sites yet); other orgs' sites are 404.
+- **Web:** the Overview has a 7/30-day switch, a headline from the data, health with its delta, visits with a sparkline, funnel completion (or bounce when there's no funnel), phone LCP, the funnel (set up from a template in the owner's language, switch or remove it; "counting" while the rollup catches up), speed by network and device with INP/CLS ratings in words, and pages that need you with trouble and open-fix counts. Every number has an honest empty state ("Not enough visits yet", "Not enough data yet"). Today's week panel shows real visits, funnel completion when any site has a funnel, and fixes verified this month vs last. EN + AM strings.
+- **For reports (task 9):** `@pulse/insights/db` exports `loadSiteInsights()` and `rollupReportSource` (same shape as task 9's `ReportMetricsSource`).
+- **Tests:** 26 unit tests (`packages/insights`), 7 worker tests against Postgres (rollup contents, idempotency, funnel backfill and re-hash, tenant scope, deleted sites, insights and report numbers read from rollups with raw events deleted, sweep), 10 API tests (contract shape, deltas, ranges, open fixes per page, tenant isolation on every route, deleted sites, funnel CRUD/validation/audit, roles, CSRF), RLS invariants extended to the new tables, 4 component tests, and a new `e2e/insights.spec.ts` (empty state; seeded rollups → Overview, 30-day switch, Today week panel, funnel set-up, axe) on desktop and 360px.
+
+**Decisions:**
+- Days are UTC. Ethiopia is UTC+3, so a "day" ends at 03:00 local time; switching to Africa/Addis_Ababa days later means recomputing rollups, not changing the API.
+- The 7-day range includes today so far (fresher numbers, slightly unequal comparison with a full previous week).
+- One funnel per site (the architecture doc's `funnels` + `funnel_steps` became `site_funnels` with a validated jsonb step list).
+- Vitals rollups keep raw values instead of per-day percentiles so p75 over 7 or 30 days stays exact.
+
+**Not done yet:**
+- A step-by-step funnel editor (the API takes custom steps; the UI only offers templates).
+- Retention for rollup tables (they're small; they should follow the plan's retention with events).
+- Wiring `rollupReportSource` into task 9's report job (do it when both are merged).
+- Amharic review of the new strings.
+- The first-load JS budget is at 215.9 KB of 216 KB (baseline `rebuild`: 215.7 KB).
 
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

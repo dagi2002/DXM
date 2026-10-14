@@ -538,7 +538,7 @@
   "funnel.setUp": "Set up funnel",
   "funnel.useTemplate": "Switch template",
   "funnel.remove": "Remove funnel",
-  "funnel.recomputing": "Counting visits for the new steps — numbers update within about 10 minutes.",
+  "funnel.recomputing": "Counting visits for the new steps — numbers update within about 15 minutes.",
   "funnel.noEntries": "Nobody entered this funnel in this period yet.",
   "pages.col.trouble": "Trouble",
   "pages.trouble": "{friction} stuck · {errors} with errors",

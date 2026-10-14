@@ -81,10 +81,10 @@ Every tenant-owned row carries `org_id`. Postgres RLS policies enforce `org_id =
 | `events_YYYYMMDD` | Partitioned by day. Columns: `org_id`, `site_id`, `visit_id`, `ts_client`, `ts_server`, `type`, `url_path`, `props jsonb`. BRIN on time, btree on `(site_id, type, ts_server)`. Dropped by retention. |
 | `vitals` | One row per pageview per metric (final value), so percentiles are correct. |
 | `replay_chunks` | Metadata only: `visit_id`, `seq`, `bytes`, `object_key`. The blob lives in object storage, gzip-compressed. |
-| `rollup_site_hour`, `rollup_page_day`, `rollup_funnel_day` | Computed by the worker. All dashboards read rollups, never raw events. |
+| `rollup_site_day`, `rollup_page_day`, `rollup_vitals_day`, `rollup_funnel_day` | Computed by the worker (daily, UTC). All dashboards read rollups, never raw events. See [insights.md](./insights.md). |
 | `issues` (Fix cards) | `site_id`, `kind`, `fingerprint`, `severity`, `status` (open/fixing/fixed/verified/dismissed), `evidence jsonb`, `impact jsonb`, `first_seen`, `last_seen`, `fixed_at`, `verified_at`. |
 | `issue_events` | Status history (who changed what, when) for the audit trail and reports. |
-| `funnels`, `funnel_steps` | Steps match on path glob, event name, or element selector. No user regex. |
+| `site_funnels` | One funnel per site; steps (jsonb) match on path glob, event name, element selector or form. No user regex. |
 | `reports`, `report_schedules`, `report_shares` | White-label config, cadence, recipients, tokenized links (sha256 at rest). |
 | `notification_channels` | Telegram chat links, email, push tokens. Secrets encrypted with a KMS-style app key. |
 | `plans` (code), `subscriptions`, `invoices`, `payments` | Ledger. Each Chapa attempt is a row with a unique `tx_ref`, a verify result, amount, and currency. |
