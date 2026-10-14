@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnvError, entropyBits, loadCollectorEnv, loadServerEnv, loadWorkerEnv } from './index';
+import { EnvError, aiConfigured, entropyBits, loadCollectorEnv, loadServerEnv, loadWorkerEnv } from './index';
 
 const STRONG = 'k3Jx9vQ2pL7mN4bR8tW1yZ6cF5hG0dS2aE9uI3oP7lK4jH6g';
 const base = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse', BETTER_AUTH_SECRET: STRONG };
@@ -93,5 +93,39 @@ describe('blob storage env (replays)', () => {
       S3_SECRET_ACCESS_KEY: 'secret',
     });
     expect(env.BLOB_STORE).toBe('s3');
+  });
+});
+
+describe('Telegram and AI settings', () => {
+  it('keeps AI off by default and on only with the switch and a key', () => {
+    const env = loadServerEnv(base);
+    expect(env.AI_ENABLED).toBe(false);
+    expect(aiConfigured(env)).toBe(false);
+    expect(aiConfigured(loadServerEnv({ ...base, AI_ENABLED: '1' }))).toBe(false);
+    expect(aiConfigured(loadServerEnv({ ...base, AI_ENABLED: 'true', ANTHROPIC_API_KEY: 'sk-x' }))).toBe(
+      true,
+    );
+    const worker = loadWorkerEnv({ DATABASE_URL: base.DATABASE_URL, AI_MONTHLY_BUDGET: '5' });
+    expect(worker.AI_MONTHLY_BUDGET).toBe(5);
+    expect(worker.TELEGRAM_BOT_TOKEN).toBeUndefined();
+  });
+
+  it('needs the bot username with a token, and a webhook secret in production', () => {
+    expect(() => loadServerEnv({ ...base, TELEGRAM_BOT_TOKEN: '1:x' })).toThrow(/TELEGRAM_BOT_USERNAME/);
+    expect(
+      loadServerEnv({ ...base, TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'Bot' })
+        .TELEGRAM_BOT_USERNAME,
+    ).toBe('Bot');
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      APP_URL: 'https://app.dxmpulse.et',
+      RESEND_API_KEY: 're_x',
+      TELEGRAM_BOT_TOKEN: '1:x',
+      TELEGRAM_BOT_USERNAME: 'Bot',
+      REPLAY_DIR: '/srv/replays',
+    };
+    expect(() => loadServerEnv(prod)).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
+    expect(() => loadServerEnv({ ...prod, TELEGRAM_WEBHOOK_SECRET: 'long-random-secret' })).not.toThrow();
   });
 });

@@ -47,6 +47,8 @@ export const METRICS = {
     thresholds: { good: 75, poor: 50 },
   }),
   revenue_at_risk: def({ id: 'revenue_at_risk', unit: 'money', isUpGood: false }),
+  /** Share of exposed visits a fix's problem hit (form abandon rate, U-turn rate, …). */
+  affected_rate: def({ id: 'affected_rate', unit: 'ratio', isUpGood: false }),
 } as const;
 
 export type MetricId = keyof typeof METRICS;

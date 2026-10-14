@@ -25,6 +25,7 @@ import {
   visits,
   withOrg,
   type Db,
+  type IssueRow,
   type Tx,
 } from '@pulse/db';
 import { sendJob, type Boss } from '@pulse/jobs';
@@ -57,7 +58,7 @@ async function nextNumber(tx: Tx, orgId: string): Promise<number> {
 
 /**
  * One detection run for one site, inside its org's RLS scope: load the rolling window of
- * click-friction events, run the pure detectors, and upsert `issues` by fingerprint.
+ * detector events, run the pure detectors, and upsert `issues` by fingerprint.
  * Idempotent — running it twice over the same events changes nothing but `updated_at`.
  */
 export async function detectSite(
@@ -88,6 +89,7 @@ export async function detectSite(
       .select({
         visitId: events.visitId,
         at: events.tsServer,
+        clientAt: events.tsClient,
         type: events.type,
         path: events.path,
         props: events.props,
@@ -112,25 +114,14 @@ export async function detectSite(
         browser: visits.browser,
         os: visits.os,
         exitPath: visits.exitPath,
+        network: visits.network,
+        endedAt: visits.endedAt,
       })
       .from(visits)
       .where(and(eq(visits.siteId, siteId), inArray(visits.id, visitIds)));
     const visitFacts = new Map<string, VisitFacts>(facts.map((v) => [v.id, v]));
 
-    const existingRows = await tx
-      .select({
-        id: issues.id,
-        fingerprint: issues.fingerprint,
-        status: issues.status,
-        severity: issues.severity,
-        fixedAt: issues.fixedAt,
-        verifiedAt: issues.verifiedAt,
-      })
-      .from(issues)
-      .where(eq(issues.siteId, siteId));
-    const existing = new Map<string, ExistingIssue & { id: string }>(
-      existingRows.map((r) => [r.fingerprint, r]),
-    );
+    const existing = await loadExisting(tx, siteId);
     const ignoreBefore = new Map<string, Date>();
     for (const [fp, issue] of existing) {
       const cutoff = cooldownCutoff(issue);
@@ -141,58 +132,98 @@ export async function detectSite(
       events: detectorEvents,
       visits: visitFacts,
       windowHours: DETECTION_WINDOW_HOURS,
+      now,
       ignoreBefore,
     });
     result.findings = findings.length;
+    await applyFindings(tx, orgId, siteId, findings, existing, result);
+    return result;
+  });
+}
 
-    for (const f of findings) {
-      const current = existing.get(f.fingerprint);
-      const plan = planUpsert(current, f);
-      if (plan.action === 'skip') continue;
-      if (plan.action === 'create') {
-        const id = await createIssue(tx, orgId, siteId, f);
-        if (id) result.created.push(id);
-        continue;
-      }
-      const issueId = current!.id;
-      if (plan.action === 'reopen') {
-        await tx
-          .update(issues)
-          .set({
-            status: 'open',
-            severity: f.severity,
-            evidence: f.evidence,
-            impact: f.impact,
-            lastSeen: sql`greatest(${issues.lastSeen}, ${f.lastSeen.toISOString()}::timestamptz)`,
-            fixedAt: null,
-            verifiedAt: null,
-          })
-          .where(eq(issues.id, issueId));
-        await tx.insert(issueEvents).values({
-          id: newId('ise'),
-          orgId,
-          issueId,
-          actorUserId: null,
-          fromStatus: current!.status,
-          toStatus: 'open',
-          reason: 'regressed',
-        });
-        result.reopened.push(issueId);
-        continue;
-      }
+export type ExistingById = Map<string, ExistingIssue & { id: string; lastSeen: Date }>;
+
+/** The site's issues by fingerprint. */
+export async function loadExisting(tx: Tx, siteId: string, kind?: IssueRow['kind']): Promise<ExistingById> {
+  const rows = await tx
+    .select({
+      id: issues.id,
+      fingerprint: issues.fingerprint,
+      status: issues.status,
+      severity: issues.severity,
+      fixedAt: issues.fixedAt,
+      verifiedAt: issues.verifiedAt,
+      lastSeen: issues.lastSeen,
+    })
+    .from(issues)
+    .where(and(eq(issues.siteId, siteId), kind ? eq(issues.kind, kind) : undefined));
+  return new Map(rows.map((r) => [r.fingerprint, r]));
+}
+
+/** Upserts findings by fingerprint (create / refresh / reopen), recording what changed in `result`. */
+export async function applyFindings(
+  tx: Tx,
+  orgId: string,
+  siteId: string,
+  findings: readonly Finding[],
+  existing: ExistingById,
+  result: Pick<DetectResult, 'created' | 'reopened' | 'escalated' | 'refreshed'>,
+) {
+  for (const f of findings) {
+    const current = existing.get(f.fingerprint);
+    const plan = planUpsert(current, f);
+    if (plan.action === 'skip') continue;
+    if (plan.action === 'create') {
+      const id = await createIssue(tx, orgId, siteId, f);
+      if (id) result.created.push(id);
+      continue;
+    }
+    const issueId = current!.id;
+    const lastSeen = sql`greatest(${issues.lastSeen}, ${f.lastSeen.toISOString()}::timestamptz)`;
+    if (plan.action === 'reopen') {
       await tx
         .update(issues)
         .set({
+          status: 'open',
           severity: f.severity,
           evidence: f.evidence,
           impact: f.impact,
-          lastSeen: sql`greatest(${issues.lastSeen}, ${f.lastSeen.toISOString()}::timestamptz)`,
+          lastSeen,
+          fixedAt: null,
+          verifiedAt: null,
+          verification: null,
         })
         .where(eq(issues.id, issueId));
-      result.refreshed += 1;
-      if (plan.escalated) result.escalated.push(issueId);
+      await recordStatus(tx, orgId, issueId, current!.status, 'open', 'regressed');
+      result.reopened.push(issueId);
+      continue;
     }
-    return result;
+    await tx
+      .update(issues)
+      .set({ severity: f.severity, evidence: f.evidence, impact: f.impact, lastSeen })
+      .where(eq(issues.id, issueId));
+    result.refreshed += 1;
+    if (plan.escalated) result.escalated.push(issueId);
+  }
+}
+
+/** Appends a system status change to the issue's history. */
+export async function recordStatus(
+  tx: Tx,
+  orgId: string,
+  issueId: string,
+  fromStatus: IssueRow['status'] | null,
+  toStatus: IssueRow['status'],
+  reason: string,
+) {
+  await tx.insert(issueEvents).values({
+    id: newId('ise'),
+    orgId,
+    issueId,
+    actorUserId: null,
+    fromStatus,
+    toStatus,
+    reason,
   });
 }
 
@@ -219,15 +250,7 @@ async function createIssue(tx: Tx, orgId: string, siteId: string, f: Finding): P
     .onConflictDoNothing({ target: [issues.siteId, issues.fingerprint] })
     .returning({ id: issues.id });
   if (!inserted.length) return null;
-  await tx.insert(issueEvents).values({
-    id: newId('ise'),
-    orgId,
-    issueId: id,
-    actorUserId: null,
-    fromStatus: null,
-    toStatus: 'open',
-    reason: 'detected',
-  });
+  await recordStatus(tx, orgId, id, null, 'open', 'detected');
   return id;
 }
 

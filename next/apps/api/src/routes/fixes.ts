@@ -1,6 +1,9 @@
+import { aiConfigured } from '@pulse/config';
 import {
-  ClickEvidence,
+  FixEvidence,
   FixImpact,
+  FixSuggestion,
+  FixVerification,
   FixListQuery,
   FixStatusUpdate,
   canTransitionFix,
@@ -10,9 +13,11 @@ import {
   type FixList,
 } from '@pulse/contracts';
 import {
+  aiArtifacts,
   and,
   asc,
   desc,
+  inArray,
   eq,
   isNull,
   issueEvents,
@@ -27,6 +32,7 @@ import {
 } from '@pulse/db';
 import { createMiddleware } from 'hono/factory';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { AppDeps } from '../app';
 import { requireOrg, requireSession } from '../guards';
 import { ApiError, forbidden, notFound, type AppEnv } from '../http';
@@ -37,9 +43,10 @@ const iso = (d: Date | null) => (d ? d.toISOString() : null);
 export function toFixDto(
   row: IssueRow,
   site: { name: string; domain: string },
+  suggestion: FixSuggestion | null = null,
   withReplay: Set<string> = new Set(),
 ): Fix {
-  const evidence = ClickEvidence.parse(row.evidence);
+  const evidence = FixEvidence.parse(row.evidence);
   return {
     id: row.id,
     number: row.number,
@@ -52,12 +59,16 @@ export function toFixDto(
     // Parsed so a malformed row fails loudly here instead of breaking the UI.
     evidence,
     impact: row.impact ? FixImpact.parse(row.impact) : null,
+    verification: row.verification ? FixVerification.parse(row.verification) : null,
+    suggestion,
     firstSeen: row.firstSeen.toISOString(),
     lastSeen: row.lastSeen.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     fixedAt: iso(row.fixedAt),
     verifiedAt: iso(row.verifiedAt),
-    replayIds: evidence.sampleVisitIds.filter((v) => withReplay.has(`${row.siteId} ${v}`)),
+    replayIds: ('sampleVisitIds' in evidence ? evidence.sampleVisitIds : []).filter((v) =>
+      withReplay.has(`${row.siteId} ${v}`),
+    ),
   };
 }
 
@@ -68,9 +79,9 @@ const replaysOf = (tx: Tx, rows: IssueRow[]) =>
     rows.map((r) => ({
       siteId: r.siteId,
       visitIds:
-        ClickEvidence.shape.sampleVisitIds.safeParse(
-          (r.evidence as { sampleVisitIds?: unknown }).sampleVisitIds,
-        ).data ?? [],
+        z
+          .array(z.string())
+          .safeParse((r.evidence as { sampleVisitIds?: unknown } | null)?.sampleVisitIds).data ?? [],
     })),
   );
 
@@ -78,7 +89,36 @@ const replaysOf = (tx: Tx, rows: IssueRow[]) =>
 const STATUS_ORDER = sql`case ${issues.status} when 'open' then 0 when 'fixing' then 1 when 'fixed' then 2 when 'verified' then 3 else 4 end`;
 const SEVERITY_ORDER = sql`case ${issues.severity} when 'critical' then 0 else 1 end`;
 
-async function loadFix(tx: Tx, id: string): Promise<Fix> {
+/**
+ * Latest AI suggestion per issue. Only read while AI is configured: with AI off, nothing AI-made
+ * reaches the UI, even if older suggestions are stored.
+ */
+async function loadSuggestions(tx: Tx, ids: string[], enabled: boolean) {
+  const out = new Map<string, FixSuggestion>();
+  if (!enabled || !ids.length) return out;
+  const rows = await tx
+    .selectDistinctOn([aiArtifacts.issueId], {
+      issueId: aiArtifacts.issueId,
+      content: aiArtifacts.content,
+      model: aiArtifacts.model,
+      createdAt: aiArtifacts.createdAt,
+    })
+    .from(aiArtifacts)
+    .where(and(inArray(aiArtifacts.issueId, ids), eq(aiArtifacts.kind, 'fix_suggestion')))
+    .orderBy(aiArtifacts.issueId, desc(aiArtifacts.createdAt));
+  for (const r of rows) {
+    const parsed = FixSuggestion.safeParse({
+      text: r.content.text,
+      code: r.content.code ?? null,
+      model: r.model,
+      createdAt: r.createdAt.toISOString(),
+    });
+    if (parsed.success) out.set(r.issueId, parsed.data);
+  }
+  return out;
+}
+
+async function loadFix(tx: Tx, id: string, ai: boolean): Promise<Fix> {
   const [row] = await tx
     .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
     .from(issues)
@@ -86,9 +126,11 @@ async function loadFix(tx: Tx, id: string): Promise<Fix> {
     .where(and(eq(issues.id, id), isNull(sites.deletedAt)))
     .limit(1);
   if (!row) throw notFound('Fix');
+  const suggestions = await loadSuggestions(tx, [row.issue.id], ai);
   return toFixDto(
     row.issue,
     { name: row.siteName, domain: row.siteDomain },
+    suggestions.get(row.issue.id),
     await replaysOf(tx, [row.issue]),
   );
 }
@@ -105,11 +147,12 @@ const requireTeam = createMiddleware<AppEnv>(async (c, next) => {
  */
 export function fixRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
+  const ai = aiConfigured(deps.env);
   r.use('*', requireSession(deps), requireOrg(deps), requireTeam);
 
   r.get('/', async (c) => {
     const q = FixListQuery.parse(c.req.query());
-    const { rows, withReplay } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
+    const { rows, suggestions, withReplay } = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
       const rows = await tx
         .select({ issue: issues, siteName: sites.name, siteDomain: sites.domain })
         .from(issues)
@@ -123,23 +166,40 @@ export function fixRoutes(deps: AppDeps) {
         )
         .orderBy(STATUS_ORDER, SEVERITY_ORDER, desc(issues.lastSeen), asc(issues.number))
         .limit(q.limit);
-      return {
-        rows,
-        withReplay: await replaysOf(
-          tx,
-          rows.map((r) => r.issue),
-        ),
-      };
+      const suggestions = await loadSuggestions(
+        tx,
+        rows.map((r) => r.issue.id),
+        ai,
+      );
+      const withReplay = await replaysOf(
+        tx,
+        rows.map((r) => r.issue),
+      );
+      return { rows, suggestions, withReplay };
     });
-    const body: FixList = {
-      fixes: rows.map((r) => toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, withReplay)),
-    };
+    // One malformed row must not take down the whole feed: skip it and say so in the logs.
+    const fixes = rows.flatMap((r) => {
+      try {
+        return [
+          toFixDto(
+            r.issue,
+            { name: r.siteName, domain: r.siteDomain },
+            suggestions.get(r.issue.id),
+            withReplay,
+          ),
+        ];
+      } catch (err) {
+        c.get('log').error({ err, issueId: r.issue.id }, 'malformed issue row skipped');
+        return [];
+      }
+    });
+    const body: FixList = { fixes };
     return c.json(body);
   });
 
   r.get('/:id', async (c) => {
     const body = await withOrg(deps.db, c.get('orgId')!, async (tx): Promise<FixDetail> => {
-      const fix = await loadFix(tx, c.req.param('id'));
+      const fix = await loadFix(tx, c.req.param('id'), ai);
       const history = await tx
         .select({
           fromStatus: issueEvents.fromStatus,
@@ -164,7 +224,7 @@ export function fixRoutes(deps: AppDeps) {
     const { status } = FixStatusUpdate.parse(await c.req.json());
     const actor = c.get('user')!;
     const body = await withOrg(deps.db, c.get('orgId')!, async (tx) => {
-      const current = await loadFix(tx, c.req.param('id'));
+      const current = await loadFix(tx, c.req.param('id'), ai);
       if (current.status === status) return { fix: current };
       if (!canTransitionFix(current.status, status)) {
         throw new ApiError(409, 'conflict', `A fix that is ${current.status} can't be marked ${status}`, {
@@ -178,9 +238,11 @@ export function fixRoutes(deps: AppDeps) {
         .update(issues)
         .set({
           status,
-          ...(status === 'fixed' ? { fixedAt: now, verifiedAt: null } : {}),
+          ...(status === 'fixed' ? { fixedAt: now, verifiedAt: null, verification: null } : {}),
           ...(status === 'verified' ? { verifiedAt: now } : {}),
-          ...(status === 'open' || status === 'fixing' ? { fixedAt: null, verifiedAt: null } : {}),
+          ...(status === 'open' || status === 'fixing'
+            ? { fixedAt: null, verifiedAt: null, verification: null }
+            : {}),
         })
         .where(and(eq(issues.id, current.id), eq(issues.status, current.status)))
         .returning({ id: issues.id });
@@ -199,7 +261,7 @@ export function fixRoutes(deps: AppDeps) {
         fromStatus: current.status,
         toStatus: status,
       });
-      return { fix: await loadFix(tx, current.id) };
+      return { fix: await loadFix(tx, current.id, ai) };
     });
     return c.json(body);
   });

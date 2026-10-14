@@ -7,6 +7,7 @@ import pino from 'pino';
 import { createApp } from './app';
 import { createAuth } from './auth';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
+import { HttpTelegramClient } from '@pulse/mail/telegram';
 
 const env = loadServerEnv();
 const log = pino({
@@ -30,6 +31,7 @@ const app = createApp({
   auth,
   mailer,
   log,
+  telegram: env.TELEGRAM_BOT_TOKEN ? new HttpTelegramClient(env.TELEGRAM_BOT_TOKEN) : undefined,
   peerAddress: (_raw, c) => getConnInfo(c as Parameters<typeof getConnInfo>[0]).remote.address,
 });
 

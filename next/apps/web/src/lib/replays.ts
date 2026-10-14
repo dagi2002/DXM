@@ -8,6 +8,25 @@ import { useTranslation } from 'react-i18next';
 import { api } from './api';
 import { useFormatDate } from './queries';
 
+/** Replay page search params: fix = came from a fix, site = disambiguates the visit, t = start (ms). */
+export interface ReplaySearch {
+  fix?: string;
+  site?: string;
+  t?: number;
+}
+
+const shortId = (v: unknown) => (typeof v === 'string' && v ? v.slice(0, 64) : undefined);
+
+/** The router passes search params through untyped; this is where they are checked. */
+export function readReplaySearch(s: Record<string, unknown>): ReplaySearch {
+  const t = s.t;
+  return {
+    fix: shortId(s.fix),
+    site: shortId(s.site),
+    t: typeof t === 'number' && Number.isFinite(t) && t >= 0 ? Math.round(t) : undefined,
+  };
+}
+
 export type ReplayFilters = Pick<ReplayListQuery, 'siteId' | 'fixId' | 'page'> & { friction?: boolean };
 
 export const replaysQuery = (orgId: string, f: ReplayFilters = {}) =>
