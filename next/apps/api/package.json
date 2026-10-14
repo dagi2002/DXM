@@ -18,6 +18,7 @@
     "@pulse/contracts": "workspace:*",
     "@pulse/db": "workspace:*",
     "@pulse/i18n": "workspace:*",
+    "@pulse/insights": "workspace:*",
     "@pulse/mail": "workspace:*",
     "@pulse/reports": "workspace:*",
     "@sentry/node": "^11.6.0",

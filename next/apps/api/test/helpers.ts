@@ -14,6 +14,11 @@ export const TEST_DATABASE_ADMIN_URL =
 export const APP_URL = 'http://localhost:5174';
 
 const TABLES = [
+  'rollup_funnel_day',
+  'rollup_vitals_day',
+  'rollup_page_day',
+  'rollup_site_day',
+  'site_funnels',
   'audit_log',
   'two_factor',
   'sites',
@@ -57,7 +62,10 @@ export interface TestContext {
   mailer: MemoryMailer;
 }
 
-export function createTestContext(overrides: Record<string, string> = {}): TestContext {
+export function createTestContext(
+  overrides: Record<string, string> = {},
+  extra: Pick<Parameters<typeof createApp>[0], 'telegram'> = {},
+): TestContext {
   const env = loadServerEnv({
     NODE_ENV: 'test',
     DATABASE_URL: TEST_DATABASE_URL,
@@ -77,6 +85,7 @@ export function createTestContext(overrides: Record<string, string> = {}): TestC
     mailer,
     log: pino({ level: 'silent' }),
     peerAddress: () => '127.0.0.1',
+    ...extra,
   });
   return { app, database, mailer };
 }
@@ -123,6 +132,7 @@ export class Client {
   get = (path: string) => this.request(path);
   post = (path: string, body: unknown = {}) => this.request(path, { method: 'POST', body });
   patch = (path: string, body: unknown) => this.request(path, { method: 'PATCH', body });
+  put = (path: string, body: unknown) => this.request(path, { method: 'PUT', body });
   delete = (path: string, body?: unknown) => this.request(path, { method: 'DELETE', body });
 }
 

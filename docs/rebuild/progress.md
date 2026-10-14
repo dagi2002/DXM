@@ -155,7 +155,7 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 
 **Not done yet:** every sample-backed screen still needs its slice (3 fixes, 4 replay, 5 insights, 6 reports). The landing page's "check your site" form only sends people to sign-up for now; it doesn't run a check.
 
-## 2026-10-12 — Phase 2, slice 3, part 1 (fix detection v1: click friction) 🟡
+## 2026-10-12 — Phase 2, slice 3, part 1 (fix detection v1: click friction) ✅ (rest: 2026-10-14)
 
 **Shipped:**
 - **Data:** `issues` (one row per site + fingerprint, per-org running number, evidence/impact jsonb, first/last seen, fixed/verified times) and append-only `issue_events` (status history; actor null = the system). Both under forced RLS. Status/severity check constraints. A composite FK makes an issue's site belong to the issue's org. Migrations `0009_issues`, `0010_issues_rls` (renumbered after task 2's `0008_two_factor` at merge).
@@ -176,6 +176,62 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 - AI explanations and suggested fixes (`ai.recommend`, `ai_artifacts` cache, per-org budget).
 - Telegram alerts (and push/email) for created / escalated / reopened issues, with quiet hours.
 - Revenue-at-risk impact (needs order values) and replay links from `sampleVisitIds` (slice 4).
+
+## 2026-10-14 — Phase 2, slice 3, part 2 (rest of fix detection) ✅
+
+Task 10 of the parallel plan. Details: [detection.md](detection.md).
+
+**Shipped:**
+- **Detectors** (`packages/detectors`, pure, named thresholds): form abandonment, slow pages (p75 LCP/INP by template, split by network), JS errors, U-turns, and tracking-broken (hourly, schedule-driven). Evidence is now a tagged union in `@pulse/contracts` (`FixEvidence`); old click rows read as `type: 'click'` (migration backfills it).
+- **Verification:** `issue.verify-sweep` (hourly) → `issue.verify` per issue. Compares the 7 days before `fixed_at` with days 3–7 after, using the detector's own grouping. Outcomes: verified, reopened, or waiting for traffic (gives up after 28 days). The result is stored in `issues.verification` and shown on the fix and in Today.
+- **Telegram alerts:** one message per site per detection run with news (created / escalated / reopened, plus reopened-by-verification). Settings → Notifications links a chat with a single-use `/start` code through a secret-checked webhook. Quiet hours re-queue alerts until they end. Messages in English or Amharic. Blocked bots are unlinked.
+- **AI suggested fix:** `ai.recommend`, off unless `AI_ENABLED=1` and `ANTHROPIC_API_KEY` are set. Per-org monthly budget, cached in `ai_artifacts` by evidence hash, untrusted evidence fenced in `<data>`. With AI off the API returns no suggestions and the UI shows no AI box. `/public-config` exposes `aiEnabled` (for task 7's replay recap) and `telegramEnabled`.
+- **Migration `0014_detection_2`:** `telegram_links`, `telegram_link_codes`, `ai_artifacts` (forced RLS + policies), `issues.verification`, `issues_kind_ck`, and the helpers `pulse_live_sites`, `pulse_issues_due_for_verification`, `pulse_claim_telegram_link` (SECURITY DEFINER, ids only).
+- **Web:** the sample fixes and their fallback are gone. A new org gets an honest empty state ("No problems found yet"). Copy for every detector in en + am. Impact shows visitors/day and who left (revenue needs order values). The sample replays no longer link to `fix_128`.
+- **API:** `GET /fixes` skips (and logs) a malformed row instead of failing the whole feed.
+
+**Tests:**
+- 31 new detector unit tests at every threshold boundary, plus verification windows and judging.
+- 17 worker integration tests against Postgres: real ingest → each new detector, tracking open/refresh/resume, verify verified/reopened/waiting/not-due, Telegram formatting en/am, quiet hours, unlink on 403, AI off/cache/budget/unparseable, tenant isolation throughout.
+- 13 API tests: Telegram link/webhook/settings/roles/isolation, evidence shapes, verification, AI on/off, malformed rows.
+- The RLS invariant test now names the new tables and checks the helpers' grants.
+- Web unit tests for the view model in en + am.
+- e2e seeds real issues (`e2e/seed.ts`) instead of pinning `fix_128`.
+
+**Not done yet:**
+- Revenue-at-risk impact (needs order values).
+- Replay links from `sampleVisitIds` (task 7).
+- AI suggestions in Amharic, and the `packages/ai` task wrapper from ADR-009 (retry, evals).
+- Monday digest and push/email alerts.
+- Telegram webhook registration is a manual `setWebhook` call (see detection.md).
+- Verification loads raw `pv` events over two weeks for click/JS/U-turn rates; fine at pilot volume, but should move to task 8's rollups.
+
+## 2026-10-14 — Phase 2, slice 5 (site insights) ✅
+
+Task 8 of parallel plan 2 (`task/8-insights`). The site Overview and Today's "this week" panel now run on real data; the sample insights and sample week are gone from `sample.ts`. Definitions are in [insights.md](./insights.md).
+
+**Shipped:**
+- **Health score:** one definition, documented in `insights.md` and implemented once (`healthScore()` in `packages/insights`): speed (p75 LCP/INP/CLS against Google thresholds) 40%, friction (visits with rage/dead clicks) 35%, errors (visits with JS errors) 25%; parts without data are left out and the rest renormalised; no score under 30 visits.
+- **`packages/insights` (pure, unit-tested):** percentile per contract 21 (`floor((n-1)×p)`), p75 vitals by device and network, "pages that need you" ranking, funnels (ordered step matching with a linear-time `*` glob — no user regex), the Ethiopian funnel templates (telebirr/Chapa checkout, lead form, Telegram hand-off), week-over-week deltas, day aggregation for the rollup job, and `computeSiteInsights` / `computeWeekSummary`.
+- **Data (`0012_insights`):** `rollup_site_day`, `rollup_page_day`, `rollup_vitals_day` (raw final values per day, since percentiles don't add across days), `rollup_funnel_day` (counts tagged with the funnel's step hash) and `site_funnels`. All forced RLS, composite `(site_id, org_id)` FKs to `sites`, and a narrow SECURITY DEFINER `pulse_sites_for_insights()` for the sweep.
+- **Worker:** `insights.sweep` every 10 minutes queues one `insights.site` per site with recent visits or a funnel that hasn't been rolled up (stately, singleton per site, staggered). `insights.site` recomputes today and yesterday (UTC) from raw rows inside the org's RLS scope (idempotent), and re-rolls up to 30 recent days when the funnel's steps change.
+- **API:** `GET /api/v1/sites/:id/insights?range=7d|30d`, `GET/PUT/DELETE /api/v1/sites/:id/funnel` (owners/admins change it; audit-logged), `GET /api/v1/insights/week`. Contracts in `@pulse/contracts` (`insights.ts`). Members read; client viewers get 404 (they don't see sites yet); other orgs' sites are 404.
+- **Web:** the Overview has a 7/30-day switch, a headline from the data, health with its delta, visits with a sparkline, funnel completion (or bounce when there's no funnel), phone LCP, the funnel (set up from a template in the owner's language, switch or remove it; "counting" while the rollup catches up), speed by network and device with INP/CLS ratings in words, and pages that need you with trouble and open-fix counts. Every number has an honest empty state ("Not enough visits yet", "Not enough data yet"). Today's week panel shows real visits, funnel completion when any site has a funnel, and fixes verified this month vs last. EN + AM strings.
+- **For reports (task 9):** `@pulse/insights/db` exports `loadSiteInsights()` and `rollupReportSource` (same shape as task 9's `ReportMetricsSource`).
+- **Tests:** 26 unit tests (`packages/insights`), 7 worker tests against Postgres (rollup contents, idempotency, funnel backfill and re-hash, tenant scope, deleted sites, insights and report numbers read from rollups with raw events deleted, sweep), 10 API tests (contract shape, deltas, ranges, open fixes per page, tenant isolation on every route, deleted sites, funnel CRUD/validation/audit, roles, CSRF), RLS invariants extended to the new tables, 4 component tests, and a new `e2e/insights.spec.ts` (empty state; seeded rollups → Overview, 30-day switch, Today week panel, funnel set-up, axe) on desktop and 360px.
+
+**Decisions:**
+- Days are UTC. Ethiopia is UTC+3, so a "day" ends at 03:00 local time; switching to Africa/Addis_Ababa days later means recomputing rollups, not changing the API.
+- The 7-day range includes today so far (fresher numbers, slightly unequal comparison with a full previous week).
+- One funnel per site (the architecture doc's `funnels` + `funnel_steps` became `site_funnels` with a validated jsonb step list).
+- Vitals rollups keep raw values instead of per-day percentiles so p75 over 7 or 30 days stays exact.
+
+**Not done yet:**
+- A step-by-step funnel editor (the API takes custom steps; the UI only offers templates).
+- Retention for rollup tables (they're small; they should follow the plan's retention with events).
+- Wiring `rollupReportSource` into task 9's report job (do it when both are merged).
+- Amharic review of the new strings.
+- The first-load JS budget is at 215.9 KB of 216 KB (baseline `rebuild`: 215.7 KB).
 
 ## 2026-10-14 — Phase 2, slice 6 (client reports) ✅
 

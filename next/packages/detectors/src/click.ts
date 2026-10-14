@@ -1,53 +1,16 @@
-import type { ClickEvidence, FixImpact, FixKind, FixSeverity } from '@pulse/contracts';
+import type { ClickEvidence, FixKind } from '@pulse/contracts';
 import { fingerprintOf, normalizePath } from './paths';
+import { describeVisits, perDay, sampleVisits, upsert, visitSeverity } from './shared';
 import {
   DEAD_CLICK_CRITICAL_VISITS,
   DEAD_CLICK_MIN_VISITS,
-  MAX_SAMPLE_VISITS,
-  MONEY_PATH_CRITICAL_VISITS,
-  MONEY_PATH_RE,
   RAGE_CLICK_CRITICAL_VISITS,
   RAGE_CLICK_MIN_VISITS,
-  TOP_BROWSER_MIN_SHARE,
 } from './thresholds';
+import type { DetectorEvent, DetectorInput, Finding } from './types';
 
-/** One stored event, as the worker loads it from `events`. */
-export interface DetectorEvent {
-  visitId: string;
-  at: Date;
-  type: string;
-  path: string | null;
-  props: Record<string, unknown>;
-}
-
-/** What the detectors need to know about a visit (from `visits`). */
-export interface VisitFacts {
-  device: 'desktop' | 'mobile' | 'tablet';
-  browser: string | null;
-  os: string | null;
-  exitPath: string | null;
-}
-
-export interface DetectorInput {
-  events: readonly DetectorEvent[];
-  visits: ReadonlyMap<string, VisitFacts>;
-  windowHours: number;
-  /** Per fingerprint: ignore occurrences before this instant (a fixed issue in its cooldown). */
-  ignoreBefore?: ReadonlyMap<string, Date>;
-}
-
-export interface Finding {
-  kind: FixKind;
-  fingerprint: string;
-  severity: FixSeverity;
-  firstSeen: Date;
-  lastSeen: Date;
-  evidence: ClickEvidence;
-  impact: FixImpact;
-}
-
-interface ClickRule {
-  kind: FixKind;
+export interface ClickRule {
+  kind: Extract<FixKind, 'rage_click' | 'dead_click'>;
   eventType: 'rc' | 'dc';
   minVisits: number;
   criticalVisits: number;
@@ -66,7 +29,7 @@ export const DEAD_CLICK_RULE: ClickRule = {
   criticalVisits: DEAD_CLICK_CRITICAL_VISITS,
 };
 
-interface Group {
+export interface ClickGroup {
   path: string;
   selector: string;
   fingerprint: string;
@@ -79,43 +42,33 @@ interface Group {
   visits: Map<string, Date>;
 }
 
-export function severityFor(rule: ClickRule, path: string, visits: number): FixSeverity {
-  const critical = MONEY_PATH_RE.test(path)
-    ? Math.max(rule.minVisits, Math.min(rule.criticalVisits, MONEY_PATH_CRITICAL_VISITS))
-    : rule.criticalVisits;
-  return visits >= critical ? 'critical' : 'watch';
+export const severityFor = (rule: ClickRule, path: string, visits: number) =>
+  visitSeverity(path, visits, rule);
+
+/** (page template, element) of a click event, or null when it's malformed. */
+export function clickKey(e: DetectorEvent): { path: string; selector: string } | null {
+  const path = normalizePath(e.path);
+  const selector = typeof e.props.s === 'string' ? e.props.s.trim() : '';
+  return path && selector ? { path, selector } : null;
 }
 
-const perDay = (n: number, windowHours: number) =>
-  Math.round(((n * 24) / Math.max(1, windowHours)) * 10) / 10;
-
-/**
- * Groups rage or dead clicks by (page template, element) and reports the groups that enough
- * distinct visits ran into. The SDK already collapses bursts, so one event = one frustrated moment.
- */
-export function detectClicks(rule: ClickRule, input: DetectorInput): Finding[] {
-  const groups = new Map<string, Group>();
+/** Groups rage or dead clicks by (page template, element). */
+export function clickGroups(rule: ClickRule, input: DetectorInput): Map<string, ClickGroup> {
+  const groups = new Map<string, ClickGroup>();
   for (const e of input.events) {
     if (e.type !== rule.eventType) continue;
-    const path = normalizePath(e.path);
-    const selector = typeof e.props.s === 'string' ? e.props.s.trim() : '';
-    if (!path || !selector) continue;
-    const key = `${path}\u0000${selector}`;
-    let g = groups.get(key);
-    if (!g) {
-      g = {
-        path,
-        selector,
-        fingerprint: fingerprintOf(rule.kind, path, selector),
-        occurrences: 0,
-        clicks: 0,
-        maxBurst: 0,
-        first: e.at,
-        last: e.at,
-        visits: new Map(),
-      };
-      groups.set(key, g);
-    }
+    const key = clickKey(e);
+    if (!key) continue;
+    const g = upsert(groups, `${key.path}\u0000${key.selector}`, () => ({
+      ...key,
+      fingerprint: fingerprintOf(rule.kind, key.path, key.selector),
+      occurrences: 0,
+      clicks: 0,
+      maxBurst: 0,
+      first: e.at,
+      last: e.at,
+      visits: new Map<string, Date>(),
+    }));
     const cutoff = input.ignoreBefore?.get(g.fingerprint);
     if (cutoff && e.at < cutoff) continue;
     const burst = typeof e.props.n === 'number' && e.props.n > 0 ? Math.floor(e.props.n) : 1;
@@ -128,44 +81,29 @@ export function detectClicks(rule: ClickRule, input: DetectorInput): Finding[] {
     const prev = g.visits.get(e.visitId);
     if (!prev || e.at > prev) g.visits.set(e.visitId, e.at);
   }
+  return groups;
+}
 
-  const findings: Finding[] = [];
-  for (const g of groups.values()) {
+/**
+ * Reports the (page template, element) groups that enough distinct visits ran into. The SDK
+ * already collapses bursts, so one event = one frustrated moment.
+ */
+export function detectClicks(rule: ClickRule, input: DetectorInput): Finding<ClickEvidence>[] {
+  const findings: Finding<ClickEvidence>[] = [];
+  for (const g of clickGroups(rule, input).values()) {
     const visitCount = g.visits.size;
     if (visitCount < rule.minVisits) continue;
-
-    const devices = { desktop: 0, mobile: 0, tablet: 0 };
-    const browsers = new Map<string, { browser: string; os: string; visits: number }>();
-    let leftOnPage = 0;
-    for (const id of g.visits.keys()) {
-      const v = input.visits.get(id);
-      if (!v) continue;
-      devices[v.device] += 1;
-      if (normalizePath(v.exitPath) === g.path) leftOnPage += 1;
-      if (v.browser && v.os) {
-        const k = `${v.browser}\u0000${v.os}`;
-        const b = browsers.get(k) ?? { browser: v.browser, os: v.os, visits: 0 };
-        b.visits += 1;
-        browsers.set(k, b);
-      }
-    }
-    const top = [...browsers.values()].sort((a, b) => b.visits - a.visits)[0];
-    const sampleVisitIds = [...g.visits.entries()]
-      .sort((a, b) => b[1].getTime() - a[1].getTime() || a[0].localeCompare(b[0]))
-      .slice(0, MAX_SAMPLE_VISITS)
-      .map(([id]) => id);
-
+    const facts = describeVisits(g.visits.keys(), g.path, input);
     const evidence: ClickEvidence = {
+      type: 'click',
       path: g.path,
       selector: g.selector,
       windowHours: input.windowHours,
       visits: visitCount,
       occurrences: g.occurrences,
       ...(rule.kind === 'rage_click' ? { clicks: g.clicks, maxBurst: g.maxBurst } : {}),
-      leftOnPage,
-      devices,
-      topBrowser: top && top.visits / visitCount >= TOP_BROWSER_MIN_SHARE ? top : null,
-      sampleVisitIds,
+      ...facts,
+      sampleVisitIds: sampleVisits(g.visits),
     };
     findings.push({
       kind: rule.kind,
@@ -176,7 +114,7 @@ export function detectClicks(rule: ClickRule, input: DetectorInput): Finding[] {
       evidence,
       impact: {
         visitsPerDay: perDay(visitCount, input.windowHours),
-        leftPerDay: perDay(leftOnPage, input.windowHours),
+        leftPerDay: perDay(facts.leftOnPage, input.windowHours),
       },
     });
   }

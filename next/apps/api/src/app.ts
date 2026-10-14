@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { ServerEnv } from '@pulse/config';
+import { aiConfigured, type ServerEnv } from '@pulse/config';
+import type { PublicConfig } from '@pulse/contracts';
+import type { TelegramClient } from '@pulse/mail/telegram';
 import type { Db } from '@pulse/db';
 import { sql } from '@pulse/db';
 import { Hono } from 'hono';
@@ -14,8 +16,10 @@ import type { Mailer } from '@pulse/mail';
 import { fixRoutes } from './routes/fixes';
 import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
+import { insightRoutes } from './routes/insights';
 import { meRoutes } from './routes/me';
 import { siteRoutes } from './routes/sites';
+import { telegramRoutes, telegramWebhook } from './routes/telegram';
 import { todayRoutes } from './routes/today';
 
 export interface AppDeps {
@@ -24,6 +28,8 @@ export interface AppDeps {
   auth: Auth;
   mailer: Mailer;
   log: Logger;
+  /** Sends Telegram messages (link confirmations, tests). Absent without a bot token. */
+  telegram?: TelegramClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
   peerAddress?: (raw: Request, c: unknown) => string | undefined;
   /** Overrides the public report route's per-IP rate limit (tests). */
@@ -139,7 +145,11 @@ export function createApp(deps: AppDeps) {
 
   /** Unauthenticated, cacheable facts the sign-in screens need. */
   app.get('/api/v1/public-config', (c) =>
-    c.json({ googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) }),
+    c.json({
+      googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+      aiEnabled: aiConfigured(env),
+      telegramEnabled: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_BOT_USERNAME),
+    } satisfies PublicConfig),
   );
 
   app.route('/api/v1/me', meRoutes(deps));
@@ -148,6 +158,9 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/fixes', fixRoutes(deps));
   app.route('/api/v1/reports', reportRoutes(deps));
   app.route('/api/v1/public/reports', publicReportRoutes(deps));
+  app.route('/api/v1/insights', insightRoutes(deps));
+  app.route('/api/v1/telegram/webhook', telegramWebhook(deps));
+  app.route('/api/v1/telegram', telegramRoutes(deps));
 
   app.notFound((c) => c.json(errorBody(c, 'not_found', 'Route not found'), 404));
 

@@ -32,6 +32,7 @@ import {
 } from '@pulse/db';
 import { Hono, type Context } from 'hono';
 import type { AppDeps } from '../app';
+import { siteInsightRoutes } from './insights';
 import { requireManager, requireOrg, requireSession } from '../guards';
 import { ApiError, notFound, type AppEnv } from '../http';
 
@@ -81,6 +82,7 @@ async function findActive(tx: Tx, id: string): Promise<SiteRow> {
 export function siteRoutes(deps: AppDeps) {
   const r = new Hono<AppEnv>();
   r.use('*', requireSession(deps), requireOrg(deps));
+  r.route('/', siteInsightRoutes(deps));
 
   const audit = (
     tx: Tx,

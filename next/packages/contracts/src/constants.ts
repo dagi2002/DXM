@@ -49,7 +49,15 @@ export const PLAN_LIMITS: Record<PlanId, { sites: number }> = {
 
 /* ── Fixes (detected issues) ────────────────────────────────────────────────── */
 /** Detector kinds that can produce a Fix card. Grows as slice 3 adds detectors. */
-export const FIX_KINDS = ['rage_click', 'dead_click'] as const;
+export const FIX_KINDS = [
+  'rage_click',
+  'dead_click',
+  'form_abandon',
+  'slow_page',
+  'js_error',
+  'u_turn',
+  'tracking_broken',
+] as const;
 export type FixKind = (typeof FIX_KINDS)[number];
 
 export const FIX_SEVERITIES = ['critical', 'watch'] as const;
@@ -84,3 +92,10 @@ export const REPORT_MIN_VISITS = 30;
 /** Share links: default and maximum lifetime, in days. */
 export const REPORT_SHARE_DEFAULT_DAYS = 30;
 export const REPORT_SHARE_MAX_DAYS = 90;
+/** Network buckets for speed breakdowns (NetworkInformation.effectiveType, or unknown). */
+export const NETWORKS = ['slow-2g', '2g', '3g', '4g', 'unknown'] as const;
+export type Network = (typeof NETWORKS)[number];
+
+/** Web Vitals the slow-pages detector judges (LCP = loading, INP = responsiveness). */
+export const SLOW_METRICS = ['LCP', 'INP'] as const;
+export type SlowMetric = (typeof SLOW_METRICS)[number];
