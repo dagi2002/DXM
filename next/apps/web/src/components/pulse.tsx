@@ -2,7 +2,7 @@ import { StatusBadge, cx } from '@pulse/ui';
 import { FlaskConical, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Severity } from '../lib/sample';
+import type { FixSeverity as Severity } from '@pulse/contracts/constants';
 
 /** Marks anything drawn from the sample dataset, so a demo never passes for real data. */
 export function SamplePill({ className }: { className?: string }) {

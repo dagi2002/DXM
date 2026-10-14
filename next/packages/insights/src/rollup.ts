@@ -1,4 +1,4 @@
-import { DEVICES, NETWORKS, type Device, type Network } from '@pulse/contracts';
+import { DEVICES, INSIGHT_NETWORKS, type Device, type InsightNetwork } from '@pulse/contracts';
 import { normalizePath } from '@pulse/detectors';
 import { VITAL_METRICS, type VitalMetric, type VitalSamples } from './vitals';
 
@@ -65,9 +65,9 @@ export const pageKey = (path: string | null) => normalizePath(path) ?? '(unknown
 export const toDevice = (d: string): Device =>
   (DEVICES as readonly string[]).includes(d) ? (d as Device) : 'desktop';
 /** `slow-2g` folds into `2g`; anything else unknown. */
-export function toNetwork(n: string | null): Network {
+export function toNetwork(n: string | null): InsightNetwork {
   if (n === 'slow-2g') return '2g';
-  return n && (NETWORKS as readonly string[]).includes(n) ? (n as Network) : 'unknown';
+  return n && (INSIGHT_NETWORKS as readonly string[]).includes(n) ? (n as InsightNetwork) : 'unknown';
 }
 
 export function rollupSiteDay(visits: readonly DayVisit[], events: readonly DayEvent[]): SiteDayRollup {

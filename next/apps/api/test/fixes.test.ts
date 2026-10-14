@@ -104,8 +104,11 @@ describe('GET /api/v1/fixes', () => {
       kind: 'rage_click',
       severity: 'critical',
       status: 'open',
-      evidence: evidence(),
+      // Seeded without `type` (a pre-0014 row): read as click evidence.
+      evidence: { type: 'click', ...evidence() },
       impact: { visitsPerDay: 12, leftPerDay: 9 },
+      verification: null,
+      suggestion: null,
       firstSeen: '2026-10-12T06:00:00.000Z',
       lastSeen: '2026-10-12T09:00:00.000Z',
       updatedAt: body.fixes[0]!.updatedAt,

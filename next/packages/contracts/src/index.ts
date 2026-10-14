@@ -4,6 +4,7 @@ import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 export * from './constants';
 export * from './fixes';
 export * from './insights';
+export * from './telegram';
 // Explicit so the Zod schemas win over the same-named types in ./constants.
 export { FixKind, FixSeverity, FixStatus } from './fixes';
 
@@ -197,3 +198,14 @@ export type ActiveSessions = z.infer<typeof ActiveSessions>;
 export const PreferencesUpdate = z
   .object({ name: z.string().trim().min(1).max(80), locale: Locale, calendar: CalendarPref })
   .partial();
+
+/* ── Public config ─────────────────────────────────────────────────────────── */
+/** Unauthenticated feature switches the web app reads before sign-in. */
+export const PublicConfig = z.object({
+  googleEnabled: z.boolean(),
+  /** AI explanations/suggestions are configured (AI_ENABLED + a key). Hide every AI box otherwise. */
+  aiEnabled: z.boolean(),
+  /** A Telegram bot is configured for alerts. */
+  telegramEnabled: z.boolean(),
+});
+export type PublicConfig = z.infer<typeof PublicConfig>;

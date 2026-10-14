@@ -32,7 +32,7 @@ import {
   type VisitDims,
 } from './rollup';
 import { percentile, type VitalMetric, type VitalSamples } from './vitals';
-import type { Device, Network } from '@pulse/contracts';
+import type { Device, InsightNetwork } from '@pulse/contracts';
 
 const DAY_MS = 86_400_000;
 /** Funnel steps can happen after midnight for a visit that started before it. */
@@ -292,7 +292,7 @@ async function loadVitals(tx: Tx, siteId: string, days: string[]): Promise<Vital
   return rows.map((r) => ({
     metric: r.metric as VitalMetric,
     device: r.device as Device,
-    network: r.network as Network,
+    network: r.network as InsightNetwork,
     path: r.path,
     values: r.values,
   }));

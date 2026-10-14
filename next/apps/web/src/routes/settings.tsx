@@ -11,9 +11,10 @@ import { Panel } from '../components/pulse';
 import { api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { meQuery, refreshMe, useFormatDate, useMe } from '../lib/queries';
+import { NotificationsSection } from './settings-notifications';
 import { SecuritySection } from './settings-security';
 
-const TABS = ['profile', 'security', 'organization', 'team'] as const;
+const TABS = ['profile', 'security', 'organization', 'team', 'notifications'] as const;
 type TabId = (typeof TABS)[number];
 
 type Theme = 'system' | 'light' | 'dark';
@@ -345,6 +346,9 @@ export function SettingsPage() {
         </TabPanel>
         <TabPanel id="team" className="outline-none">
           <TeamSection />
+        </TabPanel>
+        <TabPanel id="notifications" className="outline-none">
+          <NotificationsSection />
         </TabPanel>
       </Tabs>
     </>

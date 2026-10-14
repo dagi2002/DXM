@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { seedIssues } from './seed';
 
 /**
  * WCAG 2.2 AA sweep of the platform screens (Today, fixes, replays, reports, landing, site tabs,
@@ -54,7 +55,7 @@ test('public screens: landing and shared report', async ({ page }) => {
   await scanBothSchemes(page, '/r/demo-september');
 });
 
-test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page }, info) => {
+test('signed-in screens: today, fix, site tabs, replay, reports, notifications', async ({ page }, info) => {
   test.setTimeout(120_000); // ~20 axe scans
   await page.goto('/sign-up');
   await page.getByRole('radio', { name: 'EN' }).check({ force: true });
@@ -71,6 +72,8 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
   await dialog.getByRole('button', { name: 'Add site' }).click();
   await expect(page).toHaveURL(/\/sites\/site_/);
   const sitePath = new URL(page.url()).pathname;
+  const ids = await seedIssues(sitePath.split('/').at(-1)!);
+  const fixPath = `/fixes/${ids.lead}`;
 
   // Site page: every tab, reached with the keyboard (arrow keys move focus and selection).
   const tabs = page.getByRole('tablist', { name: 'Site sections' });
@@ -98,8 +101,8 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
   await page.keyboard.press('Home');
   await scanBothSchemes(page, '/today');
 
-  await visit(page, '/fixes/fix_128');
-  await scanBothSchemes(page, '/fixes/fix_128');
+  await visit(page, fixPath);
+  await scanBothSchemes(page, fixPath);
   // Changing status keeps focus on the page instead of dropping it to <body>.
   const firstStatusButton = page.getByRole('button', { name: 'Mark as fixing' });
   if (await firstStatusButton.isVisible()) {
@@ -113,6 +116,9 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
   await visit(page, '/reports');
   await scanBothSchemes(page, '/reports');
 
+  await visit(page, '/settings?tab=notifications');
+  await scanBothSchemes(page, '/settings notifications');
+
   // Route changes move focus to the new page's heading.
   await page.getByRole('link', { name: 'Today' }).first().click();
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
@@ -121,7 +127,7 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
   await page.goto('/today');
   await page.getByRole('radio', { name: 'አማ' }).first().check({ force: true });
   await expect(page.locator('html')).toHaveAttribute('lang', 'am');
-  for (const path of ['/today', '/fixes/fix_128', '/replays/rep_1406', '/reports', sitePath]) {
+  for (const path of ['/today', fixPath, '/replays/rep_1406', '/reports', sitePath]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, `${path} (am)`);

@@ -174,7 +174,15 @@ export type VisitRow = typeof visits.$inferSelect;
 export type SiteRow = typeof sites.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
 
-const FIX_KINDS = ['rage_click', 'dead_click'] as const;
+const FIX_KINDS = [
+  'rage_click',
+  'dead_click',
+  'form_abandon',
+  'slow_page',
+  'js_error',
+  'u_turn',
+  'tracking_broken',
+] as const;
 const FIX_SEVERITIES = ['critical', 'watch'] as const;
 const FIX_STATUSES = ['open', 'fixing', 'fixed', 'verified', 'dismissed'] as const;
 
@@ -205,6 +213,8 @@ export const issues = pgTable(
     lastSeen: timestamp('last_seen', { withTimezone: true }).notNull(),
     fixedAt: timestamp('fixed_at', { withTimezone: true }),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    /** Latest before/after check by `issue.verify` (FixVerification in @pulse/contracts). */
+    verification: jsonb('verification').$type<Record<string, unknown>>(),
     ...timestamps,
   },
   (t) => [
@@ -228,7 +238,7 @@ export const issueEvents = pgTable(
     actorUserId: text('actor_user_id').references(() => user.id, { onDelete: 'set null' }),
     fromStatus: text('from_status', { enum: FIX_STATUSES }),
     toStatus: text('to_status', { enum: FIX_STATUSES }).notNull(),
-    /** Why the system changed it: detected | regressed. Null for people. */
+    /** Why the system changed it: detected | regressed | verified | not_verified | resumed. Null for people. */
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -344,3 +354,76 @@ export const rollupFunnelDay = pgTable(
 );
 
 export type SiteFunnelRow = typeof siteFunnels.$inferSelect;
+/**
+ * Telegram alerts: one linked chat per organization. `chat_id` is Telegram's (64-bit) chat id,
+ * kept as text. Quiet hours are whole local hours in `time_zone`; null/null = always send.
+ */
+export const telegramLinks = pgTable(
+  'telegram_links',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    chatId: text('chat_id').notNull(),
+    chatTitle: text('chat_title'),
+    linkedByUserId: text('linked_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    quietStart: smallint('quiet_start'),
+    quietEnd: smallint('quiet_end'),
+    timeZone: text('time_zone').notNull().default('Africa/Addis_Ababa'),
+    locale: text('locale', { enum: ['en', 'am'] })
+      .notNull()
+      .default('en'),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex('telegram_links_org_uq').on(t.orgId)],
+);
+
+/** One-time codes that link a chat (`/start <code>`). Only the SHA-256 of the code is stored. */
+export const telegramLinkCodes = pgTable(
+  'telegram_link_codes',
+  {
+    codeHash: text('code_hash').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    createdByUserId: text('created_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    locale: text('locale', { enum: ['en', 'am'] })
+      .notNull()
+      .default('en'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('telegram_link_codes_org_idx').on(t.orgId)],
+);
+
+/**
+ * Cached AI output (`ai.recommend`). One row per (issue, kind, input hash): the same evidence
+ * never pays for a second call. Rows also count against the per-org monthly budget.
+ */
+export const aiArtifacts = pgTable(
+  'ai_artifacts',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    issueId: text('issue_id')
+      .notNull()
+      .references(() => issues.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['fix_suggestion'] }).notNull(),
+    inputHash: text('input_hash').notNull(),
+    model: text('model').notNull(),
+    content: jsonb('content').$type<Record<string, unknown>>().notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('ai_artifacts_issue_kind_input_uq').on(t.issueId, t.kind, t.inputHash),
+    index('ai_artifacts_org_created_idx').on(t.orgId, t.createdAt),
+  ],
+);
+
+export type TelegramLinkRow = typeof telegramLinks.$inferSelect;
+export type AiArtifactRow = typeof aiArtifacts.$inferSelect;

@@ -29,9 +29,12 @@ describe('row-level security invariants', () => {
       order by 1`);
     expect(rows.map((r) => r.table)).toEqual(
       expect.arrayContaining([
+        'ai_artifacts',
         'audit_log',
         'events',
         'ingest_dedupe',
+        'issue_events',
+        'issues',
         'org_plans',
         'rollup_funnel_day',
         'rollup_page_day',
@@ -39,11 +42,36 @@ describe('row-level security invariants', () => {
         'rollup_vitals_day',
         'site_funnels',
         'sites',
+        'telegram_link_codes',
+        'telegram_links',
         'visits',
       ]),
     );
     const unprotected = rows.filter((r) => !r.rls || !r.forced || r.policies === 0).map((r) => r.table);
     expect(unprotected).toEqual([]);
+  });
+
+  it('lets the app role call the slice 3 helpers but not write link codes into another org', async () => {
+    const { rows } = await adminQuery<{ verify: boolean; live: boolean; claim: boolean; pub: boolean }>(
+      `select has_function_privilege($1, 'pulse_issues_due_for_verification(integer, integer, integer)', 'EXECUTE') as verify,
+              has_function_privilege($1, 'pulse_live_sites()', 'EXECUTE') as live,
+              has_function_privilege($1, 'pulse_claim_telegram_link(text, text, text, text)', 'EXECUTE') as claim,
+              has_function_privilege('public', 'pulse_claim_telegram_link(text, text, text, text)', 'EXECUTE') as pub`,
+      [APP_ROLE],
+    );
+    expect(rows[0]).toEqual({ verify: true, live: true, claim: true, pub: false });
+    const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+    await client.connect();
+    try {
+      await client.query(`select set_config('app.org_id', 'org_mine', false)`);
+      await expect(
+        client.query(
+          `insert into telegram_link_codes (code_hash, org_id, expires_at) values ('x', 'org_other', now())`,
+        ),
+      ).rejects.toThrow(/row-level security|violates/);
+    } finally {
+      await client.end();
+    }
   });
 
   it('keeps the audit log append-only and internal helpers private for the app role', async () => {
@@ -69,6 +97,10 @@ describe('row-level security invariants', () => {
         'org_plans',
         'rollup_site_day',
         'site_funnels',
+        'issues',
+        'telegram_links',
+        'telegram_link_codes',
+        'ai_artifacts',
       ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);

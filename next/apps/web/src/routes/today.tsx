@@ -2,6 +2,7 @@ import { canManage } from '@pulse/contracts/constants';
 import type { Today } from '@pulse/contracts';
 import { formatRelative, type Locale } from '@pulse/i18n';
 import { formatDelta, formatMetric } from '@pulse/metrics';
+import type { FixStatus } from '@pulse/contracts/constants';
 import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -12,22 +13,21 @@ import { useTranslation } from 'react-i18next';
 import {
   AiBox,
   Panel,
-  SamplePill,
   SeverityPill,
   Sparkline,
   statusTabClass,
   tabPanelClass,
 } from '../components/pulse';
 import { todayQuery, useFormatDate, useMe, weekQuery } from '../lib/queries';
-import { useFixes, useSetFixStatus } from '../lib/fixes';
-import { FIX_STATUSES, type Fix, type FixStatus } from '../lib/sample';
+import { FIX_STATUSES, useFixes, useSetFixStatus, type FixView as Fix } from '../lib/fixes';
+import { telegramQuery } from '../lib/telegram';
 
 function FixMeta({ fix }: { fix: Fix }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <SeverityPill severity={fix.severity} />
       <span className="text-sm text-text-muted" lang="en">
-        {fix.site} · {fix.page}
+        {fix.page ? `${fix.site} · ${fix.page}` : fix.site}
       </span>
     </div>
   );
@@ -36,12 +36,10 @@ function FixMeta({ fix }: { fix: Fix }) {
 /** The full card for the most important fix: evidence, impact, AI suggestion, next actions. */
 function FixCard({
   fix,
-  locale,
   onStatusChange,
   statusError,
 }: {
   fix: Fix;
-  locale: Locale;
   onStatusChange: (id: string, status: FixStatus) => void;
   statusError?: unknown;
 }) {
@@ -82,12 +80,10 @@ function FixCard({
           <div className="grid content-start gap-1 rounded-md border border-border p-4">
             <span className="text-[0.8125rem] text-text-muted">{t('fix.impact')}</span>
             <span className="text-2xl font-semibold tracking-[-0.01em]">
-              {t('fix.ordersPerDay', { count: fix.impact.ordersPerDay })}
+              {t('fix.impact.visitors', { count: fix.impact.visitsPerDay })}
             </span>
             <span className="text-[0.8125rem] text-text-muted">
-              {t('fix.averageOrder', {
-                amount: formatMetric('revenue_at_risk', fix.impact.averageOrder, locale),
-              })}
+              {t('fix.impact.left', { count: fix.impact.leftPerDay })}
             </span>
           </div>
         ) : null}
@@ -132,6 +128,7 @@ function FixRow({ fix }: { fix: Fix }) {
         <FixMeta fix={fix} />
         <h3 className="text-lg leading-snug font-semibold">{fix.title}</h3>
         <p className="text-sm leading-relaxed text-text-muted">{fix.summary}</p>
+        {fix.verifyNote ? <p className="text-[0.8125rem] text-text-muted">{fix.verifyNote}</p> : null}
       </div>
       <Link
         to="/fixes/$fixId"
@@ -206,8 +203,9 @@ export function TodayPage() {
   const navigate = useNavigate();
   const locale = i18n.language as Locale;
   const { data, isLoading } = useQuery(todayQuery(orgId));
-  const { fixes, sample } = useFixes();
+  const { fixes } = useFixes();
   const { data: week } = useQuery(weekQuery(orgId));
+  const { data: telegram } = useQuery(telegramQuery(orgId));
   const [tab, setTab] = useState<FixStatus>('open');
   const setStatus = useSetFixStatus();
   const listRef = useRef<HTMLDivElement>(null);
@@ -287,7 +285,6 @@ export function TodayPage() {
         })}
         actions={
           <>
-            {sample ? <SamplePill className="self-center" /> : null}
             {canManage(role) ? (
               <Button onPress={addSite}>
                 <Plus size={18} aria-hidden="true" />
@@ -323,7 +320,13 @@ export function TodayPage() {
         <div ref={listRef} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
           {FIX_STATUSES.map((s) => (
             <TabPanel key={s} id={s} className={tabPanelClass}>
-              {shown.length === 0 ? (
+              {fixes.length === 0 ? (
+                <EmptyState
+                  icon={<CheckCircle2 size={22} aria-hidden="true" />}
+                  title={t('fix.empty.none.title')}
+                  body={t('fix.empty.none.body')}
+                />
+              ) : shown.length === 0 ? (
                 <EmptyState
                   title={t(`fix.empty.${tab}`)}
                   action={
@@ -337,13 +340,7 @@ export function TodayPage() {
                 f.status === 'verified' ? (
                   <VerifiedRow key={f.id} fix={f} />
                 ) : i === 0 && tab === 'open' ? (
-                  <FixCard
-                    key={f.id}
-                    fix={f}
-                    locale={locale}
-                    onStatusChange={changeStatus}
-                    statusError={setStatus.error}
-                  />
+                  <FixCard key={f.id} fix={f} onStatusChange={changeStatus} statusError={setStatus.error} />
                 ) : (
                   <FixRow key={f.id} fix={f} />
                 ),
@@ -432,7 +429,24 @@ export function TodayPage() {
               <Send size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
               <div className="grid gap-1">
                 <h2 className="text-sm font-semibold">{t('today.telegram.title')}</h2>
-                <p className="text-[0.8125rem] leading-relaxed text-text-muted">{t('today.telegram.body')}</p>
+                <p className="text-[0.8125rem] leading-relaxed text-text-muted">
+                  {telegram?.link
+                    ? t('today.telegram.connected', {
+                        chat: telegram.link.chatTitle ?? t('settings.telegram.chatFallback'),
+                      })
+                    : telegram && !telegram.configured
+                      ? t('today.telegram.off')
+                      : t('today.telegram.body')}
+                </p>
+                {telegram?.configured ? (
+                  <Link
+                    to="/settings"
+                    search={{ tab: 'notifications' }}
+                    className="-my-2 inline-flex min-h-11 w-fit items-center text-[0.8125rem] font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {t(telegram.link ? 'today.telegram.setUp' : 'today.telegram.connect')}
+                  </Link>
+                ) : null}
               </div>
             </section>
           </aside>

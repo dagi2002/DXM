@@ -1,4 +1,4 @@
-import { VITALS_MIN_SAMPLES, type Device, type Network, type VitalSummary } from '@pulse/contracts';
+import { VITALS_MIN_SAMPLES, type Device, type InsightNetwork, type VitalSummary } from '@pulse/contracts';
 import { rateMetric } from '@pulse/metrics';
 
 export const VITAL_METRICS = ['LCP', 'INP', 'CLS'] as const;
@@ -49,7 +49,7 @@ export function summarizeVital(
 export interface VitalSamples {
   metric: VitalMetric;
   device: Device;
-  network: Network;
+  network: InsightNetwork;
   path: string;
   values: number[];
 }

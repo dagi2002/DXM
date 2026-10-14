@@ -1,39 +1,33 @@
-import type { Locale } from '@pulse/i18n';
-import { formatMetric } from '@pulse/metrics';
+import type { FixStatus } from '@pulse/contracts/constants';
 import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Mail, Play } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AiBox, Panel, ReplayPhone, SamplePill, SeverityPill, scrollRegionClass } from '../components/pulse';
-import { fixQuery, fixesQuery, useFixView, useSetFixStatus } from '../lib/fixes';
+import { AiBox, Panel, SeverityPill } from '../components/pulse';
+import { fixQuery, fixesQuery, useFixView, useSetFixStatus, type FixView as Fix } from '../lib/fixes';
 import { useMe } from '../lib/queries';
-import type { Fix, FixStatus } from '../lib/sample';
 
 const FLOW: FixStatus[] = ['open', 'fixing', 'fixed', 'verified'];
 const NEXT: Partial<Record<FixStatus, FixStatus>> = { open: 'fixing', fixing: 'fixed', fixed: 'verified' };
 
 export function FixDetailPage() {
-  const { t, i18n } = useTranslation();
-  const locale = i18n.language as Locale;
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { fixId } = useParams({ strict: false }) as { fixId: string };
   const { orgId } = useMe();
   const toView = useFixView();
   const feed = useQuery(fixesQuery(orgId));
-  const live = feed.data ? !feed.data.sample : false;
-  // Real fixes load by id (the feed is capped); samples come from the feed itself.
-  const detail = useQuery({ ...fixQuery(orgId, fixId), enabled: live, retry: false });
+  // Loaded by id (the feed is capped); the feed holds the optimistic status right after a click.
+  const detail = useQuery({ ...fixQuery(orgId, fixId), retry: false });
   const setStatus = useSetFixStatus();
   let fix: Fix | undefined;
-  if (feed.data?.sample) fix = feed.data.fixes.find((f) => f.id === fixId);
-  else if (detail.data) {
-    // The feed holds the optimistic status right after a click; prefer it.
-    const listed = feed.data?.fixes.find((f) => f.id === fixId);
+  if (detail.data) {
+    const listed = feed.data?.find((f) => f.id === fixId);
     fix = { ...toView(detail.data.fix), status: listed?.status ?? detail.data.fix.status };
   }
-  const isLoading = feed.isLoading || (live && detail.isLoading);
+  const isLoading = detail.isLoading;
   const stepsRef = useRef<HTMLOListElement>(null);
   const [announcement, setAnnouncement] = useState('');
   /** Advance the workflow, announce it, and keep focus on the page when the button goes away. */
@@ -74,14 +68,14 @@ export function FixDetailPage() {
         eyebrow={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-2">
             <SeverityPill severity={fix.severity} />
-            <span lang="en">
-              {fix.kind} · {fix.page} · {t('fix.firstSeen', { when: fix.firstSeen })}
+            <span>
+              {fix.kind} · {fix.page ? <span lang="en">{fix.page} · </span> : null}
+              {t('fix.firstSeen', { when: fix.firstSeen })}
             </span>
           </span>
         }
         title={fix.title}
-        summary={fix.detail ?? fix.summary}
-        actions={live ? undefined : <SamplePill />}
+        summary={fix.summary}
       />
 
       <p role="status" className="sr-only">
@@ -125,105 +119,42 @@ export function FixDetailPage() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid min-w-0 gap-4">
           <h2 className="text-[1.0625rem] font-semibold">{t('fix.evidence')}</h2>
-          {fix.clip ? (
-            <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-surface p-5">
-              <div className="rounded-[22px] border-[6px] border-border-strong bg-border-strong">
-                <ReplayPhone scale={0.75} label={t('replay.phoneLabel')} />
-              </div>
-              <div className="grid min-w-[16rem] flex-1 gap-3">
-                <span className="text-[0.8125rem] text-text-muted">{fix.clip.caption}</span>
-                <p className="text-[0.9375rem] leading-relaxed">{fix.clip.story}</p>
-                <div className="flex flex-wrap gap-2">
-                  {fix.replayIds[0] ? (
-                    <Link
-                      to="/replays/$replayId"
-                      params={{ replayId: fix.replayIds[0] }}
-                      className={buttonClass('primary')}
-                    >
-                      <Play size={16} aria-hidden="true" />
-                      {t('fix.playMoment')}
-                    </Link>
-                  ) : null}
-                  {fix.replayIds[1] ? (
-                    <Link
-                      to="/replays/$replayId"
-                      params={{ replayId: fix.replayIds[1] }}
-                      className={buttonClass('secondary')}
-                    >
-                      {t('fix.nextClip', { n: 2, total: fix.replayIds.length })}
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
+          {fix.verifyNote ? <Banner tone="info" title={fix.verifyNote} /> : null}
+          {fix.verified ? (
+            <div className="grid gap-1 rounded-lg bg-good-bg p-5">
+              <span className="text-[0.8125rem] font-semibold text-good">
+                {t('fix.verifiedWhen', { when: fix.verified.when })}
+              </span>
+              <span className="text-[1.0625rem] font-semibold">{fix.verified.label}</span>
+              <span className="text-sm">
+                {t('fix.verify.result', { before: fix.verified.before, after: fix.verified.after })}
+              </span>
             </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-border-strong p-6 text-sm text-text-muted">
-              {fix.summary}
-            </p>
-          )}
-
-          {fix.visits?.length ? (
-            <section
-              aria-labelledby="affected"
-              className="overflow-hidden rounded-lg border border-border bg-surface"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
-                <h2 id="affected" className="text-[0.9375rem] font-semibold">
-                  {t('fix.affectedVisits')}
-                </h2>
-                <span className="text-[0.8125rem] text-text-muted">
-                  {t('fix.affectedCount', {
-                    total: fix.affectedToday ?? fix.visits.length,
-                    shown: fix.visits.length,
-                  })}
-                </span>
-              </div>
-              {/* Scrollable at 360px, so it must be reachable and named for keyboard users. */}
-              <div className={scrollRegionClass} tabIndex={0} role="region" aria-labelledby="affected">
-                <table className="w-full min-w-[34rem] border-collapse text-sm">
-                  <thead>
-                    <tr className="text-left text-[0.8125rem] text-text-muted">
-                      <th scope="col" className="px-5 py-2.5 font-medium">
-                        {t('fix.col.time')}
-                      </th>
-                      <th scope="col" className="px-2.5 py-2.5 font-medium">
-                        {t('fix.col.device')}
-                      </th>
-                      <th scope="col" className="px-2.5 py-2.5 font-medium">
-                        {t('fix.col.network')}
-                      </th>
-                      <th scope="col" className="px-2.5 py-2.5 font-medium">
-                        {t('fix.col.taps')}
-                      </th>
-                      <th scope="col" className="px-5 py-2.5 font-medium">
-                        {t('fix.col.outcome')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fix.visits.map((v) => (
-                      <tr key={v.time} className="border-t border-border">
-                        <td className="px-5 py-3 tabular-nums">{v.time}</td>
-                        <td className="px-2.5 py-3" lang="en">
-                          {v.device}
-                        </td>
-                        <td className="px-2.5 py-3">{v.network}</td>
-                        <td className="px-2.5 py-3 tabular-nums">{v.taps}</td>
-                        <td
-                          className={cx(
-                            'px-5 py-3 font-medium',
-                            v.outcome === 'left' ? 'text-bad' : 'text-good',
-                          )}
-                        >
-                          {t(`fix.outcome.${v.outcome}`)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
           ) : null}
+          <div className="grid gap-3 rounded-lg border border-border bg-surface p-5">
+            <p className="text-[0.9375rem] leading-relaxed">{fix.summary}</p>
+            {fix.chips.length ? (
+              <ul className="flex flex-wrap gap-2" aria-label={t('fix.evidence')}>
+                {fix.chips.map((c) => (
+                  <li key={c} className="rounded-sm bg-surface-sunken px-2.5 py-1.5 text-[0.8125rem]">
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {fix.replayIds[0] ? (
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to="/replays/$replayId"
+                  params={{ replayId: fix.replayIds[0] }}
+                  className={buttonClass('primary')}
+                >
+                  <Play size={16} aria-hidden="true" />
+                  {t('fix.playMoment')}
+                </Link>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <aside className="grid gap-4 xl:sticky xl:top-6">
@@ -231,16 +162,11 @@ export function FixDetailPage() {
             <Panel>
               <span className="-mb-3 text-[0.8125rem] text-text-muted">{t('fix.impact')}</span>
               <span className="font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em]">
-                {t('fix.perDay', {
-                  amount: formatMetric('revenue_at_risk', fix.impact.revenuePerDay, locale),
-                })}
+                {t('fix.impact.visitors', { count: fix.impact.visitsPerDay })}
               </span>
               <p className="-mt-2 text-[0.8125rem] leading-relaxed text-text-muted">
-                {t('fix.impactMath', {
-                  orders: fix.impact.ordersPerDay,
-                  amount: formatMetric('revenue_at_risk', fix.impact.averageOrder, locale),
-                })}{' '}
-                {fix.impact.basis}
+                {t('fix.impact.left', { count: fix.impact.leftPerDay })}{' '}
+                {t('fix.impact.basis', { hours: fix.impact.hours })}
               </p>
             </Panel>
           ) : null}
@@ -258,7 +184,7 @@ export function FixDetailPage() {
                   {fix.suggestion.code}
                 </pre>
               ) : null}
-              <p className="mt-2 text-[0.8125rem] text-text-muted">{fix.suggestion.basis}</p>
+              <p className="mt-2 text-[0.8125rem] text-text-muted">{t('fix.suggested.basis')}</p>
             </AiBox>
           ) : null}
           <Panel title={t('fix.nextStep')} id="next-step">

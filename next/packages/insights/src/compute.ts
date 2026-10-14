@@ -6,7 +6,7 @@ import {
   type SiteInsights,
   type WeekSummary,
 } from '@pulse/contracts';
-import { DEVICES, NETWORKS } from '@pulse/contracts';
+import { DEVICES, INSIGHT_NETWORKS } from '@pulse/contracts';
 import { rateMetric } from '@pulse/metrics';
 import { conversionOf, sumCounts, worstStep } from './funnels';
 import { healthParts, healthScore } from './health';
@@ -225,7 +225,7 @@ export function computeSiteInsights(input: InsightInputs): SiteInsights {
       collect(input.vitals.previous, 'LCP', phone),
     ),
     byDevice: vitalsBy(input.vitals.current, 'device', DEVICES),
-    byNetwork: vitalsBy(input.vitals.current, 'network', NETWORKS),
+    byNetwork: vitalsBy(input.vitals.current, 'network', INSIGHT_NETWORKS),
     pages: rankPages(input.pageDays, input.vitals.current, input.openFixes),
     funnel,
   };
