@@ -13,6 +13,8 @@ RUN pnpm install --frozen-lockfile \
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /srv
+# Replay blobs (LocalDiskBlobStore). A named volume mounted here inherits this ownership.
+RUN mkdir -p /var/lib/pulse/replays && chown node:node /var/lib/pulse/replays
 USER node
 
 FROM runtime AS migrate

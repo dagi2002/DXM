@@ -1,5 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import { IngestBatch, INGEST_MAX_BYTES, type IngestJob } from '@pulse/contracts/ingest';
+import {
+  REPLAY_CHUNK_MAX_BYTES,
+  REPLAY_CHUNK_MAX_INFLATED_BYTES,
+  ReplayChunkParams,
+  ReplayConfigParams,
+  RrwebEvent,
+  replaySampled,
+  type ReplayChunkJob,
+} from '@pulse/contracts/replays';
+import { replayObjectKey, type BlobStore } from '@pulse/storage';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { Logger } from 'pino';
@@ -9,6 +20,8 @@ export interface SiteInfo {
   id: string;
   orgId: string;
   allowedOrigins: string[];
+  /** Share of visits recorded as replays, 0–1. */
+  replaySampleRate?: number;
 }
 
 export interface CollectorDeps {
@@ -21,6 +34,11 @@ export interface CollectorDeps {
   /** Absolute path to the built SDK (packages/sdk/dist). */
   sdkDir?: string;
   peerAddress?: (c: Context) => string | undefined;
+  /** Session replay (slice 4). Without it, /r answers 503 and the SDK stops recording. */
+  replays?: {
+    store: BlobStore;
+    enqueue: (job: ReplayChunkJob) => Promise<void>;
+  };
 }
 
 /** Fixed-window counter per key; enough for one collector process (Redis can replace it later). */
@@ -52,6 +70,10 @@ export function createCollector(deps: CollectorDeps) {
   const perVisit = new RateLimiter(40, 60_000); // SDK flushes every 5 s → 12/min normally
   const perIp = new RateLimiter(240, 60_000);
   const perSite = new RateLimiter(20_000, 60_000);
+  // Replay: the recorder flushes every ~10 s, or sooner when a chunk fills (each ≤ 512 KB).
+  const replayPerVisit = new RateLimiter(30, 60_000);
+  const replayPerIp = new RateLimiter(120, 60_000);
+  const replayPerSite = new RateLimiter(3_000, 60_000);
   const cache = new Map<string, { site: SiteInfo | null; until: number }>();
 
   const site = async (key: string) => {
@@ -83,7 +105,7 @@ export function createCollector(deps: CollectorDeps) {
     if (origin) c.header('access-control-allow-origin', origin);
     c.header('vary', 'Origin');
   };
-  const reply = (c: Context, status: 204 | 400 | 403 | 404 | 413 | 429, code?: string) => {
+  const reply = (c: Context, status: 204 | 400 | 403 | 404 | 413 | 429 | 503, code?: string) => {
     cors(c);
     c.header('cache-control', 'no-store');
     return status === 204 ? c.body(null, 204) : c.json({ error: code }, status);
@@ -91,7 +113,7 @@ export function createCollector(deps: CollectorDeps) {
 
   app.get('/livez', (c) => c.json({ status: 'ok' }));
 
-  for (const path of ['/i', '/collect', '/collect-replay/replay']) {
+  for (const path of ['/i', '/collect', '/collect-replay/replay', '/r']) {
     app.options(path, (c) => {
       cors(c);
       c.header('access-control-allow-methods', 'POST, OPTIONS');
@@ -155,9 +177,108 @@ export function createCollector(deps: CollectorDeps) {
   // Legacy replay chunks: replay is rebuilt in slice 4; accept and drop so old installs don't retry forever.
   app.post('/collect-replay/replay', (c) => reply(c, 204));
 
+  /* ── Session replay chunks (slice 4) ── */
+  const isBot = (ua: string) => !ua || BOT_UA.test(ua) || (!deps.allowHeadless && HEADLESS_UA.test(ua));
+
+  /** Should this visit be recorded? Same key + Origin checks as ingest; sampling is per site. */
+  app.get('/r/cfg', async (c) => {
+    c.header('cache-control', 'no-store');
+    const off = () => {
+      cors(c);
+      return c.json({ on: false });
+    };
+    const q = ReplayConfigParams.safeParse(c.req.query());
+    if (!q.success || !deps.replays || isBot(c.req.header('user-agent') ?? '')) return off();
+    if (!perIp.take(clientIp(c), now())) return reply(c, 429, 'rate_limited');
+    const found = await site(q.data.k);
+    const origin = c.req.header('origin');
+    if (!found || !origin || !found.allowedOrigins.includes(origin)) return off();
+    cors(c);
+    return c.json({ on: replaySampled(q.data.vid, found.replaySampleRate ?? 1) });
+  });
+
+  const limitReplayBody = bodyLimit({
+    maxSize: REPLAY_CHUNK_MAX_BYTES,
+    onError: (c) => reply(c, 413, 'payload_too_large'),
+  });
+
+  app.post('/r', limitReplayBody, async (c) => {
+    const t = now();
+    const body = new Uint8Array(await c.req.arrayBuffer());
+    const ua = c.req.header('user-agent') ?? '';
+    if (isBot(ua)) return reply(c, 204);
+    if (!deps.replays) return reply(c, 503, 'replay_unavailable');
+    if (!replayPerIp.take(clientIp(c), t)) return reply(c, 429, 'rate_limited');
+
+    const q = ReplayChunkParams.safeParse(c.req.query());
+    if (!q.success) return reply(c, 400, 'invalid_payload');
+    const { k, vid, seq } = q.data;
+
+    const found = await site(k);
+    if (!found) return reply(c, 404, 'unknown_site');
+    const origin = c.req.header('origin');
+    if (!origin || !found.allowedOrigins.includes(origin)) return reply(c, 403, 'origin_not_allowed');
+    if (!replaySampled(vid, found.replaySampleRate ?? 1)) return reply(c, 403, 'not_sampled');
+    if (!replayPerVisit.take(`${found.id}:${vid}`, t) || !replayPerSite.take(found.id, t)) {
+      c.header('retry-after', '30');
+      return reply(c, 429, 'rate_limited');
+    }
+
+    // The SDK gzips with CompressionStream; browsers without it send plain JSON, gzipped here.
+    const gzipped = body.length > 2 && body[0] === 0x1f && body[1] === 0x8b;
+    let events: unknown;
+    try {
+      const json = gzipped
+        ? gunzipSync(body, { maxOutputLength: REPLAY_CHUNK_MAX_INFLATED_BYTES })
+        : Buffer.from(body);
+      events = JSON.parse(json.toString('utf8'));
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE')
+        return reply(c, 413, 'payload_too_large');
+      return reply(c, 400, 'invalid_payload');
+    }
+    if (!Array.isArray(events) || events.length === 0 || events.length > 50_000) {
+      return reply(c, 400, 'invalid_payload');
+    }
+    let first = Infinity;
+    let last = 0;
+    let hasSnapshot = false;
+    for (const e of events) {
+      const ev = RrwebEvent.safeParse(e);
+      if (!ev.success) return reply(c, 400, 'invalid_payload');
+      first = Math.min(first, ev.data.timestamp);
+      last = Math.max(last, ev.data.timestamp);
+      if (ev.data.type === 2) hasSnapshot = true; // rrweb FullSnapshot
+    }
+
+    const data = gzipped ? body : new Uint8Array(gzipSync(body));
+    if (data.length > REPLAY_CHUNK_MAX_BYTES) return reply(c, 413, 'payload_too_large');
+    const objectKey = replayObjectKey({ orgId: found.orgId, siteId: found.id, visitId: vid, seq });
+    await deps.replays.store.put(objectKey, data);
+    try {
+      await deps.replays.enqueue({
+        orgId: found.orgId,
+        siteId: found.id,
+        visitId: vid,
+        seq,
+        bytes: data.length,
+        objectKey,
+        events: events.length,
+        firstTs: new Date(first).toISOString(),
+        lastTs: new Date(last).toISOString(),
+        hasSnapshot,
+        receivedAt: new Date(t).toISOString(),
+      });
+    } catch (err) {
+      await deps.replays.store.delete(objectKey).catch(() => {});
+      throw err;
+    }
+    return reply(c, 204);
+  });
+
   /* ── SDK files ── */
   const files = new Map<string, Promise<Buffer | null>>();
-  const sdkFile = (name: 'p.js' | 'v.js') => {
+  const sdkFile = (name: 'p.js' | 'v.js' | 'r.js') => {
     if (!deps.sdkDir) return Promise.resolve(null);
     if (!files.has(name))
       files.set(
@@ -166,7 +287,7 @@ export function createCollector(deps: CollectorDeps) {
       );
     return files.get(name)!;
   };
-  const serve = (name: 'p.js' | 'v.js', immutable: boolean) => async (c: Context) => {
+  const serve = (name: 'p.js' | 'v.js' | 'r.js', immutable: boolean) => async (c: Context) => {
     const buf = await sdkFile(name);
     if (!buf) return c.text('not found', 404);
     c.header('content-type', 'application/javascript; charset=utf-8');
@@ -179,10 +300,13 @@ export function createCollector(deps: CollectorDeps) {
   app.get('/sdk/3/v.js', serve('v.js', true));
   app.get('/sdk/p.js', serve('p.js', false));
   app.get('/sdk/v.js', serve('v.js', false));
+  app.get('/sdk/3/r.js', serve('r.js', true));
+  app.get('/sdk/r.js', serve('r.js', false));
   // Legacy script URLs now serve v3 (which reads data-site-id / data-api-url).
   app.get('/dxm.js', serve('p.js', false));
   app.get('/dxm.v2.js', serve('p.js', false));
   app.get('/v.js', serve('v.js', false));
+  app.get('/r.js', serve('r.js', false));
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {

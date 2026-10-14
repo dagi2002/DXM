@@ -28,6 +28,7 @@ export async function migrateDatabase(
       grant execute on function pulse_close_idle_visits(integer) to ${appRole};
       grant execute on function pulse_purge_ingest_dedupe(integer) to ${appRole};
       grant execute on function pulse_sites_with_recent_activity(integer) to ${appRole};
+      grant execute on function pulse_purge_replay_chunks(integer, integer) to ${appRole};
       -- The audit log is append-only for the app (RLS already has no UPDATE/DELETE policy;
       -- this makes it explicit). Org deletion still cascades via the foreign key.
       revoke update, delete, truncate on audit_log from ${appRole};

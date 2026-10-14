@@ -28,7 +28,15 @@ describe('row-level security invariants', () => {
                     where a.attrelid = c.oid and a.attname = 'org_id' and not a.attisdropped)
       order by 1`);
     expect(rows.map((r) => r.table)).toEqual(
-      expect.arrayContaining(['audit_log', 'events', 'ingest_dedupe', 'org_plans', 'sites', 'visits']),
+      expect.arrayContaining([
+        'audit_log',
+        'events',
+        'ingest_dedupe',
+        'org_plans',
+        'replay_chunks',
+        'sites',
+        'visits',
+      ]),
     );
     const unprotected = rows.filter((r) => !r.rls || !r.forced || r.policies === 0).map((r) => r.table);
     expect(unprotected).toEqual([]);

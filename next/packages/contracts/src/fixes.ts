@@ -62,6 +62,8 @@ export const Fix = z.object({
   updatedAt: z.string(),
   fixedAt: z.string().nullable(),
   verifiedAt: z.string().nullable(),
+  /** Evidence visits that have a session replay (slice 4), newest first. */
+  replayIds: z.array(z.string()),
 });
 export type Fix = z.infer<typeof Fix>;
 

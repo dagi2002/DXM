@@ -3,6 +3,7 @@ import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 
 export * from './constants';
 export * from './fixes';
+export * from './replays';
 // Explicit so the Zod schemas win over the same-named types in ./constants.
 export { FixKind, FixSeverity, FixStatus } from './fixes';
 
@@ -109,6 +110,8 @@ export const SiteUpdate = z
     domain: Domain,
     platform: Platform,
     extraOrigins: z.array(ExtraOrigin).max(10),
+    /** Share of visits recorded as replays, 0–1. */
+    replaySampleRate: z.number().min(0).max(1),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'nothing_to_update' });
@@ -126,6 +129,7 @@ export const Site = z.object({
   publicKey: z.string(),
   createdAt: z.string(),
   verifiedAt: z.string().nullable(),
+  replaySampleRate: z.number(),
 });
 export type Site = z.infer<typeof Site>;
 
