@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
   pgTable,
   primaryKey,
+  real,
   smallint,
   text,
   timestamp,
@@ -235,3 +237,110 @@ export const issueEvents = pgTable(
 
 export type IssueRow = typeof issues.$inferSelect;
 export type IssueEventRow = typeof issueEvents.$inferSelect;
+
+/* ── Site insights (slice 5) ─────────────────────────────────────────────────
+ * Daily per-site rollups, filled by the worker's `insights.site` job. Dashboards and reports read
+ * these, never raw events. Days are UTC calendar days. RLS: drizzle/0012_insights.sql.
+ */
+
+const FUNNEL_TEMPLATES = [
+  'telebirr_checkout',
+  'chapa_checkout',
+  'lead_form',
+  'telegram_handoff',
+  'custom',
+] as const;
+
+const rollupKeys = {
+  siteId: text('site_id')
+    .notNull()
+    .references(() => sites.id, { onDelete: 'cascade' }),
+  orgId: text('org_id')
+    .notNull()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  day: date('day', { mode: 'string' }).notNull(),
+};
+
+/** One funnel per site (configurable steps; Ethiopian templates). `hash` covers the step matchers. */
+export const siteFunnels = pgTable('site_funnels', {
+  siteId: text('site_id')
+    .primaryKey()
+    .references(() => sites.id, { onDelete: 'cascade' }),
+  orgId: text('org_id')
+    .notNull()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  template: text('template', { enum: FUNNEL_TEMPLATES }).notNull(),
+  steps: jsonb('steps').$type<unknown[]>().notNull(),
+  hash: text('hash').notNull(),
+  updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
+  ...timestamps,
+});
+
+export const rollupSiteDay = pgTable(
+  'rollup_site_day',
+  {
+    ...rollupKeys,
+    visits: integer('visits').notNull().default(0),
+    pageviews: integer('pageviews').notNull().default(0),
+    closedVisits: integer('closed_visits').notNull().default(0),
+    bouncedVisits: integer('bounced_visits').notNull().default(0),
+    frictionVisits: integer('friction_visits').notNull().default(0),
+    errorVisits: integer('error_visits').notNull().default(0),
+    rageClicks: integer('rage_clicks').notNull().default(0),
+    deadClicks: integer('dead_clicks').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.siteId, t.day] }),
+    index('rollup_site_day_org_day_idx').on(t.orgId, t.day),
+  ],
+);
+
+export const rollupPageDay = pgTable(
+  'rollup_page_day',
+  {
+    ...rollupKeys,
+    /** Page template (ids collapsed to `*`). */
+    path: text('path').notNull(),
+    visits: integer('visits').notNull().default(0),
+    pageviews: integer('pageviews').notNull().default(0),
+    entries: integer('entries').notNull().default(0),
+    bounces: integer('bounces').notNull().default(0),
+    frictionVisits: integer('friction_visits').notNull().default(0),
+    errorVisits: integer('error_visits').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.siteId, t.day, t.path] })],
+);
+
+/**
+ * Final Web Vital values (one per page view), grouped. Raw values rather than per-day percentiles,
+ * because percentiles don't add up across days: p75 over a range is taken over all its values.
+ */
+export const rollupVitalsDay = pgTable(
+  'rollup_vitals_day',
+  {
+    ...rollupKeys,
+    metric: text('metric', { enum: ['LCP', 'INP', 'CLS'] }).notNull(),
+    device: text('device').notNull(),
+    network: text('network').notNull(),
+    path: text('path').notNull(),
+    values: real('values').array().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.siteId, t.day, t.metric, t.device, t.network, t.path] })],
+);
+
+/** Visits that started that day and reached each funnel step (`counts[i]`), for funnel `hash`. */
+export const rollupFunnelDay = pgTable(
+  'rollup_funnel_day',
+  {
+    ...rollupKeys,
+    hash: text('hash').notNull(),
+    counts: integer('counts').array().notNull(),
+    computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.siteId, t.day] })],
+);
+
+export type SiteFunnelRow = typeof siteFunnels.$inferSelect;
