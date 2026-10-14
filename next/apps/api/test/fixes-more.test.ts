@@ -142,6 +142,16 @@ describe('fixes API, slice 3 part 2', () => {
     expect(fixes.every((f) => f.verification === null && f.suggestion === null)).toBe(true);
   });
 
+  it('skips a malformed row instead of failing the whole feed', async () => {
+    const { client, orgId, siteId } = await orgWithSite(off, 'owner@shop.et', 'shop.et');
+    const good = await seed(orgId, siteId, 'u_turn');
+    const bad = await seed(orgId, siteId, 'js_error');
+    await adminQuery(`update issues set evidence = evidence - 'visits' where id = $1`, [bad]);
+    const res = await client.get('/api/v1/fixes');
+    expect(res.status).toBe(200);
+    expect(FixList.parse(res.body).fixes.map((f) => f.id)).toEqual([good]);
+  });
+
   it('returns the verification result, and clears it when someone reopens the fix', async () => {
     const { client, orgId, siteId } = await orgWithSite(off, 'owner@shop.et', 'shop.et');
     const verification = {

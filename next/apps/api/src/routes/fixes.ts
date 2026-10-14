@@ -148,11 +148,16 @@ export function fixRoutes(deps: AppDeps) {
       );
       return { rows, suggestions };
     });
-    const body: FixList = {
-      fixes: rows.map((r) =>
-        toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, suggestions.get(r.issue.id)),
-      ),
-    };
+    // One malformed row must not take down the whole feed: skip it and say so in the logs.
+    const fixes = rows.flatMap((r) => {
+      try {
+        return [toFixDto(r.issue, { name: r.siteName, domain: r.siteDomain }, suggestions.get(r.issue.id))];
+      } catch (err) {
+        c.get('log').error({ err, issueId: r.issue.id }, 'malformed issue row skipped');
+        return [];
+      }
+    });
+    const body: FixList = { fixes };
     return c.json(body);
   });
 
