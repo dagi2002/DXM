@@ -65,7 +65,7 @@
       <a href="/checkout.html">Checkout →</a>
     </header>
     <main>
-      <div class="card">
+      <div class="card" data-dxm-unmask>
         <h2>Sofa</h2>
         <p>12,400 ብር</p>
         <button id="add" onclick="this.textContent = 'Added ✓'">Add to cart</button>
@@ -74,6 +74,11 @@
         <h2>Pay with telebirr</h2>
         <p>This button looks clickable but does nothing (a "dead click").</p>
         <button id="dead" class="fake" role="button">Pay with telebirr</button>
+      </div>
+      <div class="card">
+        <h2>Your details</h2>
+        <p id="who">Tigist Haile · Bole, Addis Ababa</p>
+        <label>Phone <input id="phone" name="phone" autocomplete="off" /></label>
       </div>
       <div class="spacer"></div>
       <p id="bottom">Bottom of page</p>

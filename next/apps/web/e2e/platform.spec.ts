@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 /**
  * Slice 2.5 platform screens: the public pages (landing, shared report) and the fix flow on
- * Today. Fixes, replays and reports run on the flagged sample layer (src/lib/sample.ts), so these
+ * Today. Fixes (until an org has real ones) and reports run on the flagged sample layer (src/lib/sample.ts), so these
  * tests pin the screens' behavior, not real detection.
  */
 
@@ -61,7 +61,7 @@ test('public report opens without signing in', async ({ page }) => {
   await expect(page.getByText('This link has expired or was turned off.', { exact: false })).toBeVisible();
 });
 
-test('Today → fix detail → replay, and back to the fix', async ({ page }, info) => {
+test('Today → fix detail', async ({ page }, info) => {
   await signUpWithSite(page, info, 'fixflow');
   const fixTitle = 'The “Pay with telebirr” button doesn’t respond on Android';
   await expect(page.getByRole('heading', { level: 3, name: fixTitle })).toBeVisible();
@@ -72,14 +72,8 @@ test('Today → fix detail → replay, and back to the fix', async ({ page }, in
   await expect(page.getByRole('heading', { level: 1, name: fixTitle })).toBeVisible();
   await expect(page.getByText('Fix #128')).toBeVisible();
 
-  // Keyboard activation: on phones the sticky header and bottom nav make pointer clicks deep in
-  // this long page flaky to target, and Enter on a link is a real user path anyway.
-  await page.getByRole('link', { name: 'Play from the moment' }).press('Enter');
-  await expect(page).toHaveURL(/\/replays\/rep_1406$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Visit from Addis Ababa, 14:06' })).toBeVisible();
-
-  await page.getByRole('link', { name: /Back to the fix · clip 1 of 3/ }).click();
-  await expect(page).toHaveURL(/\/fixes\/fix_128$/);
+  // Sample fixes have no recordings; real replays are covered end to end in replays.spec.ts.
+  await expect(page.getByRole('link', { name: 'Play from the moment' })).toHaveCount(0);
 });
 
 test('marking a fix as fixing moves it from Open to Fixing', async ({ page }, info) => {

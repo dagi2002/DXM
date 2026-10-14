@@ -107,8 +107,8 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
     await expect(page.locator('body')).not.toBeFocused();
   }
 
-  await visit(page, '/replays/rep_1406');
-  await scanBothSchemes(page, '/replays/rep_1406');
+  await visit(page, '/replays');
+  await scanBothSchemes(page, '/replays');
 
   await visit(page, '/reports');
   await scanBothSchemes(page, '/reports');
@@ -121,7 +121,7 @@ test('signed-in screens: today, fix, site tabs, replay, reports', async ({ page 
   await page.goto('/today');
   await page.getByRole('radio', { name: 'አማ' }).first().check({ force: true });
   await expect(page.locator('html')).toHaveAttribute('lang', 'am');
-  for (const path of ['/today', '/fixes/fix_128', '/replays/rep_1406', '/reports', sitePath]) {
+  for (const path of ['/today', '/fixes/fix_128', '/replays', '/reports', sitePath]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, `${path} (am)`);

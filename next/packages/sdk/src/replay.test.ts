@@ -63,6 +63,7 @@ describe('recorder', () => {
   let consent: 'granted' | 'pending' | 'denied';
   let vid: string;
   let tick: () => void;
+  let first: () => void;
   let hide: () => void;
   const fakeRecord = Object.assign(
     vi.fn((o: { emit: typeof emit }) => {
@@ -83,6 +84,7 @@ describe('recorder', () => {
         gzip: null,
         store: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => void store.set(k, v) },
         setInterval: (fn) => (tick = fn),
+        setTimeout: (fn) => (first = fn),
         onHide: (fn) => (hide = fn),
         ...overrides,
       },
@@ -90,7 +92,7 @@ describe('recorder', () => {
   const sent = () =>
     fetchMock.mock.calls.map(([url, init]) => ({
       url: String(url),
-      events: JSON.parse(String(init.body)) as RrEvent[],
+      events: JSON.parse(new TextDecoder().decode(init.body as Uint8Array)) as RrEvent[],
       init,
     }));
 
@@ -154,6 +156,21 @@ describe('recorder', () => {
     await r.flush();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(r._state()).toMatchObject({ stopped: true, buf: [] });
+  });
+
+  it('ships the first snapshot early, and sends plain JSON straight away at page hide', async () => {
+    const r = make({ gzip: async () => new Uint8Array([0x1f, 0x8b, 0]) });
+    r.start();
+    emit({ type: 2, timestamp: 1 });
+    first();
+    await r.flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect([...(fetchMock.mock.calls[0]![1].body as Uint8Array).slice(0, 2)]).toEqual([0x1f, 0x8b]); // gzip
+    emit({ type: 3, timestamp: 2 });
+    hide();
+    expect(fetchMock).toHaveBeenCalledTimes(2); // synchronously, before the page is gone
+    const plain = new TextDecoder().decode(fetchMock.mock.calls[1]![1].body as Uint8Array);
+    expect(JSON.parse(plain)).toEqual([{ type: 3, timestamp: 2 }]);
   });
 
   it('stops for good when the collector refuses (not sampled, unknown site, switched off)', async () => {

@@ -32,6 +32,7 @@ try {
         gzip: browserGzip(),
         store,
         setInterval: (fn, ms) => setInterval(fn, ms),
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
         onHide: (fn) => {
           document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && fn());
           window.addEventListener('pagehide', fn);

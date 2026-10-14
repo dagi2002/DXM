@@ -18,6 +18,7 @@ type Consent = 'granted' | 'pending' | 'denied';
 
 /** Flush cadence and chunk limits (the collector refuses chunks over 512 KB compressed). */
 export const FLUSH_MS = 10_000;
+export const FIRST_FLUSH_MS = 1_500;
 export const MAX_RAW_BYTES = 1_500_000;
 export const MAX_CHUNK_BYTES = 500 * 1024;
 export const CHECKOUT_MS = 5 * 60 * 1000;
@@ -65,6 +66,7 @@ export interface RecorderEnv {
   gzip: ((s: string) => Promise<Uint8Array>) | null;
   store: Pick<Storage, 'getItem' | 'setItem'> | null;
   setInterval: (fn: () => void, ms: number) => unknown;
+  setTimeout: (fn: () => void, ms: number) => unknown;
   onHide: (fn: () => void) => void;
 }
 
@@ -111,8 +113,11 @@ export function createRecorder(opts: RecorderOptions, env: RecorderEnv) {
 
   const post = async (events: RrEvent[], s: number, keepalive: boolean): Promise<void> => {
     const json = JSON.stringify(events);
-    const body = env.gzip ? await env.gzip(json) : json;
-    const size = typeof body === 'string' ? body.length : body.byteLength;
+    // The page is going away: there's no time to compress, so small chunks go as plain JSON
+    // (the collector gzips them); compressing first would lose the request at unload.
+    const raw = new TextEncoder().encode(json);
+    const body = env.gzip && !(keepalive && raw.byteLength < 60_000) ? await env.gzip(json) : raw;
+    const size = body.byteLength;
     if (size > MAX_CHUNK_BYTES && events.length > 1) {
       // Too big once compressed: split in two (the second half takes a fresh sequence number).
       const half = Math.ceil(events.length / 2);
@@ -147,7 +152,9 @@ export function createRecorder(opts: RecorderOptions, env: RecorderEnv) {
     buf = [];
     rawBytes = 0;
     const s = nextSeq();
-    sending = sending.then(() => post(events, s, keepalive));
+    // At page hide the request must start now, not after whatever is still in flight.
+    if (keepalive) return post(events, s, true);
+    sending = sending.then(() => post(events, s, false));
     return sending;
   };
 
@@ -178,6 +185,8 @@ export function createRecorder(opts: RecorderOptions, env: RecorderEnv) {
       if (opts.consent() !== 'granted') return false;
       stopRecording = env.record({ ...maskOptions, emit, checkoutEveryNms: CHECKOUT_MS }) ?? undefined;
       env.setInterval(() => void flush(), FLUSH_MS);
+      // Ship the first full snapshot early, so a visitor who leaves within seconds is still playable.
+      env.setTimeout(() => void flush(), FIRST_FLUSH_MS);
       env.onHide(() => void flush(true));
       return true;
     },
