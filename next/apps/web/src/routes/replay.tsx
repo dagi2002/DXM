@@ -105,7 +105,7 @@ export function ReplayPage() {
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <ReplayPlayer key={`${detail.replay.siteId}:${detail.replay.id}`} detail={detail} seek={seek} />
 
-        <aside className="grid gap-4">
+        <div className="grid gap-4">
           {/* The AI recap returns with task 10's AI flag; until then nothing pretends to summarise. */}
           <section aria-labelledby="happened" className="rounded-lg border border-border bg-surface py-2">
             <h2 id="happened" className="px-5 py-3 text-[0.9375rem] font-semibold">
@@ -135,7 +135,7 @@ export function ReplayPage() {
               <p className="px-5 pb-3 text-sm text-text-muted">{t('replay.noMarks')}</p>
             )}
           </section>
-        </aside>
+        </div>
       </div>
     </>
   );

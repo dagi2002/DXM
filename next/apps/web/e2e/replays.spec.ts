@@ -87,7 +87,7 @@ test('records a short visit on the customer site and plays it back, masked', asy
   await page.goto('/replays');
   const list = page.getByTestId('replay-list');
   await expect(list.getByRole('link')).toHaveCount(1);
-  await list.getByRole('link').first().click();
+  await list.getByRole('link').first().click({ timeout: 15_000 });
   await expect(page).toHaveURL(new RegExp(`/replays/${visitId}`));
   await expect(page.getByRole('heading', { level: 1, name: /^Visit on / })).toBeVisible();
   await expect(page.getByText('Loading the recording…')).toBeHidden({ timeout: 15_000 });
@@ -98,22 +98,31 @@ test('records a short visit on the customer site and plays it back, masked', asy
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
     .toBeLessThanOrEqual(0);
 
-  const frame = page.frameLocator('.replayer-wrapper iframe');
-  await expect(frame.getByText('Sofa')).toBeAttached();
-  await expect(frame.locator('#who')).not.toContainText('Tigist');
+  // rrweb's iframe is sandboxed without scripts, so read it from the parent page (same origin)
+  // instead of evaluating inside it.
+  const replayed = () =>
+    page.evaluate(() => {
+      const doc = document.querySelector<HTMLIFrameElement>('.replayer-wrapper iframe')?.contentDocument;
+      return doc?.body?.textContent ?? '';
+    });
+  await expect.poll(replayed, { timeout: 15_000 }).toContain('Sofa');
+  expect(await replayed()).not.toContain('Tigist');
 
   // Timeline marks from the visit's events, and the clock moves when playing.
   await expect(page.getByRole('button', { name: /Opened \// }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click({ timeout: 15_000 });
   await expect(page.getByTestId('replay-clock')).not.toHaveText(/^0:00 \//, { timeout: 10_000 });
-  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).click({ timeout: 15_000 });
 
   const axe = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .exclude('[role="log"][aria-live]')
     .exclude('.replayer-wrapper') // the customer's own recorded page, not Pulse UI
+    .options({ iframes: false })
     .analyze();
-  expect(axe.violations.map((v) => v.id)).toEqual([]);
+  expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual(
+    [],
+  );
 });
 
 test('the collector serves the replay recorder', async ({ request }) => {
