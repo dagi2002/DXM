@@ -177,5 +177,9 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 - Telegram alerts (and push/email) for created / escalated / reopened issues, with quiet hours.
 - Revenue-at-risk impact (needs order values) and replay links from `sampleVisitIds` (slice 4).
 
+## 2026-10-14 — Phase 2, slice 6 (client reports) 🚧
+
+Work in progress on `task/9-reports` (task 9 of parallel plan 2): `reports` / `report_shares` (migration `0013`), frozen monthly snapshots, share tokens, public `/r/$token`.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_
