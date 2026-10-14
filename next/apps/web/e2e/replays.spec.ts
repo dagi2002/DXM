@@ -108,17 +108,6 @@ test('records a short visit on the customer site and plays it back, masked', asy
   await expect.poll(replayed, { timeout: 15_000 }).toContain('Sofa');
   expect(await replayed()).not.toContain('Tigist');
 
-  console.log('DEBUG', JSON.stringify(await page.evaluate(() => {
-    const sec = document.querySelector('section[aria-label]')!;
-    const all = [...document.querySelectorAll('*')].filter((e) => e.scrollLeft || e.scrollTop).map((e) => `${e.tagName}.${e.className.toString().slice(0,40)} ${e.scrollLeft},${e.scrollTop}`);
-    const play = [...document.querySelectorAll('button[aria-label="Play"]')].map((b) => JSON.stringify(b.getBoundingClientRect()));
-    const sw = [...document.querySelectorAll('*')].filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX !== 'visible').map((e) => `${e.tagName}.${e.className.toString().slice(0,50)} sw=${e.scrollWidth} cw=${e.clientWidth} sh=${e.scrollHeight} ch=${e.clientHeight} ox=${getComputedStyle(e).overflowX}`);
-    const pb = document.querySelector('button[aria-label="Play"]')!.getBoundingClientRect();
-    const hit = document.elementFromPoint(pb.x + pb.width / 2, pb.y + pb.height / 2);
-    const chain = []; for (let e = document.querySelector('button[aria-label="Play"]') as HTMLElement | null; e; e = e.parentElement) chain.push(`${e.tagName} ${Math.round(e.getBoundingClientRect().x)},${Math.round(e.getBoundingClientRect().y)} ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`);
-    const aside = document.querySelector('aside')!.getBoundingClientRect();
-    return { hit: hit ? `${hit.tagName}.${hit.className.toString().slice(0, 40)}` : null, chain, aside: JSON.stringify(aside), ua: navigator.userAgent, sw, all, play, w: window.innerWidth, active: document.activeElement?.tagName, sx: window.scrollX, sy: window.scrollY, sec: sec?.getAttribute('aria-label') };
-  })));
   // Timeline marks from the visit's events, and the clock moves when playing.
   await expect(page.getByRole('button', { name: /Opened \// }).first()).toBeVisible();
   // The desktop rail's account box must stay inside the rail even with a long email
