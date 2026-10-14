@@ -75,7 +75,7 @@ describe('recorder', () => {
   const gzip = async (s: string) => new Uint8Array(new Blob([s]).size ? Buffer.from(s) : []);
   const make = (overrides: Partial<RecorderEnv> = {}) =>
     createRecorder(
-      { endpoint: 'https://c.et', key: 'pk_a', vid: () => vid, consent: () => consent },
+      { endpoint: 'https://c.et/i', key: 'pk_a', vid: () => vid, consent: () => consent },
       {
         record: fakeRecord,
         fetch: fetchMock as unknown as typeof fetch,
@@ -117,8 +117,8 @@ describe('recorder', () => {
     await r.flush();
     const calls = sent();
     expect(calls.map((c) => c.url)).toEqual([
-      'https://c.et/r?k=pk_a&vid=visit_aaaaaaaa&seq=0',
-      'https://c.et/r?k=pk_a&vid=visit_aaaaaaaa&seq=1',
+      'https://c.et/i/replay?k=pk_a&vid=visit_aaaaaaaa&seq=0',
+      'https://c.et/i/replay?k=pk_a&vid=visit_aaaaaaaa&seq=1',
     ]);
     expect(calls[0]!.events[0]!.data).toEqual({ href: 'https://shop.et/a' });
     expect(calls[0]!.init).toMatchObject({ method: 'POST', credentials: 'omit' });
@@ -139,7 +139,7 @@ describe('recorder', () => {
     vid = 'visit_bbbbbbbb'; // 30 min idle → new visit
     emit({ type: 3, timestamp: 3 });
     await second.flush();
-    expect(sent().at(-1)!.url).toBe('https://c.et/r?k=pk_a&vid=visit_bbbbbbbb&seq=0');
+    expect(sent().at(-1)!.url).toBe('https://c.et/i/replay?k=pk_a&vid=visit_bbbbbbbb&seq=0');
     expect(fakeRecord.takeFullSnapshot).toHaveBeenCalled();
   });
 

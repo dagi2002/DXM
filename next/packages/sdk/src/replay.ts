@@ -1,6 +1,6 @@
 /**
  * Session replay recorder (r.js) — a separate, lazy file. p.js loads it only after the visitor has
- * consented and the collector said this visit is sampled in (GET /r/cfg), so the ≤5 KB core never
+ * consented and the collector said this visit is sampled in (GET /i/replay/cfg), so the ≤5 KB core never
  * carries rrweb.
  *
  * Privacy defaults: every text node and every input value is masked; owners opt specific
@@ -69,7 +69,7 @@ export interface RecorderEnv {
 }
 
 export interface RecorderOptions {
-  endpoint: string; // collector base, e.g. https://app.dxmpulse.et
+  endpoint: string; // the ingest URL, e.g. https://app.dxmpulse.et/i
   key: string;
   vid: () => string;
   consent: () => Consent;
@@ -120,7 +120,7 @@ export function createRecorder(opts: RecorderOptions, env: RecorderEnv) {
       return post(events.slice(half), nextSeq(), keepalive);
     }
     if (size > MAX_CHUNK_BYTES) return; // one enormous event (e.g. a giant DOM): skip it
-    const url = `${opts.endpoint}/r?k=${encodeURIComponent(opts.key)}&vid=${encodeURIComponent(vid)}&seq=${s}`;
+    const url = `${opts.endpoint}/replay?k=${encodeURIComponent(opts.key)}&vid=${encodeURIComponent(vid)}&seq=${s}`;
     try {
       const res = await env.fetch(url, {
         method: 'POST',

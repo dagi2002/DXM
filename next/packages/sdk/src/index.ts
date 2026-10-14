@@ -71,14 +71,13 @@ function boot() {
   };
 
   // Session replay (r.js) loads only with consent, and only if the collector samples this visit in.
-  const base = endpoint.slice(0, -2);
   let replayAsked = false;
   const replay = () => {
     if (replayAsked || tracker.consent() !== 'granted' || script.getAttribute('data-replay') === 'off')
       return;
     replayAsked = true;
-    dxm._r = { e: base, k: key, vid: tracker.vid, consent: tracker.consent };
-    fetch(`${base}/r/cfg?k=${encodeURIComponent(key)}&vid=${tracker.vid()}`, { credentials: 'omit' })
+    dxm._r = { e: endpoint, k: key, vid: tracker.vid, consent: tracker.consent };
+    fetch(`${endpoint}/replay/cfg?k=${encodeURIComponent(key)}&vid=${tracker.vid()}`, { credentials: 'omit' })
       .then((r) => r.json())
       .then((c: { on?: boolean }) => c.on && add('r.js'))
       .catch(() => {});

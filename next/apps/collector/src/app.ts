@@ -113,7 +113,7 @@ export function createCollector(deps: CollectorDeps) {
 
   app.get('/livez', (c) => c.json({ status: 'ok' }));
 
-  for (const path of ['/i', '/collect', '/collect-replay/replay', '/r']) {
+  for (const path of ['/i', '/collect', '/collect-replay/replay', '/i/replay']) {
     app.options(path, (c) => {
       cors(c);
       c.header('access-control-allow-methods', 'POST, OPTIONS');
@@ -181,7 +181,7 @@ export function createCollector(deps: CollectorDeps) {
   const isBot = (ua: string) => !ua || BOT_UA.test(ua) || (!deps.allowHeadless && HEADLESS_UA.test(ua));
 
   /** Should this visit be recorded? Same key + Origin checks as ingest; sampling is per site. */
-  app.get('/r/cfg', async (c) => {
+  app.get('/i/replay/cfg', async (c) => {
     c.header('cache-control', 'no-store');
     const off = () => {
       cors(c);
@@ -202,7 +202,7 @@ export function createCollector(deps: CollectorDeps) {
     onError: (c) => reply(c, 413, 'payload_too_large'),
   });
 
-  app.post('/r', limitReplayBody, async (c) => {
+  app.post('/i/replay', limitReplayBody, async (c) => {
     const t = now();
     const body = new Uint8Array(await c.req.arrayBuffer());
     const ua = c.req.header('user-agent') ?? '';

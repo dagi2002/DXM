@@ -60,7 +60,7 @@ const send = (
   headers: Record<string, string> = {},
 ) =>
   a.request(
-    `/r?${new URLSearchParams({ k: 'pk_a', vid: VID, seq: '0', ...(q as Record<string, string>) })}`,
+    `/i/replay?${new URLSearchParams({ k: 'pk_a', vid: VID, seq: '0', ...(q as Record<string, string>) })}`,
     {
       method: 'POST',
       headers: { origin: ORIGIN, 'user-agent': UA, 'content-type': 'text/plain', ...headers },
@@ -75,7 +75,7 @@ beforeEach(() => {
   store = new LocalDiskBlobStore(mkdtempSync(join(tmpdir(), 'replays-')));
 });
 
-describe('POST /r', () => {
+describe('POST /i/replay', () => {
   it('stores a gzip chunk at the documented path and enqueues metadata only', async () => {
     const body = gz(rr());
     const res = await send(app(), body, { seq: 3 });
@@ -119,7 +119,7 @@ describe('POST /r', () => {
         else ctrl.close();
       },
     });
-    const res = await a.request(`/r?k=pk_a&vid=${VID}&seq=0`, {
+    const res = await a.request(`/i/replay?k=pk_a&vid=${VID}&seq=0`, {
       method: 'POST',
       headers: { origin: ORIGIN, 'user-agent': UA },
       body: stream,
@@ -206,9 +206,9 @@ describe('POST /r', () => {
   });
 });
 
-describe('GET /r/cfg', () => {
+describe('GET /i/replay/cfg', () => {
   const cfg = (a: ReturnType<typeof app>, k: string, vid = VID, origin = ORIGIN) =>
-    a.request(`/r/cfg?k=${k}&vid=${vid}`, { headers: { origin, 'user-agent': UA } });
+    a.request(`/i/replay/cfg?k=${k}&vid=${vid}`, { headers: { origin, 'user-agent': UA } });
 
   it('says whether to record this visit', async () => {
     const a = app();

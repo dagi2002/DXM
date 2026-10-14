@@ -15,7 +15,7 @@ export const REPLAY_MAX_SEQ = 100_000;
 /** Default replay retention in days (REPLAY_RETENTION_DAYS overrides it). */
 export const REPLAY_RETENTION_DAYS = 30;
 
-/** Query string of `POST /r` (the body is the gzip'd JSON array of rrweb events). */
+/** Query string of `POST /i/replay` (the body is the gzip'd JSON array of rrweb events). */
 export const ReplayChunkParams = z.object({
   /** site public key */
   k: z.string().min(3).max(64),
@@ -25,7 +25,7 @@ export const ReplayChunkParams = z.object({
 });
 export type ReplayChunkParams = z.infer<typeof ReplayChunkParams>;
 
-/** Query string of `GET /r/cfg`: should this visit be recorded? */
+/** Query string of `GET /i/replay/cfg`: should this visit be recorded? */
 export const ReplayConfigParams = ReplayChunkParams.pick({ k: true, vid: true });
 export const ReplayConfig = z.object({ on: z.boolean() });
 export type ReplayConfig = z.infer<typeof ReplayConfig>;

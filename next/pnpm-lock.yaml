@@ -163,6 +163,9 @@ importers:
       '@pulse/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@rrweb/replay':
+        specifier: 2.1.7
+        version: 2.1.7
       '@sentry/react':
         specifier: ^11.6.0
         version: 11.6.0(react@19.3.0)
@@ -1711,6 +1714,13 @@ packages:
     dependencies:
       '@rrweb/types': 2.1.7
       '@rrweb/utils': 2.1.7
+      rrweb: 2.1.7
+    dev: false
+
+  /@rrweb/replay@2.1.7:
+    resolution: {integrity: sha512-KqS3iUxafAL8dO8fwCEydrOc3rYbGwnV73wac4JO5s1I7fgd6toX3tJFKnAuIUnbAcgSO+DQZ7GrsGX8hOAODQ==}
+    dependencies:
+      '@rrweb/types': 2.1.7
       rrweb: 2.1.7
     dev: false
 
