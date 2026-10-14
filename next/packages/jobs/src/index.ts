@@ -25,6 +25,25 @@ export const QUEUES = {
     name: 'detect.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
   },
+  /** Hourly: live sites that went quiet (tracking-broken), and quiet ones that came back. */
+  detectTracking: { name: 'detect.tracking', options: { retryLimit: 1 } },
+  /** Hourly: queue a before/after check for every fixed issue whose after-window is complete. */
+  verifySweep: { name: 'issue.verify-sweep', options: { retryLimit: 1 } },
+  /** One before/after check per issue (singletonKey = issue id). */
+  verify: {
+    name: 'issue.verify',
+    options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 30 },
+  },
+  /** One Telegram message per detection run with news (created / escalated / reopened). */
+  alertTelegram: {
+    name: 'alert.telegram',
+    options: { retryLimit: 4, retryBackoff: true, retryDelay: 15 },
+  },
+  /** AI suggested fix for one issue; skipped unless AI_ENABLED with a key and budget left. */
+  aiRecommend: {
+    name: 'ai.recommend',
+    options: { policy: 'stately', retryLimit: 2, retryBackoff: true, retryDelay: 60 },
+  },
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];
@@ -37,6 +56,20 @@ export interface JobPayloads {
   'maintenance.purge-dedupe': Record<string, never>;
   'detect.sweep': Record<string, never>;
   'detect.site': { siteId: string; orgId: string };
+  'detect.tracking': Record<string, never>;
+  'issue.verify-sweep': Record<string, never>;
+  'issue.verify': { issueId: string; orgId: string };
+  'alert.telegram': TelegramAlertJob;
+  'ai.recommend': { issueId: string; orgId: string };
+}
+
+/** Why an issue is worth a message. */
+export type AlertReason = 'created' | 'escalated' | 'reopened';
+
+export interface TelegramAlertJob {
+  orgId: string;
+  siteId: string;
+  alerts: { issueId: string; reason: AlertReason }[];
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */

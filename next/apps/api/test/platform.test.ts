@@ -18,7 +18,7 @@ describe('public config', () => {
   it('tells the sign-in screen whether Google is configured, without auth', async () => {
     const res = await ctx.app.request('/api/v1/public-config');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ googleEnabled: false });
+    expect(await res.json()).toEqual({ googleEnabled: false, aiEnabled: false, telegramEnabled: false });
   });
 });
 

@@ -383,13 +383,6 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
               </li>
             ))}
           </ol>
-          <Link
-            to="/fixes/$fixId"
-            params={{ fixId: 'fix_128' }}
-            className="inline-flex min-h-11 w-fit items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {t('funnel.seeFix')} <span aria-hidden="true">&nbsp;→</span>
-          </Link>
         </Panel>
 
         <Panel id="speed" title={t('speed.title')} note={t('speed.note')}>
