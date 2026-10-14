@@ -22,11 +22,13 @@ export interface UTurnStats {
  * page that didn't give them what they expected. Reloads (A → A) are collapsed first.
  */
 export function uTurnStats(input: DetectorInput): Map<string, UTurnStats> {
-  const byVisit = new Map<string, { path: string; at: Date }[]>();
+  // Ordered and timed by the browser's clock when every pageview of the visit has one: a batch
+  // shares one server time, so only the client clock says how long someone stayed on a page.
+  const byVisit = new Map<string, { path: string; at: Date; t: number }[]>();
   for (const e of input.events) {
     if (e.type !== 'pv') continue;
     const path = normalizePath(e.path);
-    if (path) upsert(byVisit, e.visitId, () => []).push({ path, at: e.at });
+    if (path) upsert(byVisit, e.visitId, () => []).push({ path, at: e.at, t: e.clientAt?.getTime() ?? NaN });
   }
   const stats = new Map<string, UTurnStats>();
   const statsFor = (path: string) =>
@@ -40,7 +42,9 @@ export function uTurnStats(input: DetectorInput): Map<string, UTurnStats> {
       from: new Map<string, Set<string>>(),
     }));
   for (const [visitId, raw] of byVisit) {
-    raw.sort((a, b) => a.at.getTime() - b.at.getTime());
+    const clientClock = raw.every((v) => Number.isFinite(v.t));
+    for (const v of raw) if (!clientClock) v.t = v.at.getTime();
+    raw.sort((a, b) => a.t - b.t);
     const views = raw.filter((v, i) => i === 0 || v.path !== raw[i - 1]!.path);
     for (let i = 0; i < views.length; i++) {
       const b = views[i]!;
@@ -51,7 +55,7 @@ export function uTurnStats(input: DetectorInput): Map<string, UTurnStats> {
       const a = views[i - 1];
       const back = views[i + 1];
       if (!a || !back || back.path !== a.path) continue;
-      const seconds = (back.at.getTime() - b.at.getTime()) / 1000;
+      const seconds = (back.t - b.t) / 1000;
       if (seconds > U_TURN_MAX_SECONDS) continue;
       s.occurrences += 1;
       s.seconds.push(seconds);

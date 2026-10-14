@@ -27,6 +27,7 @@ async function loadWindow(tx: Tx, siteId: string, types: string[], range: TimeRa
     .select({
       visitId: events.visitId,
       at: events.tsServer,
+      clientAt: events.tsClient,
       type: events.type,
       path: events.path,
       props: events.props,

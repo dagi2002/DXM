@@ -3,7 +3,10 @@ import type { FixEvidence, FixImpact, FixKind, FixSeverity } from '@pulse/contra
 /** One stored event, as the worker loads it from `events`. */
 export interface DetectorEvent {
   visitId: string;
+  /** Server receive time (one per batch). Windows and cooldowns use this. */
   at: Date;
+  /** The browser's clock, when plausible. Orders events inside one batch (U-turns). */
+  clientAt?: Date | null;
   type: string;
   path: string | null;
   props: Record<string, unknown>;

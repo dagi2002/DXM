@@ -89,6 +89,7 @@ export async function detectSite(
       .select({
         visitId: events.visitId,
         at: events.tsServer,
+        clientAt: events.tsClient,
         type: events.type,
         path: events.path,
         props: events.props,

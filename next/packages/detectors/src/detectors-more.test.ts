@@ -323,6 +323,21 @@ describe('U-turns', () => {
     expect(sev(U_TURN_MIN_VISITS, '/cart')).toBe('critical');
   });
 
+  it('orders and times pageviews by the browser clock when one batch shares a server time', () => {
+    const batch = sec(100);
+    const events = ids(U_TURN_MIN_VISITS).flatMap((id) => [
+      // Listed out of order on purpose; the database doesn't promise an order within a batch.
+      { ...ev(id, batch, 'pv', '/products'), clientAt: sec(12) },
+      { ...ev(id, batch, 'pv', '/products'), clientAt: sec(0) },
+      { ...ev(id, batch, 'pv', '/delivery'), clientAt: sec(5) },
+    ]);
+    const [f] = detectUTurns(input(events));
+    expect(f!.evidence).toMatchObject({ path: '/delivery', medianSeconds: 7 });
+    // A missing client time anywhere in the visit falls back to server time for all of it.
+    const mixed = events.map((e, i) => (i % 3 === 0 ? { ...e, clientAt: null } : e));
+    expect(detectUTurns(input(mixed))[0]?.evidence.medianSeconds ?? 0).toBe(0);
+  });
+
   it('collapses reloads and ignores A → B → C', () => {
     const reload = ids(5).flatMap((id) => [
       ev(id, sec(0), 'pv', '/products'),
