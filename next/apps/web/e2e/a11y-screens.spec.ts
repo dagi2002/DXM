@@ -20,9 +20,23 @@ async function expectAccessible(page: Page, label: string) {
   expect(violations, `axe violations on ${label}`).toEqual([]);
 }
 
+/**
+ * Color transitions make axe read half-blended colors right after a scheme switch, so freeze
+ * them and let two frames pass before scanning.
+ */
+async function settleColors(page: Page) {
+  await page.addStyleTag({
+    content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+  });
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+}
+
 async function scanBothSchemes(page: Page, label: string) {
   for (const colorScheme of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme });
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+    await settleColors(page);
     await expectAccessible(page, `${label} (${colorScheme})`);
   }
   await page.emulateMedia({ colorScheme: 'light' });
