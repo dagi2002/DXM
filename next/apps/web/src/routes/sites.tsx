@@ -17,13 +17,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { ChevronRight, Globe, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
 import { sitesQuery, siteQuery, todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { InstallPanel } from './install';
 import { Delta } from './today';
 import { ReplayList } from './replays';
-import { HealthRing, Panel, SamplePill, Sparkline, healthTone } from '../components/pulse';
+import {
+  HealthRing,
+  Panel,
+  SamplePill,
+  Sparkline,
+  healthTone,
+  statusTabClass,
+  scrollRegionClass,
+  tabPanelClass,
+} from '../components/pulse';
 import { sampleInsightsQuery, sampleReplaysQuery } from '../lib/sample';
 import type { Locale } from '@pulse/i18n';
 import { formatMetric } from '@pulse/metrics';
@@ -364,7 +374,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
                     <b className="font-semibold">{formatMetric('visitors', st.count, locale)}</b>
                   </span>
                 </div>
-                <div className="h-3.5 rounded-full bg-surface-sunken">
+                <div aria-hidden="true" className="h-3.5 rounded-full bg-surface-sunken">
                   <div
                     className={cx('h-3.5 min-w-3.5 rounded-full', i === worst ? 'bg-bad' : 'bg-primary')}
                     style={{ width: `calc(${st.ratio} * 100%)` }}
@@ -376,9 +386,9 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
           <Link
             to="/fixes/$fixId"
             params={{ fixId: 'fix_128' }}
-            className="text-sm font-medium text-primary hover:underline"
+            className="inline-flex min-h-11 w-fit items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            {t('funnel.seeFix')} →
+            {t('funnel.seeFix')} <span aria-hidden="true">&nbsp;→</span>
           </Link>
         </Panel>
 
@@ -387,7 +397,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
             {ins.speed.map((x) => (
               <div key={x.network} className="grid grid-cols-[4rem_1fr_3.5rem] items-center gap-3 text-sm">
                 <span>{x.network}</span>
-                <div className="h-2.5 rounded-full bg-surface-sunken">
+                <div aria-hidden="true" className="h-2.5 rounded-full bg-surface-sunken">
                   <div
                     className={cx('h-2.5 rounded-full', toneBg[lcpTone(x.lcp)])}
                     style={{ width: `calc(${x.lcp / slowest} * 100%)` }}
@@ -395,6 +405,8 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
                 </div>
                 <span className="text-right font-semibold tabular-nums">
                   {formatMetric('lcp', x.lcp, locale)}
+                  {/* The bar's color carries the verdict; say it in words too. */}
+                  <span className="sr-only">, {t(`speed.${lcpTone(x.lcp)}`)}</span>
                 </span>
               </div>
             ))}
@@ -425,7 +437,7 @@ function SiteOverview({ stats, locale }: { stats?: Today['sites'][number]; local
         <h2 id="pages-h" className="border-b border-border px-6 py-4 text-[1.0625rem] font-semibold">
           {t('pages.title')}
         </h2>
-        <div className="overflow-x-auto">
+        <div className={scrollRegionClass} tabIndex={0} role="region" aria-labelledby="pages-h">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead>
               <tr className="text-left text-[0.8125rem] text-text-muted">
@@ -578,34 +590,27 @@ export function SiteDetailPage() {
           ) : null
         }
       />
-      <div
-        role="tablist"
-        aria-label={t('site.sections')}
-        className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
-      >
-        {SITE_TABS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cx(
-              'min-h-11 shrink-0 border-b-2 px-3.5 text-sm whitespace-nowrap outline-none focus-visible:bg-primary-soft',
-              tab === id
-                ? 'border-text font-semibold text-text'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {t(`site.tab.${id}`)}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel">
-        {tab === 'overview' ? <SiteOverview stats={stats} locale={locale} /> : null}
-        {tab === 'replays' ? <SiteReplays /> : null}
-        {tab === 'install' ? <InstallPanel site={site} /> : null}
-      </div>
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as SiteTab)}>
+        <TabList
+          aria-label={t('site.sections')}
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
+        >
+          {SITE_TABS.map((id) => (
+            <Tab key={id} id={id} className={statusTabClass}>
+              {t(`site.tab.${id}`)}
+            </Tab>
+          ))}
+        </TabList>
+        <TabPanel id="overview" className={tabPanelClass}>
+          <SiteOverview stats={stats} locale={locale} />
+        </TabPanel>
+        <TabPanel id="replays" className={tabPanelClass}>
+          <SiteReplays />
+        </TabPanel>
+        <TabPanel id="install" className={tabPanelClass}>
+          <InstallPanel site={site} />
+        </TabPanel>
+      </Tabs>
       <p className="mt-8 text-sm text-text-muted">
         {t(`sites.platform.${site.platform}`)} · {t('sites.created', { date: formatDate(site.createdAt) })}
       </p>

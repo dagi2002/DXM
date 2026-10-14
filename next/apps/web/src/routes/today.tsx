@@ -6,9 +6,18 @@ import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } fro
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, CheckCircle2, Play, Plus, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { AiBox, Panel, SamplePill, SeverityPill, Sparkline } from '../components/pulse';
+import {
+  AiBox,
+  Panel,
+  SamplePill,
+  SeverityPill,
+  Sparkline,
+  statusTabClass,
+  tabPanelClass,
+} from '../components/pulse';
 import { todayQuery, useFormatDate, useMe } from '../lib/queries';
 import { useFixes, useSetFixStatus } from '../lib/fixes';
 import { FIX_STATUSES, sampleWeekQuery, type Fix, type FixStatus } from '../lib/sample';
@@ -25,12 +34,22 @@ function FixMeta({ fix }: { fix: Fix }) {
 }
 
 /** The full card for the most important fix: evidence, impact, AI suggestion, next actions. */
-function FixCard({ fix, locale }: { fix: Fix; locale: Locale }) {
+function FixCard({
+  fix,
+  locale,
+  onStatusChange,
+  statusError,
+}: {
+  fix: Fix;
+  locale: Locale;
+  onStatusChange: (id: string, status: FixStatus) => void;
+  statusError?: unknown;
+}) {
   const { t } = useTranslation();
-  const setStatus = useSetFixStatus();
+  const setStatus = onStatusChange;
   return (
     <article className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
-      {setStatus.error ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
+      {statusError ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <FixMeta fix={fix} />
         <span className="text-[0.8125rem] text-text-muted">
@@ -190,6 +209,24 @@ export function TodayPage() {
   const { fixes, sample } = useFixes();
   const { data: week } = useQuery(sampleWeekQuery);
   const [tab, setTab] = useState<FixStatus>('open');
+  const setStatus = useSetFixStatus();
+  const listRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState('');
+  /**
+   * The changed fix leaves this tab, taking the focused button with it: announce the change and
+   * move focus to the next fix in the list (or the selected tab when the list is now empty).
+   */
+  const changeStatus = (id: string, status: FixStatus) => {
+    setStatus(id, status);
+    setAnnouncement(t('fix.statusNow', { status: t(`fix.status.${status}`) }));
+    requestAnimationFrame(() => {
+      const root = listRef.current;
+      const target =
+        root?.querySelector<HTMLElement>('[role="tabpanel"] a[href]') ??
+        document.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      target?.focus();
+    });
+  };
   const sites = data?.sites ?? [];
   const live = sites.filter((s) => s.status === 'live');
   const eyebrow = t('today.eyebrow', { date: formatDate(new Date()) });
@@ -267,118 +304,118 @@ export function TodayPage() {
         </div>
       ) : null}
 
-      <div
-        role="tablist"
-        aria-label={t('fix.statusLabel')}
-        className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
-      >
-        {FIX_STATUSES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={tab === s}
-            onClick={() => setTab(s)}
-            className={cx(
-              'min-h-11 shrink-0 border-b-2 px-3.5 text-sm whitespace-nowrap outline-none focus-visible:bg-primary-soft',
-              tab === s
-                ? 'border-text font-semibold text-text'
-                : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {t(`fix.status.${s}`)}
-            {counts[s] ? <span className="ml-1.5 font-medium text-text-muted">{counts[s]}</span> : null}
-          </button>
-        ))}
-      </div>
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as FixStatus)}>
+        <TabList
+          aria-label={t('fix.statusLabel')}
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
+        >
+          {FIX_STATUSES.map((s) => (
+            <Tab key={s} id={s} className={statusTabClass}>
+              {t(`fix.status.${s}`)}
+              {counts[s] ? <span className="ml-1.5 font-medium text-text-muted">{counts[s]}</span> : null}
+            </Tab>
+          ))}
+        </TabList>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <section aria-label={t('fix.list')} role="tabpanel" className="grid min-w-0 gap-4">
-          {shown.length === 0 ? (
-            <EmptyState
-              title={t(`fix.empty.${tab}`)}
-              action={
-                <Button onPress={() => setTab(tab === 'open' ? 'verified' : 'open')}>
-                  {t(tab === 'open' ? 'fix.empty.seeVerified' : 'fix.empty.seeOpen')}
-                </Button>
-              }
-            />
-          ) : null}
-          {shown.map((f, i) =>
-            f.status === 'verified' ? (
-              <VerifiedRow key={f.id} fix={f} />
-            ) : i === 0 && tab === 'open' ? (
-              <FixCard key={f.id} fix={f} locale={locale} />
-            ) : (
-              <FixRow key={f.id} fix={f} />
-            ),
-          )}
-          {tab === 'open' ? verifiedRecent.map((f) => <VerifiedRow key={f.id} fix={f} />) : null}
-        </section>
-
-        <aside className="grid gap-4 xl:sticky xl:top-6">
-          <Panel title={t('today.sites')} id="today-sites">
-            <ul className="-my-2 grid">
-              {sites.map((s) => (
-                <SiteRow key={s.id} site={s} locale={locale} />
-              ))}
-            </ul>
-            {sites.some((s) => s.lastEventAt) ? (
-              <p className="text-[0.8125rem] text-text-muted">
-                {t('today.lastVisit', {
-                  time: formatRelative(
-                    sites
-                      .map((s) => s.lastEventAt)
-                      .filter((x): x is string => !!x)
-                      .sort()
-                      .at(-1)!,
-                    locale,
-                  ),
-                })}
-              </p>
-            ) : null}
-          </Panel>
-
-          {week ? (
-            <Panel title={t('today.week')} action={<SamplePill />}>
-              <div className="grid gap-1">
-                <span className="text-[0.8125rem] text-text-muted">{t('metric.checkout')}</span>
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                    {formatMetric('conversion_rate', week.conversion.value, locale)}
-                  </span>
-                  <Delta
-                    metric="conversion_rate"
-                    value={week.conversion.value}
-                    previous={week.conversion.previous}
+        <p role="status" className="sr-only">
+          {announcement}
+        </p>
+        <div ref={listRef} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          {FIX_STATUSES.map((s) => (
+            <TabPanel key={s} id={s} className={tabPanelClass}>
+              {shown.length === 0 ? (
+                <EmptyState
+                  title={t(`fix.empty.${tab}`)}
+                  action={
+                    <Button onPress={() => setTab(tab === 'open' ? 'verified' : 'open')}>
+                      {t(tab === 'open' ? 'fix.empty.seeVerified' : 'fix.empty.seeOpen')}
+                    </Button>
+                  }
+                />
+              ) : null}
+              {shown.map((f, i) =>
+                f.status === 'verified' ? (
+                  <VerifiedRow key={f.id} fix={f} />
+                ) : i === 0 && tab === 'open' ? (
+                  <FixCard
+                    key={f.id}
+                    fix={f}
                     locale={locale}
+                    onStatusChange={changeStatus}
+                    statusError={setStatus.error}
                   />
-                </div>
-                <Sparkline values={week.conversion.trend} />
-              </div>
-              <div className="grid gap-1">
-                <span className="text-[0.8125rem] text-text-muted">{t('metric.verifiedFixes')}</span>
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
-                    {week.verifiedThisMonth.value}
-                  </span>
-                  <span className="text-[0.8125rem] font-semibold text-good">
-                    ↑ {week.verifiedThisMonth.value - week.verifiedThisMonth.previous}
-                  </span>
-                </div>
-              </div>
-            </Panel>
-          ) : null}
+                ) : (
+                  <FixRow key={f.id} fix={f} />
+                ),
+              )}
+              {tab === 'open' ? verifiedRecent.map((f) => <VerifiedRow key={f.id} fix={f} />) : null}
+            </TabPanel>
+          ))}
 
-          <section className="flex items-start gap-3.5 rounded-lg border border-border p-5">
-            <Send size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
-            <div className="grid gap-1">
-              <h2 className="text-sm font-semibold">{t('today.telegram.title')}</h2>
-              <p className="text-[0.8125rem] leading-relaxed text-text-muted">{t('today.telegram.body')}</p>
-            </div>
-          </section>
-        </aside>
-      </div>
+          <aside className="grid gap-4 xl:sticky xl:top-6">
+            <Panel title={t('today.sites')} id="today-sites">
+              <ul className="-my-2 grid">
+                {sites.map((s) => (
+                  <SiteRow key={s.id} site={s} locale={locale} />
+                ))}
+              </ul>
+              {sites.some((s) => s.lastEventAt) ? (
+                <p className="text-[0.8125rem] text-text-muted">
+                  {t('today.lastVisit', {
+                    time: formatRelative(
+                      sites
+                        .map((s) => s.lastEventAt)
+                        .filter((x): x is string => !!x)
+                        .sort()
+                        .at(-1)!,
+                      locale,
+                    ),
+                  })}
+                </p>
+              ) : null}
+            </Panel>
+
+            {week ? (
+              <Panel title={t('today.week')} action={<SamplePill />}>
+                <div className="grid gap-1">
+                  <span className="text-[0.8125rem] text-text-muted">{t('metric.checkout')}</span>
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
+                      {formatMetric('conversion_rate', week.conversion.value, locale)}
+                    </span>
+                    <Delta
+                      metric="conversion_rate"
+                      value={week.conversion.value}
+                      previous={week.conversion.previous}
+                      locale={locale}
+                    />
+                  </div>
+                  <Sparkline values={week.conversion.trend} />
+                </div>
+                <div className="grid gap-1">
+                  <span className="text-[0.8125rem] text-text-muted">{t('metric.verifiedFixes')}</span>
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-display text-[1.75rem] font-bold tracking-[-0.02em] tabular-nums">
+                      {week.verifiedThisMonth.value}
+                    </span>
+                    <span className="text-[0.8125rem] font-semibold text-good">
+                      ↑ {week.verifiedThisMonth.value - week.verifiedThisMonth.previous}
+                    </span>
+                  </div>
+                </div>
+              </Panel>
+            ) : null}
+
+            <section className="flex items-start gap-3.5 rounded-lg border border-border p-5">
+              <Send size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+              <div className="grid gap-1">
+                <h2 className="text-sm font-semibold">{t('today.telegram.title')}</h2>
+                <p className="text-[0.8125rem] leading-relaxed text-text-muted">{t('today.telegram.body')}</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </Tabs>
     </>
   );
 }

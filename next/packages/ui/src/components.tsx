@@ -286,7 +286,7 @@ export function Segmented({
             value={o.id}
             lang={o.lang}
             className={cx(
-              'inline-flex min-h-9 cursor-default items-center rounded-[7px] px-3.5 text-[0.8125rem] font-semibold text-text-muted transition-colors',
+              'inline-flex min-h-11 cursor-default items-center rounded-[7px] px-3.5 text-[0.8125rem] font-semibold text-text-muted transition-colors',
               'data-[selected]:bg-surface data-[selected]:text-text data-[selected]:shadow-sm',
               focusRing,
             )}

@@ -72,6 +72,16 @@ export function Sparkline({ values, className }: { values: number[]; className?:
   );
 }
 
+/** Underlined status tab (React Aria Tabs: roving focus, arrows, Home/End, aria-controls). */
+export const statusTabClass =
+  'inline-flex min-h-11 shrink-0 cursor-default items-center border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-text-muted outline-none data-[hovered]:text-text data-[selected]:border-text data-[selected]:font-semibold data-[selected]:text-text data-[focus-visible]:rounded-sm data-[focus-visible]:outline-3 data-[focus-visible]:-outline-offset-3 data-[focus-visible]:outline-primary';
+export const tabPanelClass =
+  'grid min-w-0 gap-4 rounded-md outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary';
+
+/** A horizontally scrolling table wrapper: focusable (tabIndex=0) with a visible focus ring. */
+export const scrollRegionClass =
+  'overflow-x-auto outline-none focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary';
+
 const ringTone = (score: number) =>
   score >= 75 ? 'var(--good)' : score >= 50 ? 'var(--warn)' : 'var(--bad)';
 

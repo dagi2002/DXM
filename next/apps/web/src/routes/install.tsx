@@ -65,31 +65,33 @@ function VerificationStatus({ install }: { install: SiteInstall }) {
   return (
     <Card as="section" className="grid gap-5">
       <h3 className="text-[0.9375rem] font-semibold">{t('install.verify.title')}</h3>
-      {live ? (
-        <div role="status" className="grid gap-2">
+      {/* One persistent live region, so the waiting → live change is announced. The ticking
+          "last visit" time stays outside it. */}
+      <div role="status" className="contents">
+        {live ? (
           <StatusBadge tone="good" className="w-fit">
             {t('install.status.live')}
           </StatusBadge>
-          {install.lastEventAt ? (
-            <span className="text-sm text-text-muted">
-              {t('install.status.lastVisit', {
-                time: formatRelative(install.lastEventAt, i18n.language as Locale, new Date(now)),
-              })}
+        ) : (
+          <div className="flex items-start gap-3.5">
+            <span aria-hidden="true" className="relative mt-1.5 size-3 shrink-0">
+              <span className="absolute inset-0 rounded-full bg-primary motion-safe:animate-ping" />
+              <span className="absolute inset-0 rounded-full bg-primary" />
             </span>
-          ) : null}
-        </div>
-      ) : (
-        <div role="status" className="flex items-start gap-3.5">
-          <span aria-hidden="true" className="relative mt-1.5 size-3 shrink-0">
-            <span className="absolute inset-0 rounded-full bg-primary motion-safe:animate-ping" />
-            <span className="absolute inset-0 rounded-full bg-primary" />
-          </span>
-          <div className="grid gap-0.5">
-            <p className="font-semibold">{t('install.status.waiting')}</p>
-            <p className="text-[0.8125rem] text-text-muted">{t('install.checking')}</p>
+            <div className="grid gap-0.5">
+              <p className="font-semibold">{t('install.status.waiting')}</p>
+              <p className="text-[0.8125rem] text-text-muted">{t('install.checking')}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      {live && install.lastEventAt ? (
+        <span className="-mt-3 text-sm text-text-muted">
+          {t('install.status.lastVisit', {
+            time: formatRelative(install.lastEventAt, i18n.language as Locale, new Date(now)),
+          })}
+        </span>
+      ) : null}
       {!live ? <p className="-mt-1 text-sm text-text-muted">{t('install.status.waitingHelp')}</p> : null}
       <ul className="grid gap-2.5 border-t border-border pt-4">
         <CheckItem done>{t('install.check.added')}</CheckItem>
@@ -220,7 +222,9 @@ function ExtraOrigins({ site, install }: { site: Site; install: SiteInstall }) {
       </p>
       <textarea
         id={`origins-${site.id}`}
-        aria-describedby={`origins-help-${site.id}`}
+        aria-describedby={
+          save.isError ? `origins-help-${site.id} origins-error-${site.id}` : `origins-help-${site.id}`
+        }
         aria-invalid={save.isError || undefined}
         lang="en"
         dir="ltr"
@@ -230,7 +234,11 @@ function ExtraOrigins({ site, install }: { site: Site; install: SiteInstall }) {
         placeholder="https://staging.example.et"
         className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 font-mono text-sm text-text outline-none focus:border-primary focus:ring-3 focus:ring-primary-soft aria-invalid:border-bad"
       />
-      {save.isError ? <p className="text-sm font-medium text-bad">{t('install.origins.invalid')}</p> : null}
+      {save.isError ? (
+        <p id={`origins-error-${site.id}`} role="alert" className="text-sm font-medium text-bad">
+          {t('install.origins.invalid')}
+        </p>
+      ) : null}
       {save.isSuccess ? (
         <p role="status" className="text-sm font-medium text-good">
           {t('common.saved')}
@@ -239,7 +247,6 @@ function ExtraOrigins({ site, install }: { site: Site; install: SiteInstall }) {
       <div>
         <Button
           type="submit"
-          size="sm"
           variant="secondary"
           isPending={save.isPending}
           pendingLabel={t('common.saving')}

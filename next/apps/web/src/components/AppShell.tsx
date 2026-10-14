@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Button as RACButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { authClient } from '../lib/auth-client';
+import { useRouteFocus } from '../lib/focus';
 import { isNavActive } from '../lib/nav';
 import { useMe } from '../lib/queries';
 import { LanguageSwitch } from './LanguageSwitch';
@@ -94,6 +95,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const { me } = useMe();
   const online = useOnline();
+  useRouteFocus();
   const isActive = useActiveNav();
 
   return (
@@ -178,7 +180,7 @@ export function AppShell() {
               key={to}
               to={to}
               className={cx(
-                'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-semibold text-text-faint outline-none focus-visible:bg-primary-soft',
+                'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-semibold text-text-muted outline-none focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-primary',
                 isActive(match) && '!text-primary',
               )}
               aria-current={isActive(match) ? 'page' : undefined}

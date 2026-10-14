@@ -4,8 +4,9 @@ import { Banner, Button, EmptyState, PageHeader, Skeleton, buttonClass, cx } fro
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Mail, Play } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AiBox, Panel, ReplayPhone, SamplePill, SeverityPill } from '../components/pulse';
+import { AiBox, Panel, ReplayPhone, SamplePill, SeverityPill, scrollRegionClass } from '../components/pulse';
 import { fixQuery, fixesQuery, useFixView, useSetFixStatus } from '../lib/fixes';
 import { useMe } from '../lib/queries';
 import type { Fix, FixStatus } from '../lib/sample';
@@ -33,6 +34,14 @@ export function FixDetailPage() {
     fix = { ...toView(detail.data.fix), status: listed?.status ?? detail.data.fix.status };
   }
   const isLoading = feed.isLoading || (live && detail.isLoading);
+  const stepsRef = useRef<HTMLOListElement>(null);
+  const [announcement, setAnnouncement] = useState('');
+  /** Advance the workflow, announce it, and keep focus on the page when the button goes away. */
+  const advance = (id: string, to: FixStatus) => {
+    setStatus(id, to);
+    setAnnouncement(t('fix.statusNow', { status: t(`fix.status.${to}`) }));
+    if (!NEXT[to]) requestAnimationFrame(() => stepsRef.current?.focus());
+  };
 
   if (isLoading) return <Skeleton className="h-96" />;
   if (!fix) {
@@ -50,7 +59,10 @@ export function FixDetailPage() {
   return (
     <>
       <nav aria-label={t('common.breadcrumb')} className="mb-4 flex flex-wrap gap-2 text-sm text-text-muted">
-        <Link to="/today" className="font-medium underline-offset-4 hover:underline">
+        <Link
+          to="/today"
+          className="-my-3 inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
+        >
           {t('nav.today')}
         </Link>
         <span aria-hidden="true">/</span>
@@ -72,7 +84,15 @@ export function FixDetailPage() {
         actions={live ? undefined : <SamplePill />}
       />
 
-      <ol aria-label={t('fix.statusLabel')} className="-mt-2 mb-8 flex flex-wrap items-center gap-2">
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
+      <ol
+        ref={stepsRef}
+        tabIndex={-1}
+        aria-label={t('fix.statusLabel')}
+        className="-mt-2 mb-8 flex flex-wrap items-center gap-2 rounded-md outline-none focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-primary"
+      >
         {FLOW.map((s, i) => (
           <li key={s} className="flex items-center gap-2">
             {i > 0 ? <span aria-hidden="true" className="h-px w-6 bg-border-strong" /> : null}
@@ -158,7 +178,8 @@ export function FixDetailPage() {
                   })}
                 </span>
               </div>
-              <div className="overflow-x-auto">
+              {/* Scrollable at 360px, so it must be reachable and named for keyboard users. */}
+              <div className={scrollRegionClass} tabIndex={0} role="region" aria-labelledby="affected">
                 <table className="w-full min-w-[34rem] border-collapse text-sm">
                   <thead>
                     <tr className="text-left text-[0.8125rem] text-text-muted">
@@ -227,7 +248,13 @@ export function FixDetailPage() {
             <AiBox title={t('fix.suggested')} className="p-5">
               <p>{fix.suggestion.text}</p>
               {fix.suggestion.code ? (
-                <pre className="mt-3 overflow-x-auto rounded-md bg-surface p-3 font-mono text-[0.8125rem] leading-relaxed">
+                <pre
+                  tabIndex={0}
+                  lang="en"
+                  dir="ltr"
+                  aria-label={t('fix.suggested')}
+                  className="mt-3 overflow-x-auto rounded-md bg-surface p-3 font-mono text-[0.8125rem] leading-relaxed outline-none focus-visible:outline-3 focus-visible:outline-primary"
+                >
                   {fix.suggestion.code}
                 </pre>
               ) : null}
@@ -237,7 +264,7 @@ export function FixDetailPage() {
           <Panel title={t('fix.nextStep')} id="next-step">
             {setStatus.error ? <Banner tone="bad" title={t('fix.statusError')} /> : null}
             {next ? (
-              <Button className="min-h-12 text-[0.9375rem]" onPress={() => setStatus(fix.id, next)}>
+              <Button className="min-h-12 text-[0.9375rem]" onPress={() => advance(fix.id, next)}>
                 {t(`fix.mark.${next}`)}
               </Button>
             ) : null}

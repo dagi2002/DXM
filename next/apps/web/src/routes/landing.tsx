@@ -7,6 +7,9 @@ import { LanguageSwitch } from '../components/LanguageSwitch';
 import { HealthRing } from '../components/pulse';
 
 const wrap = 'mx-auto w-full max-w-[75rem] px-4 sm:px-8 lg:px-12';
+/** Text links: 44px tall hit area and a visible focus ring. */
+const navLink =
+  'inline-flex min-h-11 items-center rounded-sm text-text underline-offset-4 outline-none hover:text-primary hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-primary';
 
 /** Public front door: positioning, the free Health Check, how it works, agencies, pricing. */
 export function LandingPage() {
@@ -27,14 +30,14 @@ export function LandingPage() {
         >
           <Logo />
         </Link>
-        <nav aria-label={t('landing.nav')} className="hidden gap-6 text-[0.9375rem] md:flex">
-          <a href="#how" className="text-text hover:text-primary">
+        <nav aria-label={t('landing.nav')} className="hidden gap-4 text-[0.9375rem] md:flex">
+          <a href="#how" className={navLink}>
             {t('landing.navHow')}
           </a>
-          <a href="#agencies" className="text-text hover:text-primary">
+          <a href="#agencies" className={navLink}>
             {t('landing.navAgencies')}
           </a>
-          <a href="#pricing" className="text-text hover:text-primary">
+          <a href="#pricing" className={navLink}>
             {t('landing.navPricing')}
           </a>
         </nav>
@@ -207,7 +210,7 @@ export function LandingPage() {
 
       <footer className={cx(wrap, 'flex flex-wrap gap-x-7 gap-y-2 py-8 text-sm text-text-muted')}>
         <span>{t('landing.footer')}</span>
-        <Link to="/sign-in" className="hover:text-text">
+        <Link to="/sign-in" className={cx(navLink, '-my-3 text-text-muted')}>
           {t('auth.signIn.submit')}
         </Link>
       </footer>
