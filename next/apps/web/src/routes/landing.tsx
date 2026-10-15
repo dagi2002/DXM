@@ -101,14 +101,9 @@ export function LandingPage() {
           </div>
 
           <div className="grid gap-4.5 rounded-xl border border-border bg-surface p-6 sm:p-7">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem] text-text-muted" lang="en">
-                {t('landing.example')} · yourshop.et
-              </span>
-              <span className="rounded-sm bg-surface-sunken px-2 py-0.5 text-xs text-text-muted">
-                {t('sample.label')}
-              </span>
-            </div>
+            <span className="text-[0.8125rem] text-text-muted" lang="en">
+              {t('landing.example')} · yourshop.et
+            </span>
             <div className="flex items-center gap-4">
               <HealthRing score={58} size={72} label={t('metric.healthOf', { score: 58 })} />
               <div className="grid gap-1">

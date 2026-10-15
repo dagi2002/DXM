@@ -1,25 +1,8 @@
 import { StatusBadge, cx } from '@pulse/ui';
-import { FlaskConical, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FixSeverity as Severity } from '@pulse/contracts/constants';
-
-/** Marks anything drawn from the sample dataset, so a demo never passes for real data. */
-export function SamplePill({ className }: { className?: string }) {
-  const { t } = useTranslation();
-  return (
-    <span
-      title={t('sample.tooltip')}
-      className={cx(
-        'inline-flex h-6 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-2.5 text-xs font-semibold text-text-muted',
-        className,
-      )}
-    >
-      <FlaskConical size={13} aria-hidden="true" />
-      {t('sample.label')}
-    </span>
-  );
-}
 
 export function SeverityPill({ severity }: { severity: Severity }) {
   const { t } = useTranslation();

@@ -133,7 +133,7 @@ Every screen in the platform design is now built in `apps/web` (commit `4569324`
 - **Shell:** 5 tabs (Today, Sites, Replays, Reports, Settings). It's a bottom bar on phones.
 - EN + AM strings for all of it (Amharic still needs a native review).
 
-**The sample layer: `apps/web/src/lib/sample.ts`**
+**The sample layer: `apps/web/src/lib/sample.ts`** _(removed 2026-10-14 after plan 2: fixes, replays, insights and reports all run on real APIs, and `sample.ts`, `SamplePill` and the `sample.*` strings are gone. Kept below for history.)_
 - It holds typed sample data for fixes (slice 3), replays (slice 4), site insights (slice 5) and client reports (slice 6), plus Today's "this week" panel. Every screen showing it carries the **Sample data** pill (`SamplePill`).
 - It's exposed only as TanStack Query options: `sampleFixesQuery`, `sampleReplaysQuery`, `sampleInsightsQuery`, `sampleReportsQuery`, `sampleWeekQuery`, each with `staleTime: Infinity` and a `queryFn` that returns a deep copy.
 - Fix status changes (`useSetFixStatus` in `routes/today.tsx`) only rewrite the query cache. They live in memory and reset on reload.

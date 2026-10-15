@@ -215,8 +215,6 @@
   "common.breadcrumb": "የገጽ መንገድ",
   "nav.replays": "ቅጂዎች",
   "nav.reports": "ሪፖርቶች",
-  "sample.label": "የናሙና መረጃ",
-  "sample.tooltip": "ይህ የናሙና መረጃ ነው። Pulse ለዚህ ገጽ እውነተኛ መረጃ እንዳገኘ ይተካል።",
   "today.fixHeadline": "{count, plural, one {# ችግር} other {# ችግሮች}} አሁን የ{site}ን ትዕዛዞች እያሳጡ ነው።",
   "today.fixHeadlineClear": "አሁን የሚጠገን ነገር የለም።",
   "today.fixSummary": "{critical, plural, =0 {አስቸኳይ ችግር የለም} other {# አስቸኳይ}} እና {watch, plural, =0 {የሚከታተል የለም} other {# የሚከታተሉ}} በ{sites, plural, one {ድረ-ገጽዎ} other {# ድረ-ገጾችዎ}} ላይ።",

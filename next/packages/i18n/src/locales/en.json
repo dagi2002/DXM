@@ -215,8 +215,6 @@
   "common.breadcrumb": "Breadcrumb",
   "nav.replays": "Replays",
   "nav.reports": "Reports",
-  "sample.label": "Sample data",
-  "sample.tooltip": "This is sample data. It is replaced as soon as Pulse has real data for this screen.",
   "today.fixHeadline": "{count, plural, one {# thing is} other {# things are}} costing {site} orders right now.",
   "today.fixHeadlineClear": "Nothing needs fixing right now.",
   "today.fixSummary": "{critical, plural, =0 {No critical issues} one {# critical} other {# critical}} and {watch, plural, =0 {nothing} other {# to watch}} across {sites, plural, one {your site} other {your # sites}}.",
