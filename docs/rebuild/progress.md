@@ -261,5 +261,29 @@ Task 8 of parallel plan 2 (`task/8-insights`). The site Overview and Today's "th
 - Fix detail still shows the sample "clip" story for sample fixes; real fixes link their replays.
 - Amharic strings for the new replay screens need a native review.
 
+## 2026-10-14 — Phase 2, slice 6 (client reports) ✅
+
+Task 9 of parallel plan 2 (`task/9-reports`). Task 8 (site insights) hadn't started a branch yet, so this builds on `rebuild`; the report's site numbers sit behind a small interface that task 8's insight functions can plug into.
+
+**Shipped:**
+- **Data (`0013_reports`):**
+  - `reports`: org, site, period (`YYYY-MM`, UTC calendar month), `source` (`auto` | `manual`), a frozen `snapshot` jsonb, `created_by`. The monthly job makes at most one `auto` report per site and month (partial unique index); people can make more.
+  - `report_shares`: `token_hash` (SHA-256 hex, check-constrained to 64 hex chars, unique), `expires_at`, `revoked_at`, `created_by`. Links are revoked, never deleted (no DELETE policy).
+  - Forced RLS + policies on both. Composite FKs: a report's site belongs to the report's org, a share's report to the share's org.
+  - Two narrow `SECURITY DEFINER` helpers: `pulse_shared_report(token_hash)` (returns that one snapshot only while the link is unexpired, unrevoked and its site not deleted) and `pulse_report_candidates(from, to)` (sites visited in the month, for the job).
+- **`packages/reports`:** period math, the pure snapshot assembler (unit-tested) and the DB builder. A snapshot holds: key numbers this month vs last (visits, page views, bounce rate, p75 LCP on phones), visits per 7-day bucket with fixes shipped per bucket, fixes shipped that month with **before/after** (friction events per day on that element: the 7 days before `fixed_at` vs up to 7 days after; "too early to tell" under a day), and the 3 most pressing open fixes for "next month". Under 30 visits (`REPORT_MIN_VISITS`) the report says "Not enough visits yet" instead of showing numbers. Numbers come from `ReportMetricsSource`; the default (`rawEventsSource`) reads `visits`/`events` directly. **Task 8: implement that interface over your rollups and pass it to `buildReportSnapshot` / `generateMonthlyReport`.**
+- **Worker:** `reports.monthly` (04:23 UTC on the 1st) queues one `reports.site` per site visited last month (staggered over an hour, `singletonKey` site:period). `reports.site` builds and freezes the `auto` report inside the org's RLS scope; idempotent.
+- **API:**
+  - Authenticated (owners, admins, members; client viewers 403): `GET /api/v1/reports?siteId=`, `POST /api/v1/reports` (`{siteId, period}`; the current month makes a partial report; future months 400), `GET /api/v1/reports/:id` (snapshot + links), `POST /api/v1/reports/:id/shares` (`{expiresInDays}` 1–90, default 30; **the token is in this response only**), `DELETE /api/v1/reports/:id/shares/:shareId` (revoke; idempotent). Creating, sharing and revoking are audit-logged. Another org's ids are 404.
+  - Public: `GET /api/v1/public/reports/:token`. No session. Returns `{ period, expiresAt, snapshot }` only. Unknown, malformed, expired, revoked and deleted-site tokens all get the same 404. Rate-limited per client IP (token bucket: burst 30, then 1 every 2 s; 429 + `Retry-After`), `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Request logs write the path as `/api/v1/public/reports/:token`.
+- **Web:** `/reports` lists real reports and has "Create report" (site + month). `/reports/$reportId` shows the report with a share panel: make a link (7/30/90 days, shown once with a copy button), see links with Active / Expired / Turned off, turn one off. `/r/$token` reads the public endpoint; unknown/expired/revoked links show the existing "expired" state. Snapshots are structured data, so the headline and every sentence are written in the reader's language (EN/AM). The weekly chart plots visits **per day**, so the month's short last week doesn't look like a collapse. Sample reports and `sampleReportsQuery` are gone from `sample.ts`.
+- **Tests:** 12 unit tests (`packages/reports`), 4 web tests (report sentences in EN/AM, expired-link handling), 18 API integration tests (unknown/expired/revoked tokens rejected, only the token's own report, rate limit, tokens stored hashed, tenant isolation, roles, CSRF, frozen snapshots, log redaction), 5 worker tests, RLS invariants extended to the new tables. E2E: `prepare-db.ts` seeds a September report with `demo-september` / `demo-expired` / `demo-revoked` links (`platform.spec.ts` pins the seeded report), plus a create → share → open → turn off flow and axe scans of the report page (EN + AM).
+
+**Not done yet:**
+- Client-viewer access to reports inside the app (needs per-site sharing for viewers); they get share links for now.
+- Agency logo/branding on reports, and a real PDF (Download PDF is still the browser's print).
+- Before/after is only measured for click-friction fixes (rage/dead clicks); task 10's new kinds show "Too early to tell" until they get a measure.
+- Amharic copy needs a native-speaker review.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

@@ -53,6 +53,9 @@ test('public screens: landing and shared report', async ({ page }) => {
   await scanBothSchemes(page, '/welcome');
   await visit(page, '/r/demo-september');
   await scanBothSchemes(page, '/r/demo-september');
+  await page.goto('/r/demo-expired');
+  await expect(page.getByText('This link has expired or was turned off.', { exact: false })).toBeVisible();
+  await scanBothSchemes(page, '/r/demo-expired');
 });
 
 test('signed-in screens: today, fix, site tabs, replay, reports, notifications', async ({ page }, info) => {
@@ -115,6 +118,17 @@ test('signed-in screens: today, fix, site tabs, replay, reports, notifications',
 
   await visit(page, '/reports');
   await scanBothSchemes(page, '/reports');
+  // A real report with a fresh share link (the link is shown once, with a copy button).
+  await page.getByRole('button', { name: 'Create report' }).first().click();
+  await page
+    .getByRole('dialog', { name: 'Create report' })
+    .getByRole('button', { name: 'Create report' })
+    .click();
+  await expect(page).toHaveURL(/\/reports\/rpt_/);
+  const reportPath = new URL(page.url()).pathname;
+  await page.getByRole('button', { name: 'Create link' }).click();
+  await expect(page.getByLabel('Share link', { exact: true })).toContainText('/r/');
+  await scanBothSchemes(page, reportPath);
 
   await visit(page, '/settings?tab=notifications');
   await scanBothSchemes(page, '/settings notifications');
@@ -127,7 +141,7 @@ test('signed-in screens: today, fix, site tabs, replay, reports, notifications',
   await page.goto('/today');
   await page.getByRole('radio', { name: 'አማ' }).first().check({ force: true });
   await expect(page.locator('html')).toHaveAttribute('lang', 'am');
-  for (const path of ['/today', fixPath, '/replays', '/reports', sitePath]) {
+  for (const path of ['/today', fixPath, '/replays', '/reports', reportPath, sitePath]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectAccessible(page, `${path} (am)`);

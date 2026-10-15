@@ -33,6 +33,10 @@ export const QUEUES = {
     name: 'detect.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 10 },
   },
+  /** On the 1st of each month: queue one report build per site visited last month. */
+  reportsMonthly: { name: 'reports.monthly', options: { retryLimit: 2 } },
+  /** One frozen monthly report per site (idempotent; singletonKey = site:period). */
+  reportsSite: { name: 'reports.site', options: { retryLimit: 3, retryBackoff: true, retryDelay: 60 } },
   /** Every 10 minutes: find sites whose daily rollups need refreshing and queue one run each. */
   insightsSweep: { name: 'insights.sweep', options: { retryLimit: 1 } },
   /** Recomputes one site's rollups for today and yesterday (and stale funnel days). */
@@ -73,6 +77,8 @@ export interface JobPayloads {
   'maintenance.purge-dedupe': Record<string, never>;
   'detect.sweep': Record<string, never>;
   'detect.site': { siteId: string; orgId: string };
+  'reports.monthly': Record<string, never>;
+  'reports.site': { siteId: string; orgId: string; period: string };
   'insights.sweep': Record<string, never>;
   'insights.site': { siteId: string; orgId: string };
   'detect.tracking': Record<string, never>;

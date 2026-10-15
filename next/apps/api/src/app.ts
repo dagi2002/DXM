@@ -11,9 +11,12 @@ import type { Logger } from 'pino';
 import { ZodError } from 'zod';
 import { CLIENT_IP_HEADER, type Auth } from './auth';
 import { ApiError, errorBody, type AppEnv } from './http';
+import type { RateLimiterOptions } from './rate-limit';
 import type { Mailer } from '@pulse/mail';
 import { createBlobStore, type BlobStore } from '@pulse/storage';
 import { fixRoutes } from './routes/fixes';
+import { publicReportRoutes, redactPath } from './routes/public-reports';
+import { reportRoutes } from './routes/reports';
 import { insightRoutes } from './routes/insights';
 import { meRoutes } from './routes/me';
 import { replayRoutes } from './routes/replays';
@@ -33,6 +36,8 @@ export interface AppDeps {
   telegram?: TelegramClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
   peerAddress?: (raw: Request, c: unknown) => string | undefined;
+  /** Overrides the public report route's per-IP rate limit (tests). */
+  publicReportRateLimit?: RateLimiterOptions;
 }
 
 const REQUEST_ID_RE = /^[A-Za-z0-9._-]{8,64}$/;
@@ -79,7 +84,8 @@ export function createApp(deps: AppDeps) {
     c.get('log').info(
       {
         method: c.req.method,
-        path: c.req.path,
+        // Share-link tokens are credentials: logged as `:token`.
+        path: redactPath(c.req.path),
         status: c.res.status,
         ms: Math.round(performance.now() - started),
         userId: c.get('user')?.id,
@@ -154,6 +160,8 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/sites', siteRoutes(deps));
   app.route('/api/v1/today', todayRoutes(deps));
   app.route('/api/v1/fixes', fixRoutes(deps));
+  app.route('/api/v1/reports', reportRoutes(deps));
+  app.route('/api/v1/public/reports', publicReportRoutes(deps));
   app.route('/api/v1/replays', replayRoutes({ ...deps, blobs: deps.blobs ?? createBlobStore(env) }));
   app.route('/api/v1/insights', insightRoutes(deps));
   app.route('/api/v1/telegram/webhook', telegramWebhook(deps));

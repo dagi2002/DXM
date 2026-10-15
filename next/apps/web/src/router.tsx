@@ -33,6 +33,7 @@ const ReplaysPage = lazyRouteComponent(replays, 'ReplaysPage');
 const ReplayPage = lazyRouteComponent(() => import('./routes/replay'), 'ReplayPage');
 const reports = () => import('./routes/reports');
 const ReportsPage = lazyRouteComponent(reports, 'ReportsPage');
+const ReportPage = lazyRouteComponent(reports, 'ReportPage');
 const PublicReportPage = lazyRouteComponent(reports, 'PublicReportPage');
 const LandingPage = lazyRouteComponent(() => import('./routes/landing'), 'LandingPage');
 const SitesPage = lazyRouteComponent(sites, 'SitesPage');
@@ -210,6 +211,11 @@ const reportsRoute = createRoute({
   path: '/reports',
   component: ReportsPage,
 });
+const reportRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/reports/$reportId',
+  component: ReportPage,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/settings',
@@ -234,6 +240,7 @@ const routeTree = rootRoute.addChildren([
     replaysRoute,
     replayRoute,
     reportsRoute,
+    reportRoute,
     settingsRoute,
   ]),
 ]);

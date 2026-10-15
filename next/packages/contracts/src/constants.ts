@@ -83,6 +83,15 @@ export const canTransitionFix = (from: FixStatus, to: FixStatus): boolean =>
 /** Roles that can see and work on fixes (client viewers only see shared reports). */
 export const canWorkOnFixes = (role: Role | null | undefined): boolean => !!role && role !== 'client_viewer';
 
+/** Roles that can make, read and share client reports. Client viewers get share links instead. */
+export const canWorkOnReports = (role: Role | null | undefined): boolean => canWorkOnFixes(role);
+
+/* ── Client reports ─────────────────────────────────────────────────────────── */
+/** Fewer visits than this in a month and a report says "Not enough visits yet" instead of numbers. */
+export const REPORT_MIN_VISITS = 30;
+/** Share links: default and maximum lifetime, in days. */
+export const REPORT_SHARE_DEFAULT_DAYS = 30;
+export const REPORT_SHARE_MAX_DAYS = 90;
 /** Network buckets for speed breakdowns (NetworkInformation.effectiveType, or unknown). */
 export const NETWORKS = ['slow-2g', '2g', '3g', '4g', 'unknown'] as const;
 export type Network = (typeof NETWORKS)[number];

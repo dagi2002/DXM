@@ -17,6 +17,7 @@ import { sweepInsights } from './insights';
 import { sweepTracking } from './tracking';
 import { sweepVerification, verifyIssue } from './verify';
 import { applyIngest } from './ingest';
+import { generateMonthlyReport, sweepMonthlyReports, type MonthlyReportJob } from './reports';
 import { notifySiteLive } from './notify';
 import { applyReplayChunk, purgeReplays } from './replays';
 
@@ -169,12 +170,25 @@ await boss.work<{ siteId: string; orgId: string }>('insights.site', async (jobs)
   }
 });
 
+// Client reports (slice 6): on the 1st, freeze last month's report for every visited site.
+await boss.work('reports.monthly', async () => {
+  const { period, queued } = await sweepMonthlyReports(db, boss);
+  log.info({ period, sites: queued }, 'monthly reports queued');
+});
+await boss.work<MonthlyReportJob>('reports.site', async (jobs) => {
+  for (const job of jobs) {
+    const result = await generateMonthlyReport(db, job.data);
+    log.info({ siteId: job.data.siteId, period: job.data.period, ...result }, 'monthly report');
+  }
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
 await boss.schedule('maintenance.purge-dedupe', '17 3 * * *');
 await boss.schedule('maintenance.replay-retention', '37 3 * * *');
 await boss.schedule('detect.sweep', '*/2 * * * *');
+await boss.schedule('reports.monthly', '23 4 1 * *'); // 04:23 UTC on the 1st
 await boss.schedule('insights.sweep', '*/10 * * * *');
 await boss.schedule('detect.tracking', '23 * * * *');
 await boss.schedule('issue.verify-sweep', '41 * * * *');

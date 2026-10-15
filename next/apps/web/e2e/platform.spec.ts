@@ -2,10 +2,10 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { SEEDED, seedIssues } from './seed';
 
 /**
- * Platform screens: the public pages (landing, shared report) and the fix flow on Today. Fixes
- * are real: the tests seed issues the way the worker's detectors write them (e2e/seed.ts).
- * Replays are real too (covered end to end in replays.spec.ts). Reports still run on the
- * flagged sample layer (src/lib/sample.ts).
+ * Platform screens: the public pages (landing, shared report), the fix flow on Today and client
+ * reports. Fixes are real: the tests seed issues the way the worker's detectors write them
+ * (e2e/seed.ts). Reports are real: the shared one is seeded by e2e/prepare-db.ts. Replays are
+ * real too (covered end to end in replays.spec.ts).
  */
 
 async function signUpWithSite(page: Page, info: TestInfo, tag: string) {
@@ -53,16 +53,60 @@ test('signed in, / goes to Today but /welcome still shows the landing page', asy
 });
 
 test('public report opens without signing in', async ({ page }) => {
+  // Seeded in e2e/prepare-db.ts: a frozen September report with three share links.
   await page.goto('/r/demo-september');
   await expect(page).toHaveURL(/\/r\/demo-september$/);
   await expect(page.getByText(/Shared report · read-only/)).toBeVisible();
-  await expect(page.getByText('We fixed 4 problems this month.', { exact: false })).toBeVisible();
-  await expect(page.getByText('Broken link from the Telegram channel')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'We fixed 4 problems in September 2026.' }),
+  ).toBeVisible();
+  await expect(page.getByText('Tapping “a.channel-link” on /promo does nothing')).toBeVisible();
+  await expect(page.getByText('Visitors tap “input.phone” again and again on /signup')).toBeVisible();
+  await expect(page.getByText('34,180')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
 
-  await page.goto('/r/no-such-token');
-  await expect(page).toHaveURL(/\/r\/no-such-token$/);
-  await expect(page.getByText('This link has expired or was turned off.', { exact: false })).toBeVisible();
+  // Unknown, expired and turned-off links all show the same "expired" state.
+  for (const token of ['no-such-token', 'demo-expired', 'demo-revoked']) {
+    await page.goto(`/r/${token}`);
+    await expect(page).toHaveURL(new RegExp(`/r/${token}$`));
+    await expect(page.getByText('This link has expired or was turned off.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Download PDF' })).toHaveCount(0);
+  }
+});
+
+test('create a report, share it, and turn the link off', async ({ page, context }, info) => {
+  await signUpWithSite(page, info, 'reports');
+  await page.getByRole('link', { name: 'Reports' }).first().click();
+  await expect(page).toHaveURL(/\/reports$/);
+  await expect(page.getByRole('heading', { name: 'No reports yet', exact: false })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Create report' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Create report' });
+  await dialog.getByRole('button', { name: 'Create report' }).click();
+  await expect(page).toHaveURL(/\/reports\/rpt_[A-Za-z0-9]+$/);
+  await expect(page.getByRole('heading', { level: 1, name: /Demo shop · / })).toBeVisible();
+  // A brand-new site has no visits: the report says so instead of showing numbers.
+  await expect(page.getByText('Not enough visits yet', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Create link' }).click();
+  const link = page.getByLabel('Share link', { exact: true });
+  await expect(link).toContainText('/r/');
+  const url = (await link.textContent())!.trim();
+  await expect(page.getByText('Copy it now', { exact: false })).toBeVisible();
+
+  const shared = await context.newPage();
+  await shared.goto(url);
+  await expect(
+    shared.getByRole('heading', { level: 1, name: /^Not enough visits yet to measure/ }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Turn off' }).click();
+  await expect(page.getByText('Turned off', { exact: true })).toBeVisible();
+  await shared.reload();
+  await expect(shared.getByText('This link has expired or was turned off.', { exact: false })).toBeVisible();
+
+  await page.getByRole('link', { name: 'All reports' }).click();
+  await expect(page.getByRole('list', { name: 'Reports' }).getByRole('link')).toHaveCount(1);
 });
 
 test('a new organization sees an honest empty feed, never sample fixes', async ({ page }, info) => {

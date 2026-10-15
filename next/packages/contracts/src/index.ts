@@ -3,6 +3,7 @@ import { ERROR_CODES, PLATFORMS, ROLES, SITE_STATUSES } from './constants';
 
 export * from './constants';
 export * from './fixes';
+export * from './reports';
 export * from './replays';
 export * from './insights';
 export * from './telegram';
