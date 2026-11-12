@@ -15,7 +15,7 @@ import { alertJobFor, sendTelegramAlert } from './alerts';
 import { sendWeeklyDigest, sweepDigest } from './digest';
 import { sendPushAlert } from './push-alerts';
 import { detectSite, sweepDetection } from './detect';
-import { rollupSite } from '@pulse/insights/db';
+import { backfillRollups, rollupSite, runRetention } from '@pulse/insights/db';
 import { sweepInsights } from './insights';
 import { sweepTracking } from './tracking';
 import { sweepVerification, verifyIssue } from './verify';
@@ -204,6 +204,19 @@ await boss.work<{ siteId: string; orgId: string }>('insights.site', async (jobs)
   }
 });
 
+// Rollup backfill (task 14): rebuilds missing, stale or old-version daily rollups from raw
+// events. Idempotent, so it runs on every start (deploys), daily, and on demand (CLI).
+await boss.work('insights.backfill', async () => {
+  const result = await backfillRollups(db);
+  if (result.days || result.stuck) log.info(result, 'rollups backfilled');
+});
+
+// Retention (task 14): raw events and visits past each org's retention, old rollups, empty partitions.
+await boss.work('maintenance.retention', async () => {
+  const result = await runRetention(db, { defaultDays: env.DATA_RETENTION_DAYS });
+  log.info(result, 'retention purge');
+});
+
 // Client reports (slice 6): on the 1st, freeze last month's report for every visited site.
 await boss.work('reports.monthly', async () => {
   const { period, queued } = await sweepMonthlyReports(db, boss);
@@ -226,8 +239,11 @@ await boss.schedule('reports.monthly', '23 4 1 * *'); // 04:23 UTC on the 1st
 await boss.schedule('insights.sweep', '*/10 * * * *');
 await boss.schedule('detect.tracking', '23 * * * *');
 await boss.schedule('issue.verify-sweep', '41 * * * *');
+await boss.schedule('insights.backfill', '47 3 * * *'); // after yesterday's rollups settle
+await boss.schedule('maintenance.retention', '13 2 * * *');
 await boss.schedule('digest.sweep', '13 4 * * 1'); // Mondays 04:13 UTC = 07:13 in Addis Ababa
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
+await sendJob(boss, 'insights.backfill', {}, { singletonKey: 'backfill' }); // once per deploy
 
 // Health endpoint for the orchestrator / uptime checks.
 const health = createServer(async (req, res) => {

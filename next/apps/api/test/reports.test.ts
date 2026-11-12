@@ -196,7 +196,8 @@ describe('reports API (authenticated)', () => {
     expect(s.kpis.pageviews).toEqual({ value: 70, previous: 40 });
     expect(s.kpis.bounceRate).toEqual({ value: 0.25, previous: 0 });
     // p75 of 2000..2900 on phones.
-    expect(s.kpis.lcp).toEqual({ value: 2675, previous: null });
+    // p75 per contract 21: the sorted value at index floor((n - 1) × 0.75), as rollups compute it.
+    expect(s.kpis.lcp).toEqual({ value: 2600, previous: null });
     expect(s.trend.map((p) => p.visits).reduce((a, b) => a + b, 0)).toBe(40);
     expect(s.trend.find((p) => p.start === '2026-09-15')!.fixesShipped).toBe(1);
     expect(s.fixed).toEqual([

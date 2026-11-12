@@ -337,6 +337,13 @@ export const rollupSiteDay = pgTable(
     rageClicks: integer('rage_clicks').notNull().default(0),
     deadClicks: integer('dead_clicks').notNull().default(0),
     errors: integer('errors').notNull().default(0),
+    /** Distinct visits with at least one page view that day (exposure for JS-error verification). */
+    pvVisits: integer('pv_visits').notNull().default(0),
+    /**
+     * Which rollup definition made this row. Rows from an older definition lack newer columns, so
+     * the backfill recomputes them while raw events still exist, and readers fall back to raw.
+     */
+    version: smallint('version').notNull().default(1),
     computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -357,6 +364,10 @@ export const rollupPageDay = pgTable(
     bounces: integer('bounces').notNull().default(0),
     frictionVisits: integer('friction_visits').notNull().default(0),
     errorVisits: integer('error_visits').notNull().default(0),
+    /** Visits that opened this page that day, counted the way U-turns are (U-turn exposure). */
+    uturnReached: integer('uturn_reached').notNull().default(0),
+    /** Of those, visits that went straight back where they came from (U-turns). */
+    uturnTurned: integer('uturn_turned').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.siteId, t.day, t.path] })],
 );

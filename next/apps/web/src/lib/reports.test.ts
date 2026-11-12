@@ -70,6 +70,17 @@ describe('report text', () => {
     expect(en.unmeasured(fix)).toBe(false);
     expect(en.unmeasured({ ...fix, before: { perDay: null, days: 7 } })).toBe(true);
   });
+
+  it('says what the before/after counts for the newer fix kinds, in both languages', async () => {
+    const [en, am] = [await text(), await text('am')];
+    const kinds = ['form_abandon', 'slow_page', 'js_error', 'u_turn'] as const;
+    for (const kind of kinds) {
+      const f = { ...fix, kind, selector: null };
+      expect(en.measure(f), kind).not.toBe(en.measure({ ...fix, kind: 'tracking_broken' }));
+      expect(am.measure(f), kind).not.toBe(am.measure({ ...fix, kind: 'tracking_broken' }));
+    }
+    expect(en.measure({ ...fix, kind: 'u_turn' })).toBe('Visitors who turned straight back, per day');
+  });
 });
 
 describe('report helpers', () => {

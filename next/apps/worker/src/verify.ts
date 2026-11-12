@@ -5,14 +5,10 @@ import {
   VERIFY_GIVE_UP_DAYS,
   VERIFY_TRACKING_HOURS,
   judgeVerification,
-  measureIssue,
   verificationWindows,
-  verifyEventTypes,
-  type DetectorEvent,
-  type TimeRange,
-  type VisitFacts,
 } from '@pulse/detectors';
-import { and, eq, events, gt, inArray, issues, lt, sql, visits, withOrg, type Db, type Tx } from '@pulse/db';
+import { and, eq, issues, sql, withOrg, type Db } from '@pulse/db';
+import { measureFixWindow, verifyDayWindows } from '@pulse/insights/db';
 import { sendJob, type Boss } from '@pulse/jobs';
 import { recordStatus } from './detect';
 
@@ -22,52 +18,9 @@ export interface VerifyResult {
   verification?: FixVerification;
 }
 
-async function loadWindow(tx: Tx, siteId: string, types: string[], range: TimeRange) {
-  const rows: DetectorEvent[] = await tx
-    .select({
-      visitId: events.visitId,
-      at: events.tsServer,
-      clientAt: events.tsClient,
-      type: events.type,
-      path: events.path,
-      props: events.props,
-    })
-    .from(events)
-    .where(
-      and(
-        eq(events.siteId, siteId),
-        inArray(events.type, types),
-        gt(events.tsServer, range.start),
-        lt(events.tsServer, range.end),
-      ),
-    );
-  const ids = [...new Set(rows.map((r) => r.visitId))];
-  const facts = ids.length
-    ? await tx
-        .select({
-          id: visits.id,
-          device: visits.device,
-          browser: visits.browser,
-          os: visits.os,
-          exitPath: visits.exitPath,
-          network: visits.network,
-          endedAt: visits.endedAt,
-        })
-        .from(visits)
-        .where(and(eq(visits.siteId, siteId), inArray(visits.id, ids)))
-    : [];
-  const hours = Math.round((range.end.getTime() - range.start.getTime()) / 3600_000);
-  return {
-    events: rows,
-    visits: new Map<string, VisitFacts>(facts.map((v) => [v.id, v])),
-    windowHours: hours,
-    now: range.end,
-  };
-}
-
 /**
- * Before/after check for one fixed issue, inside its org's scope: measures the 7 days before
- * `fixed_at` against days 3–7 after it, then marks the issue verified, reopens it, or records that
+ * Before/after check for one fixed issue, inside its org's scope: measures the 7 days before the
+ * day `fixed_at` falls on against days 3–6 after it (whole UTC days, from rollups), then marks the issue verified, reopens it, or records that
  * it's still waiting for enough traffic. Conditional on the issue still being fixed at the same
  * `fixed_at`, so a person changing it meanwhile wins.
  */
@@ -79,20 +32,12 @@ export async function verifyIssue(
   return withOrg(db, job.orgId, async (tx) => {
     const [issue] = await tx.select().from(issues).where(eq(issues.id, job.issueId)).limit(1);
     if (!issue || issue.status !== 'fixed' || !issue.fixedAt) return { status: 'skipped' };
-    const windows = verificationWindows(issue.kind, issue.fixedAt);
-    if (now < windows.dueAt) return { status: 'not_due' };
+    if (now < verificationWindows(issue.kind, issue.fixedAt).dueAt) return { status: 'not_due' };
     const evidence = FixEvidence.parse(issue.evidence);
-    const types = verifyEventTypes(issue.kind);
-    const before = measureIssue(
-      issue.kind,
-      evidence,
-      await loadWindow(tx, issue.siteId, types, windows.before),
-    );
-    const after = measureIssue(
-      issue.kind,
-      evidence,
-      await loadWindow(tx, issue.siteId, types, windows.after),
-    );
+    // Whole UTC days, so page-view exposure comes from rollups (raw events for days without one).
+    const windows = verifyDayWindows(issue.kind, issue.fixedAt);
+    const before = (await measureFixWindow(tx, issue.siteId, issue.kind, evidence, windows.before)).measure;
+    const after = (await measureFixWindow(tx, issue.siteId, issue.kind, evidence, windows.after)).measure;
     const outcome = judgeVerification(evidence, before, after);
     const verification: FixVerification = {
       outcome,

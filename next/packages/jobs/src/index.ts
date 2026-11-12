@@ -44,6 +44,16 @@ export const QUEUES = {
     name: 'insights.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 30 },
   },
+  /**
+   * Builds missing, stale or old-version daily rollups from raw events (idempotent). Queued on
+   * worker start (every deploy), daily, and on demand (`pnpm --filter @pulse/worker backfill`).
+   */
+  insightsBackfill: {
+    name: 'insights.backfill',
+    options: { policy: 'stately', retryLimit: 2, retryBackoff: true, retryDelay: 60 },
+  },
+  /** Daily: deletes raw events, visits and rollups past each org's retention; drops empty partitions. */
+  retention: { name: 'maintenance.retention', options: { retryLimit: 2 } },
   /** Hourly: live sites that went quiet (tracking-broken), and quiet ones that came back. */
   detectTracking: { name: 'detect.tracking', options: { retryLimit: 1 } },
   /** Hourly: queue a before/after check for every fixed issue whose after-window is complete. */
@@ -93,6 +103,8 @@ export interface JobPayloads {
   'reports.site': { siteId: string; orgId: string; period: string };
   'insights.sweep': Record<string, never>;
   'insights.site': { siteId: string; orgId: string };
+  'insights.backfill': Record<string, never>;
+  'maintenance.retention': Record<string, never>;
   'detect.tracking': Record<string, never>;
   'issue.verify-sweep': Record<string, never>;
   'issue.verify': { issueId: string; orgId: string };

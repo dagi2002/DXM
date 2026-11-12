@@ -159,7 +159,7 @@ Every tenant-owned row carries `org_id`. Postgres RLS policies enforce `org_id =
 | E2E | Playwright: core loop × {en, am} × {360px, 1440px} | green |
 | Accessibility | axe-core in E2E + component tests | 0 violations |
 | Visual | Playwright screenshots of key screens | reviewed diffs |
-| Performance | `scripts/check-bundle.mjs` + Lighthouse CI (Moto G Power, Slow 4G) | app initial JS ≤220 KB gz (measured baseline, see note), marketing site JS ≤100 KB, LCP <2.5 s, INP <200 ms, SDK core ≤5 KB |
+| Performance | `scripts/check-bundle.mjs` + Lighthouse CI (Moto G Power, Slow 4G) | app initial JS ≤156 KB gz (measured 154.0 + 2, see note), marketing site JS ≤100 KB, LCP <2.5 s, INP <200 ms, SDK core ≤5 KB |
 | Security | `pnpm audit --prod`, gitleaks | no high/critical |
 
 **Bundle note (2026-10-05, slice 1).** The original 120 KB app budget was set before measuring. The real first-load baseline is about 214 KB gz: react-dom 63, React Aria 60, TanStack Router 24, i18n stack 30, Better Auth client 13, TanStack Query 13. That is still well under the legacy app (~500 KB). The reduction plan toward ≤160 KB:
@@ -169,6 +169,16 @@ Every tenant-owned row carries `org_id`. Postgres RLS policies enforce `org_id =
 4. Re-evaluate the router once the route count is known.
 
 The CI budget gets lowered as each item lands.
+
+**Bundle note (2026-11-12, task 12).** First-load JS is now **154.0 KB gz** (was 216.0), and the CI budget is **156 KB** (the measured number plus 2). "First load" means what `index.html` pulls in: the shell every route shares. Each route's chunk and the active locale (about 12 KB for en, 15 KB for am) load after it. What landed, against the plan above:
+1. Done differently. Messages aren't compiled at build time. Instead, `@pulse/i18n/format` is a small runtime formatter for the part of ICU our messages use: arguments, `number`, `plural` with `#` and `offset`, `select`, and apostrophe quoting. It replaces `i18next-icu` + `intl-messageformat` in the browser (-10 KB). A parity test formats every UI message in both locales with it and with `intl-messageformat` and compares the results. ICU outside the subset throws at compile time, so the test fails if a new message needs more. The server still uses `intl-messageformat`.
+2. Already done since slice 2.5: only the active locale is fetched.
+3. Done with dynamic imports instead of thin fetch calls. The Better Auth client loads with the auth pages, and on demand to activate an organization, switch organization or sign out (-14 KB).
+4. Not started. The router is 24 KB.
+
+Also: `Select`, `Modal` and `TextField` are separate modules in `@pulse/ui`, which is now marked side-effect free. The organization switcher was the only `Select` in the shell. It's now a lazy chunk, loaded only for people in more than one organization (-38 KB). No package is bundled twice.
+
+What's left in the shell: react-dom 64, router 24, React Aria 21 (buttons, and the language switch's radio group), i18next 15, TanStack Query 10, our own code 9. The next real cut is replacing the router or i18next. More splitting won't help much. **Rule for new work: don't raise the budget to fit a feature. Lazy-load the screen or dialog instead.**
 
 ## 9. Environments & ops
 

@@ -40,7 +40,12 @@ Notes:
 Hourly, `issue.verify-sweep` lists fixed issues whose after-window is complete (narrow SECURITY
 DEFINER function, ids only) and queues one `issue.verify` per issue.
 
-- **Windows:** the 7 days before `fixed_at` vs days 3–7 after it (tracking: the 24 h after).
+- **Windows:** whole UTC days, so rollups can answer them: the 7 days before the day `fixed_at`
+  falls on vs days 3–6 after it (the fix day is day 0 and left out; tracking: the exact 24 h after).
+- **Data (task 14):** page-view exposure comes from complete daily rollups (`rollup_page_day.visits`
+  for clicks, `rollup_site_day.pv_visits` for JS errors, `rollup_page_day.uturn_*` for U-turns);
+  the problem's own events (taps, errors, form events, vitals) and any day without a complete
+  rollup come from raw events. A visit that crosses midnight counts once per day on rollup days.
 - **Measure:** the same grouping the detector used.
   - Rate kinds: affected visits ÷ exposed visits (clicks: visits that viewed the page; forms:
     visits that started it; JS errors: all visits; U-turns: visits that opened the page).

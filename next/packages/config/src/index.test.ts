@@ -83,6 +83,8 @@ describe('blob storage env (replays)', () => {
     const env = loadWorkerEnv(db);
     expect(env.BLOB_STORE).toBe('local');
     expect(env.REPLAY_RETENTION_DAYS).toBe(30);
+    expect(env.DATA_RETENTION_DAYS).toBe(90);
+    expect(() => loadWorkerEnv({ ...db, DATA_RETENTION_DAYS: '6' })).toThrow(EnvError);
   });
   it('requires an explicit REPLAY_DIR in production', () => {
     expect(() => loadCollectorEnv({ ...db, NODE_ENV: 'production' })).toThrow(/REPLAY_DIR/);

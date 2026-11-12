@@ -11,7 +11,6 @@ import {
 } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from './components/AppShell';
-import { authClient } from './lib/auth-client';
 import { meQuery } from './lib/queries';
 import { safeRedirect } from './lib/redirect';
 import type { ReplaySearch } from './lib/replays';
@@ -170,7 +169,9 @@ const appRoute = createRoute({
     if (!me) throw redirect({ to: '/sign-in', search: { redirect: location.href } });
     if (me.orgs.length === 0) throw redirect({ to: '/onboarding' });
     if (!me.activeOrgId) {
-      // Fresh session (e.g. after sign-in): activate the first organization.
+      // Fresh session (e.g. after sign-in): activate the first organization. The auth client
+      // is loaded here, not with the shell: returning users already have an active org.
+      const { authClient } = await import('./lib/auth-client');
       await authClient.organization.setActive({ organizationId: me.orgs[0]!.id });
       // Bypass staleTime: `me` was usually fetched moments ago (right after sign-in), and a
       // cached copy without an active org would crash the shell.
