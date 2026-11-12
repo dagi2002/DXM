@@ -35,6 +35,7 @@ describe('row-level security invariants', () => {
         'ingest_dedupe',
         'issue_events',
         'issues',
+        'org_branding',
         'org_plans',
         'replay_chunks',
         'report_shares',
@@ -77,6 +78,16 @@ describe('row-level security invariants', () => {
     }
   });
 
+  it('lets the app role call the task 13 helpers, and nobody else', async () => {
+    const { rows } = await adminQuery<{ brand: boolean; purge: boolean; pub: boolean }>(
+      `select has_function_privilege($1, 'pulse_shared_report_brand(text)', 'EXECUTE') as brand,
+              has_function_privilege($1, 'pulse_purge_orphan_replay_recaps()', 'EXECUTE') as purge,
+              has_function_privilege('public', 'pulse_shared_report_brand(text)', 'EXECUTE') as pub`,
+      [APP_ROLE],
+    );
+    expect(rows[0]).toEqual({ brand: true, purge: true, pub: false });
+  });
+
   it('keeps the audit log append-only and internal helpers private for the app role', async () => {
     const { rows } = await adminQuery<{ upd: boolean; del: boolean; ins: boolean; protect: boolean }>(
       `select has_table_privilege($1, 'audit_log', 'UPDATE') as upd,
@@ -106,6 +117,7 @@ describe('row-level security invariants', () => {
         'telegram_links',
         'telegram_link_codes',
         'ai_artifacts',
+        'org_branding',
       ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);

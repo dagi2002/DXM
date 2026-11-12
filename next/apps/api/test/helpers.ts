@@ -64,7 +64,7 @@ export interface TestContext {
 
 export function createTestContext(
   overrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof createApp>[0], 'telegram'> = {},
+  extra: Pick<Parameters<typeof createApp>[0], 'telegram' | 'ai' | 'blobs'> = {},
 ): TestContext {
   const env = loadServerEnv({
     NODE_ENV: 'test',
@@ -136,6 +136,18 @@ export class Client {
         origin: this.origin,
         cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
       },
+    });
+
+  /** A raw (non-JSON) body, e.g. an image upload. */
+  send = (path: string, method: string, body: Uint8Array, contentType: string) =>
+    this.app.request(path, {
+      method,
+      headers: {
+        origin: this.origin,
+        'content-type': contentType,
+        cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
+      },
+      body: body as Uint8Array<ArrayBuffer>,
     });
 
   get = (path: string) => this.request(path);

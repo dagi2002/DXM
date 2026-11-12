@@ -341,9 +341,10 @@ function CreateReportModal({
   const chosenSite = siteId ?? sites[0]?.id;
   const create = useMutation({
     mutationFn: (body: { siteId: string; period: string }) => api<ReportDetail>('/reports', { body }),
-    onSuccess: async ({ report }) => {
+    onSuccess: async (detail) => {
+      const { report } = detail;
       await qc.invalidateQueries({ queryKey: reportsQuery(orgId).queryKey });
-      qc.setQueryData(reportQuery(orgId, report.id).queryKey, { report, shares: [] });
+      qc.setQueryData(reportQuery(orgId, report.id).queryKey, detail);
       onOpenChange(false);
       await navigate({ to: '/reports/$reportId', params: { reportId: report.id } });
     },

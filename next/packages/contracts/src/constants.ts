@@ -13,6 +13,8 @@ export const ERROR_CODES = [
   'plan_limit_reached',
   'feature_not_in_plan',
   'no_active_org',
+  'payload_too_large',
+  'unsupported_media_type',
   'internal',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

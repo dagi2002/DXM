@@ -362,10 +362,10 @@ describe('GET /api/v1/public/reports/:token', () => {
     expect(res.headers.get('x-robots-tag')).toContain('noindex');
     const body = PublicReport.parse(res.body);
     expect(body).toEqual({
-      report: { period: '2026-09', expiresAt: link.expiresAt, snapshot: report.snapshot },
+      report: { period: '2026-09', expiresAt: link.expiresAt, snapshot: report.snapshot, brand: null },
     });
-    // Nothing beyond the snapshot: no ids for the org, site, report or share.
-    expect(Object.keys(res.body.report).sort()).toEqual(['expiresAt', 'period', 'snapshot']);
+    // Nothing beyond the snapshot (and branding): no ids for the org, site, report or share.
+    expect(Object.keys(res.body.report).sort()).toEqual(['brand', 'expiresAt', 'period', 'snapshot']);
     const raw = JSON.stringify(res.body);
     for (const secret of [orgId, siteId, report.id, link.id]) expect(raw).not.toContain(secret);
   });

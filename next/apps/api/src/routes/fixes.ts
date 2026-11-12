@@ -79,9 +79,8 @@ const replaysOf = (tx: Tx, rows: IssueRow[]) =>
     rows.map((r) => ({
       siteId: r.siteId,
       visitIds:
-        z
-          .array(z.string())
-          .safeParse((r.evidence as { sampleVisitIds?: unknown } | null)?.sampleVisitIds).data ?? [],
+        z.array(z.string()).safeParse((r.evidence as { sampleVisitIds?: unknown } | null)?.sampleVisitIds)
+          .data ?? [],
     })),
   );
 
@@ -113,7 +112,7 @@ async function loadSuggestions(tx: Tx, ids: string[], enabled: boolean) {
       model: r.model,
       createdAt: r.createdAt.toISOString(),
     });
-    if (parsed.success) out.set(r.issueId, parsed.data);
+    if (parsed.success && r.issueId) out.set(r.issueId, parsed.data);
   }
   return out;
 }
