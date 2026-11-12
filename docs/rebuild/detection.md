@@ -62,14 +62,12 @@ DEFINER function, ids only) and queues one `issue.verify` per issue.
   - `TELEGRAM_BOT_USERNAME` (without `@`)
   - `TELEGRAM_WEBHOOK_SECRET` (`openssl rand -hex 24`; required in production)
 
-  Register the webhook once:
-
-  ```bash
-  curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
-    -d url=https://app.dxmpulse.et/api/v1/telegram/webhook \
-    -d secret_token=$TELEGRAM_WEBHOOK_SECRET \
-    -d 'allowed_updates=["message"]'
-  ```
+  The API registers the webhook itself on start (`API_URL` + `/api/v1/telegram/webhook`, update
+  type `message`, the secret as `secret_token`). It is idempotent: when Telegram already points at
+  that URL and isn't reporting 401s, nothing changes; a rotated secret shows up as 401s and is
+  re-registered on the next start. It is skipped when the token or the secret is missing or
+  `API_URL` isn't https, and it never logs the token or the secret. To re-register by hand (for
+  example right after rotating the secret): `pnpm --filter @pulse/api telegram:webhook --force`.
 
   Without a token, Settings and Today say alerts aren't set up; nothing else changes.
 - **Linking (owners/admins):** Settings → Notifications → "Connect a Telegram chat" creates a
@@ -80,8 +78,9 @@ DEFINER function, ids only) and queues one `issue.verify` per issue.
 - **What's sent:** after each detection run, one message per site listing the fixes that were
   created, escalated to critical, or reopened (also when verification reopens one). Fixes that
   were fixed or dismissed before the message goes out are dropped. Plain text, no markup.
-- **Quiet hours:** whole local hours (Africa/Addis_Ababa), e.g. 22 → 7. An alert that lands inside
-  them is re-queued to send when they end.
+- **Quiet hours:** one org-wide rule shared with web push (`notification_settings`, see
+  [notifications.md](notifications.md)): whole local hours (Africa/Addis_Ababa), e.g. 22 → 7. An
+  alert that lands inside them is re-queued to send when they end.
 - **Language:** each chat picks English or Amharic (defaults to the language of the person who
   linked it).
 - A chat that blocked or removed the bot (403, "chat not found") is unlinked instead of retried.
