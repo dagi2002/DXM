@@ -35,7 +35,10 @@ describe('row-level security invariants', () => {
         'ingest_dedupe',
         'issue_events',
         'issues',
+        'notification_prefs',
+        'notification_settings',
         'org_plans',
+        'push_subscriptions',
         'replay_chunks',
         'report_shares',
         'reports',
@@ -77,6 +80,17 @@ describe('row-level security invariants', () => {
     }
   });
 
+  it('lets the app role call the task 15 helpers, not the public', async () => {
+    const { rows } = await adminQuery<{ unsub: boolean; orgs: boolean; pub1: boolean; pub2: boolean }>(
+      `select has_function_privilege($1, 'pulse_digest_unsubscribe(text)', 'EXECUTE') as unsub,
+              has_function_privilege($1, 'pulse_digest_orgs()', 'EXECUTE') as orgs,
+              has_function_privilege('public', 'pulse_digest_unsubscribe(text)', 'EXECUTE') as pub1,
+              has_function_privilege('public', 'pulse_digest_orgs()', 'EXECUTE') as pub2`,
+      [APP_ROLE],
+    );
+    expect(rows[0]).toEqual({ unsub: true, orgs: true, pub1: false, pub2: false });
+  });
+
   it('keeps the audit log append-only and internal helpers private for the app role', async () => {
     const { rows } = await adminQuery<{ upd: boolean; del: boolean; ins: boolean; protect: boolean }>(
       `select has_table_privilege($1, 'audit_log', 'UPDATE') as upd,
@@ -106,6 +120,9 @@ describe('row-level security invariants', () => {
         'telegram_links',
         'telegram_link_codes',
         'ai_artifacts',
+        'notification_settings',
+        'notification_prefs',
+        'push_subscriptions',
       ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);
