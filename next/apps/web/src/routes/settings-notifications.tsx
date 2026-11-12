@@ -223,7 +223,9 @@ function DigestPanel({ settings }: { settings: NotificationSettings }) {
     <Panel id="settings-digest" title={t('settings.digest.title')} note={t('settings.digest.subtitle')}>
       {actions.digest.isError ? <Banner tone="bad" title={t('settings.notify.error')} /> : null}
       <Checkbox
-        isSelected={settings.weeklyDigest}
+        isSelected={
+          actions.digest.isPending ? actions.digest.variables.weeklyDigest : settings.weeklyDigest
+        }
         onChange={(weeklyDigest) => actions.digest.mutate({ weeklyDigest })}
       >
         {t('settings.digest.toggle')}
@@ -245,7 +247,6 @@ export function NotificationsSection() {
           <PushPanel settings={settings} />
           <DigestPanel settings={settings} />
           <QuietHoursPanel
-            key={`${settings.quietHours.quietStart}-${settings.quietHours.quietEnd}`}
             settings={settings}
             canEdit={canManage(role)}
           />
