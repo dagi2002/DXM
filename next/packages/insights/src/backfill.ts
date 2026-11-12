@@ -20,7 +20,8 @@ export const ROLLUP_SETTLE_HOURS = 3;
 export const BACKFILL_BATCH = 500;
 
 /** When a rollup of `day` counts as final. */
-export const settledAt = (day: string) => new Date(dayStart(day).getTime() + DAY_MS + ROLLUP_SETTLE_HOURS * 3600_000);
+export const settledAt = (day: string) =>
+  new Date(dayStart(day).getTime() + DAY_MS + ROLLUP_SETTLE_HOURS * 3600_000);
 
 /** The last UTC day whose rollup can be final at `now`. */
 export function lastSettledDay(now: Date): string {
@@ -43,7 +44,9 @@ export async function completeRollupDays(tx: Tx, siteId: string, days: readonly 
      )})`);
   return new Set(
     res.rows
-      .filter((r) => isCompleteRollup(r.day, { version: Number(r.version), computedAt: new Date(r.computed_at) }))
+      .filter((r) =>
+        isCompleteRollup(r.day, { version: Number(r.version), computedAt: new Date(r.computed_at) }),
+      )
       .map((r) => r.day),
   );
 }

@@ -24,7 +24,13 @@ const daysSql = (days: readonly string[]) =>
 async function rawVisitDays(tx: Tx, siteId: string, ranges: readonly TimeRange[]) {
   const out: { day: string; visits: number; pageviews: number; closed: number; bounced: number }[] = [];
   for (const r of ranges) {
-    const res = await tx.execute<{ day: string; visits: number; pageviews: number; closed: number; bounced: number }>(sql`
+    const res = await tx.execute<{
+      day: string;
+      visits: number;
+      pageviews: number;
+      closed: number;
+      bounced: number;
+    }>(sql`
       select (started_at at time zone 'UTC')::date::text as day, count(*)::int as visits,
              coalesce(sum(pageviews), 0)::int as pageviews,
              count(*) filter (where bounced is not null)::int as closed,
@@ -63,7 +69,13 @@ async function rawPhoneLcp(tx: Tx, siteId: string, ranges: readonly TimeRange[])
 
 async function rollupVisitDays(tx: Tx, siteId: string, days: readonly string[]) {
   if (!days.length) return [];
-  const res = await tx.execute<{ day: string; visits: number; pageviews: number; closed: number; bounced: number }>(sql`
+  const res = await tx.execute<{
+    day: string;
+    visits: number;
+    pageviews: number;
+    closed: number;
+    bounced: number;
+  }>(sql`
     select day::text as day, visits, pageviews, closed_visits as closed, bounced_visits as bounced
       from rollup_site_day where site_id = ${siteId} and day in (${daysSql(days)})`);
   return res.rows.map((r) => ({
@@ -97,7 +109,10 @@ export const rollupReportSource: ReportMetricsSource = {
       ...(await rollupVisitDays(tx, siteId, rollupDays)),
       ...(await rawVisitDays(tx, siteId, rawRanges)),
     ];
-    const lcp = [...(await rollupPhoneLcp(tx, siteId, rollupDays)), ...(await rawPhoneLcp(tx, siteId, rawRanges))];
+    const lcp = [
+      ...(await rollupPhoneLcp(tx, siteId, rollupDays)),
+      ...(await rawPhoneLcp(tx, siteId, rawRanges)),
+    ];
     const p = percentile(lcp, 0.75);
     return {
       visits: days.reduce((a, d) => a + d.visits, 0),

@@ -12,7 +12,12 @@ import {
   type RetentionOrg,
 } from './retention';
 
-const ROLLUP_TABLES = ['rollup_site_day', 'rollup_page_day', 'rollup_vitals_day', 'rollup_funnel_day'] as const;
+const ROLLUP_TABLES = [
+  'rollup_site_day',
+  'rollup_page_day',
+  'rollup_vitals_day',
+  'rollup_funnel_day',
+] as const;
 
 export interface OrgPurgeResult {
   orgId: string;
@@ -60,7 +65,9 @@ export async function purgeOrgData(db: Db, org: RetentionOrg, days: number, now:
 
 /** Drops empty daily event partitions older than `keepDays` (never one that holds any rows). */
 export async function dropEmptyEventPartitions(db: Db, keepDays: number) {
-  const res = await db.execute<{ n: number }>(sql`select pulse_drop_empty_event_partitions(${keepDays}) as n`);
+  const res = await db.execute<{ n: number }>(
+    sql`select pulse_drop_empty_event_partitions(${keepDays}) as n`,
+  );
   return Number(res.rows[0]?.n ?? 0);
 }
 
