@@ -137,7 +137,7 @@ describe('judgeVerification', () => {
 describe('HttpChapaClient (against a stub fetch, never the network)', () => {
   const calls: { url: string; init: RequestInit }[] = [];
   const stub = (status: number, body: unknown) =>
-    (async (url: RequestInfo | URL, init?: RequestInit) => {
+    (async (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init: init ?? {} });
       return new Response(JSON.stringify(body), { status });
     }) as typeof fetch;

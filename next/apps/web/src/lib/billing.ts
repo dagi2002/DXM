@@ -1,4 +1,4 @@
-import type { BillingOverview, BillingPayLink, BillingStatus, BillingSubscribe } from '@pulse/contracts';
+import type { BillingOverview, BillingPayLink, BillingSubscribe } from '@pulse/contracts';
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 
