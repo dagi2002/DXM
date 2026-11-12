@@ -1,4 +1,5 @@
 import { FUNNEL_TEMPLATE_DEFS, FunnelConfig, SiteInsights, type FunnelStep } from '@pulse/contracts';
+import { U_TURN_MAX_SECONDS } from '@pulse/detectors';
 import { describe, expect, it } from 'vitest';
 import {
   computeSiteInsights,
@@ -26,6 +27,7 @@ import {
   type FunnelEvent,
   type InsightInputs,
   type VitalSamples,
+  uTurnsByPage,
 } from './index';
 
 describe('globMatch', () => {
@@ -223,12 +225,23 @@ describe('day rollups', () => {
       rageClicks: 1,
       deadClicks: 1,
       errors: 2,
+      pvVisits: 3,
     });
   });
 
   it('rolls up pages by template, with bounce over ended entries', () => {
     expect(rollupPagesDay(visits, events)).toEqual([
-      { path: '/', visits: 2, pageviews: 2, entries: 1, bounces: 1, frictionVisits: 0, errorVisits: 1 },
+      {
+        path: '/',
+        visits: 2,
+        pageviews: 2,
+        entries: 1,
+        bounces: 1,
+        frictionVisits: 0,
+        errorVisits: 1,
+        uturnReached: 2,
+        uturnTurned: 0,
+      },
       {
         path: '/products/*',
         visits: 1,
@@ -237,8 +250,44 @@ describe('day rollups', () => {
         bounces: 0,
         frictionVisits: 1,
         errorVisits: 0,
+        uturnReached: 1,
+        uturnTurned: 0,
       },
     ]);
+  });
+
+  it('counts U-turns per page the way the detector does, at its time limit', () => {
+    const t0 = Date.parse('2026-09-15T08:00:00Z');
+    const pvAt = (visitId: string, path: string, s: number) => ({
+      visitId,
+      type: 'pv',
+      path,
+      at: new Date(t0),
+      clientAt: new Date(t0 + s * 1000),
+    });
+    const turns = uTurnsByPage([
+      // home → pricing → home within the limit: a U-turn on /pricing
+      pvAt('a', '/', 0),
+      pvAt('a', '/pricing', 10),
+      pvAt('a', '/', 10 + U_TURN_MAX_SECONDS),
+      // just over the limit: reached, not turned
+      pvAt('b', '/', 0),
+      pvAt('b', '/pricing', 10),
+      pvAt('b', '/', 10 + U_TURN_MAX_SECONDS + 1),
+      // went on to another page: reached, not turned
+      pvAt('c', '/', 0),
+      pvAt('c', '/pricing', 5),
+      pvAt('c', '/contact', 8),
+      // a reload of /pricing collapses into one view
+      pvAt('d', '/', 0),
+      pvAt('d', '/pricing', 3),
+      pvAt('d', '/pricing', 4),
+      pvAt('d', '/', 6),
+      { visitId: 'e', type: 'rc', path: '/pricing' },
+    ]);
+    expect(turns.get('/pricing')).toEqual({ reached: 4, turned: 2 });
+    expect(turns.get('/')).toEqual({ reached: 4, turned: 0 });
+    expect(turns.get('/contact')).toEqual({ reached: 1, turned: 0 });
   });
 
   it('groups vitals by metric, device, network and page; drops unknown metrics', () => {
@@ -313,6 +362,8 @@ describe('pages that need you', () => {
     bounces: 10,
     frictionVisits: 0,
     errorVisits: 0,
+    uturnReached: 0,
+    uturnTurned: 0,
     ...over,
   });
 
@@ -359,6 +410,7 @@ describe('computeSiteInsights', () => {
     rageClicks: 0,
     deadClicks: 0,
     errors: 0,
+    pvVisits: visits,
     ...over,
   });
   const config = FunnelConfig.parse({

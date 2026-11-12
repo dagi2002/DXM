@@ -1,11 +1,14 @@
-import type { FixKind, ReportSnapshot } from '@pulse/contracts';
+import { FixEvidence, type FixKind, type ReportSnapshot } from '@pulse/contracts';
 import { and, eq, inArray, isNull, issues, lt, organization, sites, sql, type Tx } from '@pulse/db';
 import { normalizePath } from '@pulse/detectors';
 import { periodRange, previousPeriod } from './period';
 import { assembleSnapshot, fixWindows, type FixedIssueInput, type OpenIssueInput } from './snapshot';
 import { rawEventsSource, ts, type ReportMetricsSource } from './source';
 
-/** Event type each click-friction fix kind is measured by. Other kinds get no before/after. */
+/**
+ * Event type each click-friction fix kind is measured by (friction events per day). Other kinds
+ * are measured by the visits they affected (`ReportMetricsSource.fixAffected`), except tracking.
+ */
 const FRICTION_EVENT: Partial<Record<FixKind, string>> = { rage_click: 'rc', dead_click: 'dc' };
 
 export class ReportSiteGoneError extends Error {
@@ -99,10 +102,26 @@ export async function buildReportSnapshot(
     const eventType = FRICTION_EVENT[r.kind];
     let beforeCount: number | null = null;
     let afterCount: number | null = null;
+    const w = fixWindows(fixedAt, now);
     if (eventType && path && selector) {
-      const w = fixWindows(fixedAt, now);
       beforeCount = await frictionCount(tx, siteId, eventType, path, selector, w.before.from, w.before.to);
       afterCount = await frictionCount(tx, siteId, eventType, path, selector, w.after.from, w.after.to);
+    } else if (!eventType) {
+      // Task 10's kinds: visits the problem affected, from the source (rollups or raw events).
+      const evidence = FixEvidence.safeParse(r.evidence);
+      if (evidence.success) {
+        beforeCount = await source.fixAffected(tx, siteId, r.kind, evidence.data, {
+          start: w.before.from,
+          end: w.before.to,
+        });
+        afterCount =
+          beforeCount === null
+            ? null
+            : await source.fixAffected(tx, siteId, r.kind, evidence.data, {
+                start: w.after.from,
+                end: w.after.to,
+              });
+      }
     }
     fixed.push({
       number: r.number,
