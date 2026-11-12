@@ -68,6 +68,18 @@ export const QUEUES = {
     name: 'alert.telegram',
     options: { retryLimit: 4, retryBackoff: true, retryDelay: 15 },
   },
+  /** Web push for the same news, to every subscribed browser of the org's team (task 15). */
+  alertPush: {
+    name: 'alert.push',
+    options: { retryLimit: 2, retryBackoff: true, retryDelay: 15 },
+  },
+  /** Mondays: queue one weekly digest per organization with sites. */
+  digestSweep: { name: 'digest.sweep', options: { retryLimit: 2 } },
+  /** One org's Monday digest email (singletonKey = org:week; members already sent are skipped). */
+  digestOrg: {
+    name: 'digest.org',
+    options: { retryLimit: 3, retryBackoff: true, retryDelay: 60 },
+  },
   /** AI suggested fix for one issue; skipped unless AI_ENABLED with a key and budget left. */
   aiRecommend: {
     name: 'ai.recommend',
@@ -97,6 +109,9 @@ export interface JobPayloads {
   'issue.verify-sweep': Record<string, never>;
   'issue.verify': { issueId: string; orgId: string };
   'alert.telegram': TelegramAlertJob;
+  'alert.push': AlertJob;
+  'digest.sweep': Record<string, never>;
+  'digest.org': DigestJob;
   'ai.recommend': { issueId: string; orgId: string };
 }
 
@@ -107,6 +122,15 @@ export interface TelegramAlertJob {
   orgId: string;
   siteId: string;
   alerts: { issueId: string; reason: AlertReason }[];
+}
+
+/** The news from one detection run on one site; Telegram and web push send the same job. */
+export type AlertJob = TelegramAlertJob;
+
+/** One org's weekly digest. `week` is the Monday (UTC, YYYY-MM-DD) the reported week started. */
+export interface DigestJob {
+  orgId: string;
+  week: string;
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */

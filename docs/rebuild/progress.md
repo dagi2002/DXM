@@ -202,8 +202,8 @@ Task 10 of the parallel plan. Details: [detection.md](detection.md).
 - Revenue-at-risk impact (needs order values).
 - Replay links from `sampleVisitIds` (task 7).
 - AI suggestions in Amharic, and the `packages/ai` task wrapper from ADR-009 (retry, evals).
-- Monday digest and push/email alerts.
-- Telegram webhook registration is a manual `setWebhook` call (see detection.md).
+- ~~Monday digest and push/email alerts.~~ Done in task 15 (2026-11-12).
+- ~~Telegram webhook registration is a manual `setWebhook` call.~~ Automatic since task 15.
 - Verification loads raw `pv` events over two weeks for click/JS/U-turn rates; fine at pilot volume, but should move to task 8's rollups.
 
 ## 2026-10-14 — Phase 2, slice 5 (site insights) ✅
@@ -339,6 +339,25 @@ Branch `task/14-rollups`, migration `0016_data_plumbing`. Closes the rollup foll
 - The backfill candidate query scans `events` for distinct site-days; fine at pilot volume, but at scale it should look at partitions newer than the oldest settled rollup only.
 - Merge note: `0016` is journal entry idx 15 with `when` 1791979544332. Task 11's `0015` must get a `when` greater than that, or drizzle will skip it on databases that already ran `0016`.
 - Amharic review of the new strings ("Slow 2G" and the four report measure labels).
+
+## 2026-11-12 — Notifications: Monday email, web push + installable PWA, Telegram webhook setup ✅ (task 15)
+
+Task 15 of parallel plan 3 (`task/15-notify`, migration `0018`). Details: [notifications.md](notifications.md).
+
+**Shipped:**
+- **One quiet-hours rule** for Telegram and web push: `notification_settings` per org (migration `0018` moved the old per-chat hours there and dropped them from `telegram_links`), `quietUntil()` in `@pulse/mail/quiet-hours`, set by owners/admins in Settings (`PUT /api/v1/notifications/quiet-hours`, audit-logged). Boundary tests at start, end (exclusive), midnight wrap, one-hour windows and time zones.
+- **Web push:** VAPID + aes128gcm on Node crypto (`@pulse/mail/push`, no new dependency), keys from env (`VAPID_*`; `pnpm --filter @pulse/api vapid:keys`). Endpoints limited to real browser push services. `push_subscriptions` per user and org under forced RLS, FK to the membership. API: `GET /api/v1/notifications`, `POST`/`DELETE /notifications/push`, `POST /notifications/push/test`. Worker `alert.push` sends created/escalated/reopened fixes in each person's language after quiet hours; gone subscriptions are deleted. Settings asks for browser permission only from the "Turn on for this device" button; with no keys it says "not configured".
+- **Monday email:** `digest.sweep` (Mondays 04:13 UTC) → `digest.org` per org: fixes opened/fixed/verified last week, the top open fix, health per site with its change. No activity → no email. en + am. Per-member switch (`notification_prefs.weekly_digest`, `PUT /notifications/digest`) and a one-click unsubscribe (`/unsubscribe.html#token` page + `List-Unsubscribe-Post` to `POST /api/v1/public/digest/unsubscribe/:token`; GET does nothing). Retried jobs don't send twice (`last_digest_week`).
+- **PWA:** manifest with PNG + maskable icons; `sw.js` caches the app shell only (never `/api`, the collector, other origins or non-GET) and shows push notifications (opens only our own pages). Registered from `boot.js` on built pages, so it isn't first-load JS. The unsubscribe page is its own Vite entry. Vite's modulepreload polyfill is off (all es2022 browsers support modulepreload), which kept the two entries from sharing a chunk. **First-load JS: 215.8 KB** (was 216.0).
+- **Telegram webhook:** registered on API start (idempotent via `getWebhookInfo`; re-registers on a changed URL or 401s from a rotated secret; skipped without token, secret or an https `API_URL`; token and secret redacted from every result) and `pnpm --filter @pulse/api telegram:webhook [--force]`. The manual `setWebhook` step is gone from detection.md.
+- Caddy serves `sw.js`, the manifest and `index.html` with `no-cache`.
+
+**Tests:** mail 31 (push encryption round-trip through an independent decryption, VAPID signature, endpoint allowlist, quiet-hours boundaries); config 3; API 17 new (push configured/not, per-member and per-org isolation incl. RLS at the database, gone subscriptions, client viewers, quiet hours roles/validation/audit and the Telegram mirror, digest switch, one-click unsubscribe incl. GET no-op and log redaction) + 5 webhook registration tests + RLS invariants for the new tables and helpers; worker 12 (no-activity org gets no email, en/am content, top fix, health lines, retries, unsubscribe, sweep, push per member/language/quiet hours/gone/tenant scope); web 5 (service-worker routing, notification click stays on our origin, unsubscribe page); e2e `notifications.spec.ts` (manifest and icons, no API response in the SW cache, no permission prompt, digest and quiet hours save, unsubscribe flow, axe).
+
+**Not done yet:**
+- Push hasn't run against a real browser push service (no VAPID keys in e2e; the HTTP path is tested against a fake push service).
+- Email is plain text (as before); an HTML template could come later.
+- Amharic strings for the new screens and the digest need a native review.
 
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

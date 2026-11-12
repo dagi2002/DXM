@@ -404,7 +404,7 @@ export const rollupFunnelDay = pgTable(
 export type SiteFunnelRow = typeof siteFunnels.$inferSelect;
 /**
  * Telegram alerts: one linked chat per organization. `chat_id` is Telegram's (64-bit) chat id,
- * kept as text. Quiet hours are whole local hours in `time_zone`; null/null = always send.
+ * kept as text. Quiet hours live in `notification_settings` (shared with web push).
  */
 export const telegramLinks = pgTable(
   'telegram_links',
@@ -416,8 +416,6 @@ export const telegramLinks = pgTable(
     chatId: text('chat_id').notNull(),
     chatTitle: text('chat_title'),
     linkedByUserId: text('linked_by_user_id').references(() => user.id, { onDelete: 'set null' }),
-    quietStart: smallint('quiet_start'),
-    quietEnd: smallint('quiet_end'),
     timeZone: text('time_zone').notNull().default('Africa/Addis_Ababa'),
     locale: text('locale', { enum: ['en', 'am'] })
       .notNull()
@@ -426,6 +424,76 @@ export const telegramLinks = pgTable(
   },
   (t) => [uniqueIndex('telegram_links_org_uq').on(t.orgId)],
 );
+
+/**
+ * Org-wide notification settings (task 15). Quiet hours are whole local hours [start, end) in
+ * `time_zone`, null/null = always send, and apply to every instant channel (Telegram and web push)
+ * so there is one rule. No row = defaults (no quiet hours, Addis Ababa).
+ */
+export const notificationSettings = pgTable('notification_settings', {
+  orgId: text('org_id')
+    .primaryKey()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  quietStart: smallint('quiet_start'),
+  quietEnd: smallint('quiet_end'),
+  timeZone: text('time_zone').notNull().default('Africa/Addis_Ababa'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Per member (user × org) notification preferences. `unsubscribe_token` is the random value in
+ * the digest's one-click unsubscribe link; it can only switch the digest off.
+ */
+export const notificationPrefs = pgTable(
+  'notification_prefs',
+  {
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    weeklyDigest: boolean('weekly_digest').notNull().default(true),
+    unsubscribeToken: text('unsubscribe_token').notNull(),
+    /** Monday (UTC) of the last week whose digest went to this member: a retried job skips them. */
+    lastDigestWeek: date('last_digest_week', { mode: 'string' }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.userId] }),
+    uniqueIndex('notification_prefs_unsubscribe_uq').on(t.unsubscribeToken),
+  ],
+);
+
+/**
+ * Web push subscriptions, per user and org: one row per browser (endpoint) per org. The endpoint
+ * and keys are capabilities to message that browser, so they never leave the server.
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('push_subscriptions_org_endpoint_uq').on(t.orgId, t.endpoint),
+    index('push_subscriptions_org_user_idx').on(t.orgId, t.userId),
+  ],
+);
+
+export type NotificationSettingsRow = typeof notificationSettings.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 
 /** One-time codes that link a chat (`/start <code>`). Only the SHA-256 of the code is stored. */
 export const telegramLinkCodes = pgTable(

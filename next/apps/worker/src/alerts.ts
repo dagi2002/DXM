@@ -3,7 +3,9 @@ import { isLocale, type Locale } from '@pulse/i18n';
 import { t } from '@pulse/i18n/messages';
 import { and, eq, inArray, issues, sites, telegramLinks, withOrg, type Db } from '@pulse/db';
 import type { AlertReason, TelegramAlertJob } from '@pulse/jobs';
-import { TelegramError, quietUntil, type TelegramClient } from '@pulse/mail/telegram';
+import { quietUntil } from '@pulse/mail/quiet-hours';
+import { TelegramError, type TelegramClient } from '@pulse/mail/telegram';
+import { loadQuietHours } from './quiet';
 
 /** Most fixes one message lists; the rest are one tap away in Today. */
 export const MAX_ALERTS_PER_MESSAGE = 5;
@@ -20,7 +22,7 @@ export interface AlertItem {
 const short = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /** What the title names besides the page: the element, form, metric — per detector. */
-function target(e: FixEvidence): string {
+export function target(e: FixEvidence): string {
   switch (e.type) {
     case 'click':
       return short(e.selector, 48);
@@ -99,12 +101,12 @@ export async function sendTelegramAlert(
           .innerJoin(sites, eq(sites.id, issues.siteId))
           .where(and(inArray(issues.id, ids), eq(issues.siteId, job.siteId)))
       : [];
-    return { link, rows };
+    return { link, rows, quiet: await loadQuietHours(tx) };
   });
   if (!loaded) return { status: 'no_link' };
-  const { link, rows } = loaded;
+  const { link, rows, quiet } = loaded;
 
-  const until = quietUntil(now, link);
+  const until = quietUntil(now, quiet);
   if (until) return { status: 'deferred', until };
 
   const reasons = new Map(job.alerts.map((a) => [a.issueId, a.reason]));

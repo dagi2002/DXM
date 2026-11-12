@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { EnvError, aiConfigured, entropyBits, loadCollectorEnv, loadServerEnv, loadWorkerEnv } from './index';
+import {
+  EnvError,
+  aiConfigured,
+  pushConfigured,
+  entropyBits,
+  loadCollectorEnv,
+  loadServerEnv,
+  loadWorkerEnv,
+} from './index';
 
 const STRONG = 'k3Jx9vQ2pL7mN4bR8tW1yZ6cF5hG0dS2aE9uI3oP7lK4jH6g';
 const base = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse', BETTER_AUTH_SECRET: STRONG };
@@ -129,5 +137,41 @@ describe('Telegram and AI settings', () => {
     };
     expect(() => loadServerEnv(prod)).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
     expect(() => loadServerEnv({ ...prod, TELEGRAM_WEBHOOK_SECRET: 'long-random-secret' })).not.toThrow();
+  });
+});
+
+describe('web push (VAPID) settings', () => {
+  // Well-formed placeholders of the right sizes, not a real key pair.
+  const PUB = 'BHT8hTvx2pp56EbO4fQ1Rw0k0IkUl3vVYF8m6YvVb8VtSU0Dm3jNIQ6P2u9yWnBtT2QkqY8vY1i0fV3V6sQ8pXw';
+  const PRIV = 'q1r8m9QFf2Y0q5rC6w0fN3b5aZ4L0sU7cQ8tX2yV1eA';
+
+  it('is off without keys', () => {
+    const env = loadServerEnv(base);
+    expect(pushConfigured(env)).toBe(false);
+    expect(env.VAPID_SUBJECT).toBe('mailto:hello@dxmpulse.et');
+  });
+
+  it('is on with both keys, for the API and the worker', () => {
+    expect(pushConfigured(loadServerEnv({ ...base, VAPID_PUBLIC_KEY: PUB, VAPID_PRIVATE_KEY: PRIV }))).toBe(
+      true,
+    );
+    const worker = loadWorkerEnv({
+      DATABASE_URL: base.DATABASE_URL,
+      VAPID_PUBLIC_KEY: PUB,
+      VAPID_PRIVATE_KEY: PRIV,
+    });
+    expect(pushConfigured(worker)).toBe(true);
+  });
+
+  it('needs both keys, well-formed, and never echoes them', () => {
+    expect(() => loadServerEnv({ ...base, VAPID_PUBLIC_KEY: PUB })).toThrow(/both VAPID_PUBLIC_KEY/);
+    try {
+      loadServerEnv({ ...base, VAPID_PUBLIC_KEY: PUB, VAPID_PRIVATE_KEY: 'too-short-secret' });
+      expect.unreachable();
+    } catch (err) {
+      expect((err as Error).message).toMatch(/VAPID_PRIVATE_KEY is not a base64url/);
+      expect((err as Error).message).not.toContain('too-short-secret');
+    }
+    expect(() => loadServerEnv({ ...base, VAPID_SUBJECT: 'ops@x.et' })).toThrow(/VAPID_SUBJECT/);
   });
 });

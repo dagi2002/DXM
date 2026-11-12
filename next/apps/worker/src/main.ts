@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { aiConfigured, loadWorkerEnv } from '@pulse/config';
+import { aiConfigured, loadWorkerEnv, pushConfigured } from '@pulse/config';
 import type { IngestJob } from '@pulse/contracts/ingest';
 import type { ReplayChunkJob } from '@pulse/contracts/replays';
 import { createDatabase, sql } from '@pulse/db';
@@ -7,10 +7,13 @@ import { createBoss, sendJob } from '@pulse/jobs';
 import { ConsoleMailer, ResendMailer } from '@pulse/mail';
 import { createBlobStore } from '@pulse/storage';
 import { HttpTelegramClient } from '@pulse/mail/telegram';
-import type { TelegramAlertJob } from '@pulse/jobs';
+import type { AlertJob, DigestJob, TelegramAlertJob } from '@pulse/jobs';
+import { HttpPushClient } from '@pulse/mail/push';
 import pino from 'pino';
 import { AnthropicClient, recommendFix } from './ai';
 import { alertJobFor, sendTelegramAlert } from './alerts';
+import { sendWeeklyDigest, sweepDigest } from './digest';
+import { sendPushAlert } from './push-alerts';
 import { detectSite, sweepDetection } from './detect';
 import { backfillRollups, rollupSite, runRetention } from '@pulse/insights/db';
 import { sweepInsights } from './insights';
@@ -30,6 +33,13 @@ const mailer = env.RESEND_API_KEY
   : new ConsoleMailer(log);
 const blobs = createBlobStore(env);
 const telegram = env.TELEGRAM_BOT_TOKEN ? new HttpTelegramClient(env.TELEGRAM_BOT_TOKEN) : null;
+const push = pushConfigured(env)
+  ? new HttpPushClient({
+      publicKey: env.VAPID_PUBLIC_KEY!,
+      privateKey: env.VAPID_PRIVATE_KEY!,
+      subject: env.VAPID_SUBJECT,
+    })
+  : null;
 const aiEnabled = aiConfigured(env);
 const ai = aiEnabled ? new AnthropicClient(env.ANTHROPIC_API_KEY!, env.AI_MODEL) : null;
 const boss = createBoss(env.DATABASE_URL, { max: 6 });
@@ -91,7 +101,7 @@ await boss.work('detect.sweep', async () => {
   const queued = await sweepDetection(db, boss);
   if (queued) log.debug({ sites: queued }, 'detection queued');
 });
-/** Follow-ups for issues that are news: a Telegram alert, and AI suggestions for new/reopened ones. */
+/** Follow-ups for issues that are news: Telegram and web push alerts, and AI suggestions for new/reopened ones. */
 async function afterDetection(
   site: { siteId: string; orgId: string },
   result: { created: string[]; escalated: string[]; reopened: string[] },
@@ -100,6 +110,7 @@ async function afterDetection(
   if (!alert) return;
   log.info({ siteId: site.siteId, ...result }, 'fixes detected');
   if (telegram) await sendJob(boss, 'alert.telegram', alert);
+  if (push) await sendJob(boss, 'alert.push', alert);
   if (aiEnabled) {
     for (const issueId of [...result.created, ...result.reopened]) {
       await sendJob(boss, 'ai.recommend', { issueId, orgId: site.orgId }, { singletonKey: issueId });
@@ -143,6 +154,29 @@ await boss.work<TelegramAlertJob>('alert.telegram', async (jobs) => {
     if (result.status === 'deferred')
       await sendJob(boss, 'alert.telegram', job.data, { startAfter: result.until });
     log.info({ orgId: job.data.orgId, status: result.status }, 'telegram alert');
+  }
+});
+
+await boss.work<AlertJob>('alert.push', async (jobs) => {
+  for (const job of jobs) {
+    if (!push) continue;
+    const result = await sendPushAlert(db, push, env.APP_URL, job.data);
+    // Same quiet hours as Telegram: send the same job again when they end.
+    if (result.status === 'deferred')
+      await sendJob(boss, 'alert.push', job.data, { startAfter: result.until });
+    log.info({ orgId: job.data.orgId, ...result }, 'push alert');
+  }
+});
+
+// Monday digest (task 15): last week's fixes and site health, by email, per org.
+await boss.work('digest.sweep', async () => {
+  const queued = await sweepDigest(db, boss);
+  log.info({ orgs: queued }, 'weekly digests queued');
+});
+await boss.work<DigestJob>('digest.org', async (jobs) => {
+  for (const job of jobs) {
+    const result = await sendWeeklyDigest(db, mailer, env.APP_URL, job.data);
+    log.info({ orgId: job.data.orgId, week: job.data.week, ...result }, 'weekly digest');
   }
 });
 
@@ -207,6 +241,7 @@ await boss.schedule('detect.tracking', '23 * * * *');
 await boss.schedule('issue.verify-sweep', '41 * * * *');
 await boss.schedule('insights.backfill', '47 3 * * *'); // after yesterday's rollups settle
 await boss.schedule('maintenance.retention', '13 2 * * *');
+await boss.schedule('digest.sweep', '13 4 * * 1'); // Mondays 04:13 UTC = 07:13 in Addis Ababa
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 await sendJob(boss, 'insights.backfill', {}, { singletonKey: 'backfill' }); // once per deploy
 
