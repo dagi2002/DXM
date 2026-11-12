@@ -33,9 +33,12 @@ describe('row-level security invariants', () => {
         'audit_log',
         'events',
         'ingest_dedupe',
+        'invoices',
         'issue_events',
         'issues',
         'org_plans',
+        'org_usage',
+        'payments',
         'replay_chunks',
         'report_shares',
         'reports',
@@ -45,6 +48,7 @@ describe('row-level security invariants', () => {
         'rollup_vitals_day',
         'site_funnels',
         'sites',
+        'subscriptions',
         'telegram_link_codes',
         'telegram_links',
         'visits',
@@ -88,6 +92,45 @@ describe('row-level security invariants', () => {
     expect(rows[0]).toEqual({ upd: false, del: false, ins: true, protect: false });
   });
 
+  it('scopes the billing ledger to its org and never lets the app delete from it', async () => {
+    const { rows } = await adminQuery<Record<string, boolean>>(
+      `select has_table_privilege($1, 'invoices', 'DELETE') as inv_del,
+              has_table_privilege($1, 'payments', 'DELETE') as pay_del,
+              has_table_privilege($1, 'payments', 'INSERT') as pay_ins,
+              has_function_privilege($1, 'pulse_payment_org(text)', 'EXECUTE') as lookup,
+              has_function_privilege('public', 'pulse_payment_org(text)', 'EXECUTE') as lookup_pub,
+              has_function_privilege('public', 'pulse_org_ingest_state(text, timestamptz)', 'EXECUTE') as state_pub`,
+      [APP_ROLE],
+    );
+    expect(rows[0]).toEqual({
+      inv_del: false,
+      pay_del: false,
+      pay_ins: true,
+      lookup: true,
+      lookup_pub: false,
+      state_pub: false,
+    });
+    const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+    await client.connect();
+    try {
+      await client.query(`select set_config('app.org_id', 'org_mine', false)`);
+      for (const insert of [
+        `insert into subscriptions (org_id, plan, status, current_period_start, current_period_end)
+           values ('org_other', 'agency', 'active', now(), now() + interval '1 year')`,
+        `insert into org_plans (org_id, plan) values ('org_other', 'agency')`,
+        `insert into org_usage (org_id, period_start, sessions) values ('org_other', now(), 0)`,
+        `insert into invoices (id, org_id, number, plan, interval, amount_santim, period_start, period_end, due_at)
+           values ('inv_x', 'org_other', 1, 'agency', 'month', 1, now(), now() + interval '1 month', now())`,
+        `insert into payments (id, org_id, invoice_id, tx_ref, amount_santim, currency)
+           values ('pay_x', 'org_other', 'inv_x', 'pulse-aaaaaaaaaaaaaaaaaaaaaaaa', 1, 'ETB')`,
+      ]) {
+        await expect(client.query(insert), insert).rejects.toThrow(/row-level security|violates/);
+      }
+    } finally {
+      await client.end();
+    }
+  });
+
   it('shows the app role no tenant rows when no org is set', async () => {
     const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
     await client.connect();
@@ -106,6 +149,10 @@ describe('row-level security invariants', () => {
         'telegram_links',
         'telegram_link_codes',
         'ai_artifacts',
+        'subscriptions',
+        'invoices',
+        'payments',
+        'org_usage',
       ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);

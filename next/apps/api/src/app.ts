@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { aiConfigured, type ServerEnv } from '@pulse/config';
+import { aiConfigured, billingConfigured, type ServerEnv } from '@pulse/config';
+import { HttpChapaClient, type ChapaClient } from '@pulse/billing';
 import type { PublicConfig } from '@pulse/contracts';
 import type { TelegramClient } from '@pulse/mail/telegram';
 import type { Db } from '@pulse/db';
@@ -14,6 +15,7 @@ import { ApiError, errorBody, type AppEnv } from './http';
 import type { RateLimiterOptions } from './rate-limit';
 import type { Mailer } from '@pulse/mail';
 import { createBlobStore, type BlobStore } from '@pulse/storage';
+import { billingAdminRoutes, billingRoutes, chapaWebhook } from './routes/billing';
 import { fixRoutes } from './routes/fixes';
 import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
@@ -34,6 +36,8 @@ export interface AppDeps {
   blobs?: BlobStore;
   /** Sends Telegram messages (link confirmations, tests). Absent without a bot token. */
   telegram?: TelegramClient;
+  /** Chapa (billing). Defaults to the HTTP client when the env has keys; tests pass the fake. */
+  chapa?: ChapaClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
   peerAddress?: (raw: Request, c: unknown) => string | undefined;
   /** Overrides the public report route's per-IP rate limit (tests). */
@@ -166,6 +170,13 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/insights', insightRoutes(deps));
   app.route('/api/v1/telegram/webhook', telegramWebhook(deps));
   app.route('/api/v1/telegram', telegramRoutes(deps));
+  const billing = {
+    ...deps,
+    chapa: deps.chapa ?? (billingConfigured(env) ? new HttpChapaClient(env.CHAPA_SECRET_KEY!) : undefined),
+  };
+  app.route('/api/v1/billing/chapa/webhook', chapaWebhook(billing));
+  app.route('/api/v1/billing', billingRoutes(billing));
+  app.route('/api/v1/admin/billing', billingAdminRoutes(billing));
 
   app.notFound((c) => c.json(errorBody(c, 'not_found', 'Route not found'), 404));
 

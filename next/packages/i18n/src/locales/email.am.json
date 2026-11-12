@@ -31,5 +31,13 @@
   "telegram.open": "ክፈት፦ {url}",
   "telegram.linked": "ይህ ቻት አሁን ለ{org} የPulse ማሳወቂያዎችን ይቀበላል። የጸጥታ ሰዓቶችን ለመቀየር ወይም ለማላቀቅ ወደ ቅንብሮች ይሂዱ።",
   "telegram.test": "ከPulse የተላከ ሙከራ፦ የ{org} ማሳወቂያዎች እዚህ ይደርሳሉ።",
-  "telegram.unknownCode": "ይህ ሊንክ ጊዜው አልፎበታል። በPulse → ቅንብሮች → ማሳወቂያዎች አዲስ ይፍጠሩ።"
+  "telegram.unknownCode": "ይህ ሊንክ ጊዜው አልፎበታል። በPulse → ቅንብሮች → ማሳወቂያዎች አዲስ ይፍጠሩ።",
+  "email.billing.invoice.subject": "የPulse ደረሰኝ #{number} ለ{org}፦ {amount}",
+  "email.billing.invoice.body": "የ{org} {plan} ዕቅድ በ{due} ይታደሳል።\n\nደረሰኝ #{number}፦ {amount}፣ እስከ {until} ያለውን ጊዜ ይሸፍናል።\n\nበቴሌብር፣ በካርድ ወይም በባንክ መተግበሪያዎ (በChapa በኩል) እዚህ ይክፈሉ፦ {url}\n\nእስከ {due} ካልተከፈለ ዕቅዱ ለተጨማሪ 7 ቀናት ይሠራል። ከዚያ በኋላ ደረሰኙ እስኪከፈል ድረስ Pulse አዳዲስ ጉብኝቶችን ማስቀመጥ ያቆማል። ያለዎት መረጃ መነበቡን ይቀጥላል።",
+  "email.billing.pastDue.subject": "የPulse ደረሰኝ #{number} ለ{org} የመክፈያ ጊዜው አልፏል",
+  "email.billing.pastDue.body": "ለ{plan} ዕቅድ የወጣው ደረሰኝ #{number} ({amount}) በ{due} መከፈል ነበረበት፤ እስካሁን አልተከፈለም።\n\nዕቅድዎ ከመክፈያ ቀኑ ጀምሮ ለ7 ቀናት ይሠራል። ከዚያ በኋላ ደረሰኙ እስኪከፈል ድረስ Pulse አዳዲስ ጉብኝቶችን ማስቀመጥ ያቆማል። ያለዎት መረጃ መነበቡን ይቀጥላል።\n\nእዚህ ይክፈሉ፦ {url}",
+  "email.billing.restricted.subject": "Pulse ለ{org} አዳዲስ ጉብኝቶችን ማስቀመጥ አቁሟል",
+  "email.billing.restricted.body": "የ{org} ደረሰኝ በተሰጠው የእፎይታ ጊዜ ውስጥ ስላልተከፈለ Pulse አዳዲስ ጉብኝቶችን ማስቀመጥ አቁሟል። ምንም አልተሰረዘም፤ ማስተካከያዎችን፣ ቅጂዎችን እና ሪፖርቶችን አሁንም ማንበብ ይችላሉ።\n\nሁሉንም መልሶ ለማስጀመር ክፍት ደረሰኙን ይክፈሉ፦ {url}",
+  "email.billing.receipt.subject": "ደረሰኝ፦ የPulse ደረሰኝ #{number} ተከፍሏል ({amount})",
+  "email.billing.receipt.body": "ለደረሰኝ #{number} ({plan} ዕቅድ፣ {org}) {amount} ተቀብለናል። እናመሰግናለን።\n\nዕቅድዎ እስከ {until} ተከፍሏል። ደረሰኞችዎ በቅንብሮች → ክፍያ ውስጥ ይገኛሉ፦ {url}"
 }

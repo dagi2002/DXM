@@ -31,5 +31,13 @@
   "telegram.open": "Open: {url}",
   "telegram.linked": "This chat now gets Pulse alerts for {org}. Change quiet hours or unlink in Settings.",
   "telegram.test": "Test from Pulse: alerts for {org} will arrive here.",
-  "telegram.unknownCode": "This link has expired. Create a new one in Pulse → Settings → Notifications."
+  "telegram.unknownCode": "This link has expired. Create a new one in Pulse → Settings → Notifications.",
+  "email.billing.invoice.subject": "Pulse invoice #{number} for {org}: {amount}",
+  "email.billing.invoice.body": "Your {plan} plan for {org} renews on {due}.\n\nInvoice #{number}: {amount}, covering the period up to {until}.\n\nPay with telebirr, a card or your bank app (through Chapa) here: {url}\n\nIf it isn't paid by {due}, the plan keeps working for 7 more days. After that Pulse stops storing new sessions until the invoice is paid. Your existing data stays readable.",
+  "email.billing.pastDue.subject": "Pulse invoice #{number} for {org} is overdue",
+  "email.billing.pastDue.body": "Invoice #{number} ({amount}) for the {plan} plan was due on {due} and hasn't been paid.\n\nYour plan keeps working for 7 days from the due date. After that Pulse stops storing new sessions until the invoice is paid. Your existing data stays readable.\n\nPay here: {url}",
+  "email.billing.restricted.subject": "Pulse has stopped storing new sessions for {org}",
+  "email.billing.restricted.body": "The invoice for {org} wasn't paid within the grace period, so Pulse has stopped storing new sessions. Nothing has been deleted: you can still read your fixes, replays and reports.\n\nPay the open invoice to switch everything back on: {url}",
+  "email.billing.receipt.subject": "Receipt: Pulse invoice #{number} paid ({amount})",
+  "email.billing.receipt.body": "We received {amount} for invoice #{number} ({plan} plan, {org}). Thank you.\n\nYour plan is paid up to {until}. Invoices and receipts are in Settings → Billing: {url}"
 }

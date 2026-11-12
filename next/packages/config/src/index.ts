@@ -87,6 +87,62 @@ const telegramEnv = {
   TELEGRAM_WEBHOOK_SECRET: optionalString,
 };
 
+/**
+ * Billing through Chapa. No secret key = billing is "not configured": plans and usage still show,
+ * but no pay links are made. CHAPA_MODE says which kind of payment this server accepts; it stays
+ * `test` (no real money) until the founder switches it to `live` together with a live key.
+ */
+const billingEnv = {
+  /** Chapa secret key (Bearer). Secret: never logged. */
+  CHAPA_SECRET_KEY: optionalString,
+  /** The "secret hash" set in Chapa's dashboard for webhooks; signs every webhook call. */
+  CHAPA_WEBHOOK_SECRET: optionalString,
+  CHAPA_MODE: z.enum(['test', 'live']).default('test'),
+  /** Bearer token for the staff billing override endpoint. Unset = the endpoint answers 503. */
+  BILLING_ADMIN_TOKEN: optionalString,
+};
+/** Pay links can be made and confirmed only with both the key and the webhook secret. */
+export const billingConfigured = (env: { CHAPA_SECRET_KEY?: string; CHAPA_WEBHOOK_SECRET?: string }) =>
+  Boolean(env.CHAPA_SECRET_KEY && env.CHAPA_WEBHOOK_SECRET);
+
+function checkBilling(
+  env: {
+    NODE_ENV: string;
+    CHAPA_SECRET_KEY?: string | undefined;
+    CHAPA_WEBHOOK_SECRET?: string | undefined;
+    CHAPA_MODE: 'test' | 'live';
+    BILLING_ADMIN_TOKEN?: string | undefined;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (env.CHAPA_SECRET_KEY && !env.CHAPA_WEBHOOK_SECRET) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['CHAPA_WEBHOOK_SECRET'],
+      message: 'is required when CHAPA_SECRET_KEY is set (payments are confirmed by webhook)',
+    });
+  }
+  // Chapa test keys carry TEST in the prefix; a live server must not run on one, or the reverse.
+  if (env.CHAPA_SECRET_KEY && /TEST/i.test(env.CHAPA_SECRET_KEY) !== (env.CHAPA_MODE === 'test')) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['CHAPA_MODE'],
+      message: 'does not match CHAPA_SECRET_KEY (a test key needs CHAPA_MODE=test, a live key CHAPA_MODE=live)',
+    });
+  }
+  if (env.NODE_ENV !== 'production') return;
+  for (const key of ['CHAPA_WEBHOOK_SECRET', 'BILLING_ADMIN_TOKEN'] as const) {
+    const value = env[key];
+    if (value && (PLACEHOLDER.test(value) || entropyBits(value) < 96)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [key],
+        message: 'looks weak or like a placeholder; generate one with `openssl rand -hex 32`',
+      });
+    }
+  }
+}
+
 /** AI suggestions. Off by default; on only with AI_ENABLED=1 and a key. */
 const aiEnv = {
   AI_ENABLED: flag,
@@ -131,9 +187,11 @@ export const serverEnvSchema = z
     ...blobStoreShape,
     ...telegramEnv,
     ...aiEnv,
+    ...billingEnv,
   })
   .superRefine((env, ctx) => {
     checkBlobStore(env, ctx);
+    checkBilling(env, ctx);
     if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
       ctx.addIssue({
         code: 'custom',
