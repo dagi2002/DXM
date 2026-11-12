@@ -140,6 +140,7 @@ function checkVapid(
 export const pushConfigured = (env: { VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string }) =>
   Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 
+/**
  * Billing through Chapa. No secret key = billing is "not configured": plans and usage still show,
  * but no pay links are made. CHAPA_MODE says which kind of payment this server accepts; it stays
  * `test` (no real money) until the founder switches it to `live` together with a live key.
