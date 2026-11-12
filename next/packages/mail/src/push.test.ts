@@ -128,12 +128,18 @@ describe('VAPID', () => {
     }) as unknown as typeof fetch;
     const client = new HttpPushClient({ ...keys, subject: 'mailto:a@b.et' }, fake);
     const err = await client
-      .send({ endpoint: 'https://fcm.googleapis.com/fcm/send/x', ...b.sub }, { title: '', body: '', url: '/' })
+      .send(
+        { endpoint: 'https://fcm.googleapis.com/fcm/send/x', ...b.sub },
+        { title: '', body: '', url: '/' },
+      )
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(PushError);
     expect((err as PushError).gone).toBe(true);
     await expect(
-      client.send({ endpoint: 'https://169.254.169.254/latest', ...b.sub }, { title: '', body: '', url: '/' }),
+      client.send(
+        { endpoint: 'https://169.254.169.254/latest', ...b.sub },
+        { title: '', body: '', url: '/' },
+      ),
     ).rejects.toBeInstanceOf(PushError);
     expect(called).toBe(1);
   });

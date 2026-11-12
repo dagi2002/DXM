@@ -9,8 +9,7 @@ const q = (quietStart: number | null, quietEnd: number | null, timeZone = ADDIS)
   timeZone,
 });
 /** An instant at hh:mm:ss Addis time on 2026-11-16. */
-const at = (hh: number, mm = 0, ss = 0) =>
-  new Date(Date.UTC(2026, 10, 16, hh - 3, mm, ss));
+const at = (hh: number, mm = 0, ss = 0) => new Date(Date.UTC(2026, 10, 16, hh - 3, mm, ss));
 
 describe('quiet hours (shared by Telegram and push)', () => {
   it('is off without hours, or with start = end', () => {

@@ -44,4 +44,3 @@ export function quietUntil(now: Date, q: QuietHours): Date | null {
   const ms = hoursLeft * 3600_000 - minute * 60_000 - second * 1000 - now.getUTCMilliseconds();
   return new Date(now.getTime() + ms);
 }
-

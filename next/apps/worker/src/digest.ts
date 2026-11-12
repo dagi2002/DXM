@@ -249,7 +249,7 @@ export async function sendWeeklyDigest(
   for (const r of loaded.recipients) {
     const pref = loaded.byUser.get(r.userId)!;
     const locale = isLocale(r.locale) ? r.locale : 'en';
-    const unsubscribeUrl = `${appUrl}/unsubscribe/${pref.unsubscribeToken}`;
+    const unsubscribeUrl = `${appUrl}/unsubscribe.html#${pref.unsubscribeToken}`;
     const mail = formatDigest(locale, loaded.data, { start, end, appUrl, unsubscribeUrl });
     await mailer.send({
       to: r.email,

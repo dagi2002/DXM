@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { EnvError, aiConfigured, pushConfigured, entropyBits, loadCollectorEnv, loadServerEnv, loadWorkerEnv } from './index';
+import {
+  EnvError,
+  aiConfigured,
+  pushConfigured,
+  entropyBits,
+  loadCollectorEnv,
+  loadServerEnv,
+  loadWorkerEnv,
+} from './index';
 
 const STRONG = 'k3Jx9vQ2pL7mN4bR8tW1yZ6cF5hG0dS2aE9uI3oP7lK4jH6g';
 const base = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse', BETTER_AUTH_SECRET: STRONG };

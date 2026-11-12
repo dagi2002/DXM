@@ -102,8 +102,7 @@ const pushEnv = {
     .default('mailto:hello@dxmpulse.et'),
 };
 
-const b64uLength = (v: string) =>
-  /^[A-Za-z0-9_-]+$/.test(v) ? Buffer.from(v, 'base64url').length : -1;
+const b64uLength = (v: string) => (/^[A-Za-z0-9_-]+$/.test(v) ? Buffer.from(v, 'base64url').length : -1);
 
 /** Both VAPID keys or neither, each the right size. Values are never echoed. */
 function checkVapid(
@@ -121,9 +120,17 @@ function checkVapid(
     return;
   }
   if (pub && b64uLength(pub) !== 65)
-    ctx.addIssue({ code: 'custom', path: ['VAPID_PUBLIC_KEY'], message: 'is not a base64url P-256 public key' });
+    ctx.addIssue({
+      code: 'custom',
+      path: ['VAPID_PUBLIC_KEY'],
+      message: 'is not a base64url P-256 public key',
+    });
   if (priv && b64uLength(priv) !== 32)
-    ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'is not a base64url P-256 private key' });
+    ctx.addIssue({
+      code: 'custom',
+      path: ['VAPID_PRIVATE_KEY'],
+      message: 'is not a base64url P-256 private key',
+    });
 }
 
 /** Push is on only when both keys are set (and valid — the env schema checks that). */

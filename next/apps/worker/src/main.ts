@@ -162,7 +162,8 @@ await boss.work<AlertJob>('alert.push', async (jobs) => {
     if (!push) continue;
     const result = await sendPushAlert(db, push, env.APP_URL, job.data);
     // Same quiet hours as Telegram: send the same job again when they end.
-    if (result.status === 'deferred') await sendJob(boss, 'alert.push', job.data, { startAfter: result.until });
+    if (result.status === 'deferred')
+      await sendJob(boss, 'alert.push', job.data, { startAfter: result.until });
     log.info({ orgId: job.data.orgId, ...result }, 'push alert');
   }
 });

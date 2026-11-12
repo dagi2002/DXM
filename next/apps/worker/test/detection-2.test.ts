@@ -347,7 +347,10 @@ describe('Telegram alerts', () => {
     );
     // Quiet hours are the org's shared setting (task 15), not the link's.
     if (quiet)
-      await admin(`insert into notification_settings (org_id, quiet_start, quiet_end) values ('org_a', $1, $2)`, quiet);
+      await admin(
+        `insert into notification_settings (org_id, quiet_start, quiet_end) values ('org_a', $1, $2)`,
+        quiet,
+      );
   };
   const job = {
     orgId: 'org_a',

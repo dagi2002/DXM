@@ -198,7 +198,8 @@ export function notificationRoutes(deps: AppDeps) {
           await withOrg(deps.db, orgId, (tx) =>
             tx.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id)),
           );
-        else c.get('log').warn({ status: err instanceof PushError ? err.status : 'error' }, 'push test failed');
+        else
+          c.get('log').warn({ status: err instanceof PushError ? err.status : 'error' }, 'push test failed');
       }
     }
     if (!sent) throw new ApiError(502, 'internal', 'The push service did not accept the message');

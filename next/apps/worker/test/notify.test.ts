@@ -147,7 +147,7 @@ describe('weekly digest', () => {
     expect(en.text).not.toContain('Shop B');
     const token = (await admin(`select unsubscribe_token from notification_prefs where user_id = 'u_owner'`))
       .rows[0].unsubscribe_token as string;
-    expect(en.text).toContain(`${APP}/unsubscribe/${token}`);
+    expect(en.text).toContain(`${APP}/unsubscribe.html#${token}`);
     expect(en.headers).toEqual({
       'List-Unsubscribe': `<${APP}/api/v1/public/digest/unsubscribe/${token}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
