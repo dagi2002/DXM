@@ -49,6 +49,8 @@ export const METRICS = {
   revenue_at_risk: def({ id: 'revenue_at_risk', unit: 'money', isUpGood: false }),
   /** Share of exposed visits a fix's problem hit (form abandon rate, U-turn rate, …). */
   affected_rate: def({ id: 'affected_rate', unit: 'ratio', isUpGood: false }),
+  /** Share of a site's consented visits recorded as replays (a setting, not a result). */
+  replay_sample_rate: def({ id: 'replay_sample_rate', unit: 'ratio', isUpGood: null }),
 } as const;
 
 export type MetricId = keyof typeof METRICS;

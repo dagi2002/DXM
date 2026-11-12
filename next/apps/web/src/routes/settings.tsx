@@ -1,10 +1,10 @@
-import { canManage, type Role } from '@pulse/contracts/constants';
+import { canManage, canWorkOnReports, type Role } from '@pulse/contracts/constants';
 import type { Me } from '@pulse/contracts';
 import type { CalendarPref, Locale } from '@pulse/i18n';
 import { Banner, Button, PageHeader, Segmented, Select, Skeleton, StatusBadge, TextField } from '@pulse/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
+import { lazy, Suspense, useState, type FormEvent } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Panel } from '../components/pulse';
@@ -13,6 +13,8 @@ import { authClient } from '../lib/auth-client';
 import { meQuery, refreshMe, useFormatDate, useMe } from '../lib/queries';
 import { NotificationsSection } from './settings-notifications';
 import { SecuritySection } from './settings-security';
+
+const BrandingEditor = lazy(() => import('../components/branding-editor'));
 
 const TABS = ['profile', 'security', 'organization', 'team', 'notifications'] as const;
 type TabId = (typeof TABS)[number];
@@ -146,6 +148,17 @@ function OrganizationSection() {
         ) : null}
       </form>
     </Panel>
+  );
+}
+
+/** Report branding loads with the Organization tab, not with Settings. Client viewers don't see it. */
+function BrandingSection() {
+  const { orgId, role } = useMe();
+  if (!canWorkOnReports(role)) return null;
+  return (
+    <Suspense fallback={<Skeleton className="h-48" />}>
+      <BrandingEditor orgId={orgId} role={role} />
+    </Suspense>
   );
 }
 
@@ -341,8 +354,9 @@ export function SettingsPage() {
         <TabPanel id="security" className="outline-none">
           <SecuritySection />
         </TabPanel>
-        <TabPanel id="organization" className="outline-none">
+        <TabPanel id="organization" className="grid gap-6 outline-none">
           <OrganizationSection />
+          <BrandingSection />
         </TabPanel>
         <TabPanel id="team" className="outline-none">
           <TeamSection />

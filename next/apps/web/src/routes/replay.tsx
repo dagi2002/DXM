@@ -1,14 +1,15 @@
 import { Button, EmptyState, IconButton, PageHeader, Skeleton, cx } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { canManage } from '@pulse/contracts/constants';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 // rrweb (~60 KB gzip) ships only in this route's chunk: the player page is the only one that needs it.
 import ReplayPlayer from '../components/replay-player';
 import { ApiError } from '../lib/api';
 import { fixQuery } from '../lib/fixes';
-import { useMe } from '../lib/queries';
+import { publicConfigQuery, useMe } from '../lib/queries';
 import {
   fmtClock,
   readReplaySearch,
@@ -18,10 +19,16 @@ import {
   useReplayView,
 } from '../lib/replays';
 
+// Opened rarely: each loads on first use, not with the page.
+const DeleteRecordingDialog = lazy(() => import('../components/replay-delete'));
+const ReplayRecapPanel = lazy(() => import('../components/replay-recap'));
+
 export function ReplayPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { orgId } = useMe();
+  const { orgId, role } = useMe();
+  const { data: config } = useQuery(publicConfigQuery);
+  const [deleting, setDeleting] = useState(false);
   const { replayId } = useParams({ strict: false }) as { replayId: string };
   const search = readReplaySearch(useSearch({ strict: false }) as Record<string, unknown>);
   const view = useReplayView();
@@ -105,6 +112,12 @@ export function ReplayPage() {
             >
               <ChevronRight size={18} aria-hidden="true" />
             </IconButton>
+            {canManage(role) ? (
+              <Button variant="danger-ghost" onPress={() => setDeleting(true)}>
+                <Trash2 size={16} aria-hidden="true" />
+                {t('replay.delete')}
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -113,7 +126,12 @@ export function ReplayPage() {
         <ReplayPlayer key={`${detail.replay.siteId}:${detail.replay.id}`} detail={detail} seek={seek} />
 
         <div className="grid gap-4">
-          {/* The AI recap returns with task 10's AI flag; until then nothing pretends to summarise. */}
+          {/* Only when AI is configured: with it off there is no box, no button, no placeholder. */}
+          {config?.aiEnabled ? (
+            <Suspense fallback={<Skeleton className="h-24" />}>
+              <ReplayRecapPanel orgId={orgId} replayId={detail.replay.id} siteId={detail.replay.siteId} />
+            </Suspense>
+          ) : null}
           <section aria-labelledby="happened" className="rounded-lg border border-border bg-surface py-2">
             <h2 id="happened" className="px-5 py-3 text-[0.9375rem] font-semibold">
               {t('replay.happened')}
@@ -144,6 +162,21 @@ export function ReplayPage() {
           </section>
         </div>
       </div>
+      {deleting ? (
+        <Suspense fallback={null}>
+          <DeleteRecordingDialog
+            orgId={orgId}
+            replayId={detail.replay.id}
+            siteId={detail.replay.siteId}
+            isOpen={deleting}
+            onOpenChange={setDeleting}
+            onDeleted={() => {
+              setDeleting(false);
+              void navigate({ to: '/replays' });
+            }}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }
