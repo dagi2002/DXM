@@ -33,7 +33,22 @@ describe('money (integer santim, no floats)', () => {
   });
 
   it('refuses anything that is not a plain amount', () => {
-    for (const bad of ['2400.001', '-1', '1e3', '2,400', '', ' ', 'abc', null, undefined, {}, NaN, Infinity, -5, 1e21]) {
+    for (const bad of [
+      '2400.001',
+      '-1',
+      '1e3',
+      '2,400',
+      '',
+      ' ',
+      'abc',
+      null,
+      undefined,
+      {},
+      NaN,
+      Infinity,
+      -5,
+      1e21,
+    ]) {
       expect(birrToSantim(bad), String(bad)).toBeNull();
     }
   });
@@ -52,11 +67,15 @@ describe('webhook signature', () => {
   it('accepts either documented header and nothing else', () => {
     expect(verifyChapaSignature(body, { xChapaSignature: signChapaBody(body, secret) }, secret)).toBe(true);
     expect(verifyChapaSignature(body, { chapaSignature: signChapaSecret(secret) }, secret)).toBe(true);
-    expect(verifyChapaSignature(body, { xChapaSignature: signChapaBody(body, secret).toUpperCase() }, secret)).toBe(true);
+    expect(
+      verifyChapaSignature(body, { xChapaSignature: signChapaBody(body, secret).toUpperCase() }, secret),
+    ).toBe(true);
     expect(verifyChapaSignature(body, {}, secret)).toBe(false);
     expect(verifyChapaSignature(body, { xChapaSignature: '', chapaSignature: null }, secret)).toBe(false);
     expect(verifyChapaSignature(body, { xChapaSignature: signChapaBody(body, 'other') }, secret)).toBe(false);
-    expect(verifyChapaSignature(`${body} `, { xChapaSignature: signChapaBody(body, secret) }, secret)).toBe(false);
+    expect(verifyChapaSignature(`${body} `, { xChapaSignature: signChapaBody(body, secret) }, secret)).toBe(
+      false,
+    );
     // The body signature is not valid in the other header, or the reverse.
     expect(verifyChapaSignature(body, { chapaSignature: signChapaBody(body, secret) }, secret)).toBe(false);
     expect(verifyChapaSignature(body, { xChapaSignature: signChapaSecret(secret) }, secret)).toBe(false);
@@ -66,20 +85,47 @@ describe('webhook signature', () => {
 
 describe('judgeVerification', () => {
   const expected = { txRef: 'pulse-abc', amountSantim: 240_000, currency: 'ETB', mode: 'test' as const };
-  const ok = { status: 'success' as const, txRef: 'pulse-abc', amount: '2400.00', currency: 'ETB', mode: 'test' };
+  const ok = {
+    status: 'success' as const,
+    txRef: 'pulse-abc',
+    amount: '2400.00',
+    currency: 'ETB',
+    mode: 'test',
+  };
 
   it('is paid only when everything matches', () => {
     expect(judgeVerification(expected, ok)).toEqual({ verdict: 'paid' });
     expect(judgeVerification(expected, { ...ok, amount: 2400 })).toEqual({ verdict: 'paid' });
   });
   it('names what differs', () => {
-    expect(judgeVerification(expected, { ...ok, amount: '2400.01' })).toEqual({ verdict: 'mismatch', reason: 'amount' });
-    expect(judgeVerification(expected, { ...ok, amount: undefined })).toEqual({ verdict: 'mismatch', reason: 'amount' });
-    expect(judgeVerification(expected, { ...ok, currency: 'USD' })).toEqual({ verdict: 'mismatch', reason: 'currency' });
-    expect(judgeVerification(expected, { ...ok, mode: 'live' })).toEqual({ verdict: 'mismatch', reason: 'mode' });
-    expect(judgeVerification(expected, { ...ok, mode: undefined })).toEqual({ verdict: 'mismatch', reason: 'mode' });
-    expect(judgeVerification(expected, { ...ok, txRef: 'pulse-xyz' })).toEqual({ verdict: 'mismatch', reason: 'tx_ref' });
-    expect(judgeVerification({ ...expected, mode: 'live' }, ok)).toEqual({ verdict: 'mismatch', reason: 'mode' });
+    expect(judgeVerification(expected, { ...ok, amount: '2400.01' })).toEqual({
+      verdict: 'mismatch',
+      reason: 'amount',
+    });
+    expect(judgeVerification(expected, { ...ok, amount: undefined })).toEqual({
+      verdict: 'mismatch',
+      reason: 'amount',
+    });
+    expect(judgeVerification(expected, { ...ok, currency: 'USD' })).toEqual({
+      verdict: 'mismatch',
+      reason: 'currency',
+    });
+    expect(judgeVerification(expected, { ...ok, mode: 'live' })).toEqual({
+      verdict: 'mismatch',
+      reason: 'mode',
+    });
+    expect(judgeVerification(expected, { ...ok, mode: undefined })).toEqual({
+      verdict: 'mismatch',
+      reason: 'mode',
+    });
+    expect(judgeVerification(expected, { ...ok, txRef: 'pulse-xyz' })).toEqual({
+      verdict: 'mismatch',
+      reason: 'tx_ref',
+    });
+    expect(judgeVerification({ ...expected, mode: 'live' }, ok)).toEqual({
+      verdict: 'mismatch',
+      reason: 'mode',
+    });
   });
   it('treats not-success as not paid', () => {
     expect(judgeVerification(expected, { ...ok, status: 'pending' })).toEqual({ verdict: 'pending' });
@@ -107,8 +153,17 @@ describe('HttpChapaClient (against a stub fetch, never the network)', () => {
 
   it('initializes with the documented field names and a birr string amount', async () => {
     calls.length = 0;
-    const client = new HttpChapaClient('CHASECK_TEST-x', 'https://api.chapa.co', stub(200, { status: 'success', data: { checkout_url: 'https://checkout.chapa.co/checkout/payment/abc' } }));
-    expect(await client.initialize(input)).toEqual({ checkoutUrl: 'https://checkout.chapa.co/checkout/payment/abc' });
+    const client = new HttpChapaClient(
+      'CHASECK_TEST-x',
+      'https://api.chapa.co',
+      stub(200, {
+        status: 'success',
+        data: { checkout_url: 'https://checkout.chapa.co/checkout/payment/abc' },
+      }),
+    );
+    expect(await client.initialize(input)).toEqual({
+      checkoutUrl: 'https://checkout.chapa.co/checkout/payment/abc',
+    });
     expect(calls[0]!.url).toBe('https://api.chapa.co/v1/transaction/initialize');
     expect(calls[0]!.init.method).toBe('POST');
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe('Bearer CHASECK_TEST-x');
@@ -124,11 +179,19 @@ describe('HttpChapaClient (against a stub fetch, never the network)', () => {
   });
 
   it('throws a ChapaError (without the key) on failure or a missing checkout link', async () => {
-    const failing = new HttpChapaClient('CHASECK_TEST-secret', undefined, stub(400, { status: 'failed', data: null }));
+    const failing = new HttpChapaClient(
+      'CHASECK_TEST-secret',
+      undefined,
+      stub(400, { status: 'failed', data: null }),
+    );
     const err = await failing.initialize(input).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ChapaError);
     expect(String((err as Error).message)).not.toContain('secret');
-    const odd = new HttpChapaClient('k', undefined, stub(200, { status: 'success', data: { checkout_url: 'javascript:alert(1)' } }));
+    const odd = new HttpChapaClient(
+      'k',
+      undefined,
+      stub(200, { status: 'success', data: { checkout_url: 'javascript:alert(1)' } }),
+    );
     await expect(odd.initialize(input)).rejects.toBeInstanceOf(ChapaError);
     const down = new HttpChapaClient('k', undefined, (async () => {
       throw new Error('ECONNRESET');
@@ -138,7 +201,15 @@ describe('HttpChapaClient (against a stub fetch, never the network)', () => {
 
   it('reads verify data and maps 404 to not_found', async () => {
     calls.length = 0;
-    const data = { status: 'success', tx_ref: 'pulse-abc', amount: 2400, currency: 'ETB', mode: 'test', reference: '6jnheVKQEmy', method: 'telebirr' };
+    const data = {
+      status: 'success',
+      tx_ref: 'pulse-abc',
+      amount: 2400,
+      currency: 'ETB',
+      mode: 'test',
+      reference: '6jnheVKQEmy',
+      method: 'telebirr',
+    };
     const client = new HttpChapaClient('k', undefined, stub(200, { status: 'success', data }));
     expect(await client.verify('pulse-abc')).toEqual({
       status: 'success',
@@ -150,7 +221,11 @@ describe('HttpChapaClient (against a stub fetch, never the network)', () => {
       method: 'telebirr',
     });
     expect(calls[0]!.url).toBe('https://api.chapa.co/v1/transaction/verify/pulse-abc');
-    const missing = new HttpChapaClient('k', undefined, stub(404, { message: 'Payment not paid yet', status: null, data: null }));
+    const missing = new HttpChapaClient(
+      'k',
+      undefined,
+      stub(404, { message: 'Payment not paid yet', status: null, data: null }),
+    );
     expect(await missing.verify('pulse-abc')).toEqual({ status: 'not_found' });
     const broken = new HttpChapaClient('k', undefined, stub(500, {}));
     await expect(broken.verify('pulse-abc')).rejects.toBeInstanceOf(ChapaError);
@@ -162,11 +237,24 @@ describe('HttpChapaClient (against a stub fetch, never the network)', () => {
 describe('FakeChapaClient', () => {
   it('only reports success after pay(), with the initialized amount', async () => {
     const fake = new FakeChapaClient();
-    const { checkoutUrl } = await fake.initialize({ txRef: 'pulse-abc', amountSantim: 590_000, currency: 'ETB', email: 'a@b.et', firstName: 'A', lastName: 'B', returnUrl: 'https://x' });
+    const { checkoutUrl } = await fake.initialize({
+      txRef: 'pulse-abc',
+      amountSantim: 590_000,
+      currency: 'ETB',
+      email: 'a@b.et',
+      firstName: 'A',
+      lastName: 'B',
+      returnUrl: 'https://x',
+    });
     expect(checkoutUrl).toContain('chapa.test');
     expect(await fake.verify('pulse-abc')).toEqual({ status: 'not_found' });
     fake.pay('pulse-abc');
-    expect(await fake.verify('pulse-abc')).toMatchObject({ status: 'success', amount: '5900.00', currency: 'ETB', mode: 'test' });
+    expect(await fake.verify('pulse-abc')).toMatchObject({
+      status: 'success',
+      amount: '5900.00',
+      currency: 'ETB',
+      mode: 'test',
+    });
   });
 });
 

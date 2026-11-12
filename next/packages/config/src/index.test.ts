@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import {
   EnvError,
   aiConfigured,
@@ -7,7 +8,6 @@ import {
   loadServerEnv,
   loadWorkerEnv,
 } from './index';
-import { EnvError, aiConfigured, entropyBits, loadCollectorEnv, loadServerEnv, loadWorkerEnv } from './index';
 
 const STRONG = 'k3Jx9vQ2pL7mN4bR8tW1yZ6cF5hG0dS2aE9uI3oP7lK4jH6g';
 const base = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse', BETTER_AUTH_SECRET: STRONG };
@@ -146,8 +146,14 @@ describe('billing env (Chapa)', () => {
     expect(env.CHAPA_MODE).toBe('test');
   });
   it('needs the webhook secret whenever a key is set', () => {
-    expect(() => loadServerEnv({ ...base, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc' })).toThrow(/CHAPA_WEBHOOK_SECRET/);
-    const env = loadServerEnv({ ...base, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc', CHAPA_WEBHOOK_SECRET: 'whsec' });
+    expect(() => loadServerEnv({ ...base, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc' })).toThrow(
+      /CHAPA_WEBHOOK_SECRET/,
+    );
+    const env = loadServerEnv({
+      ...base,
+      CHAPA_SECRET_KEY: 'CHASECK_TEST-abc',
+      CHAPA_WEBHOOK_SECRET: 'whsec',
+    });
     expect(billingConfigured(env)).toBe(true);
   });
   it('refuses a test key in live mode and a live key in test mode', () => {
@@ -155,7 +161,11 @@ describe('billing env (Chapa)', () => {
     expect(() =>
       loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc', CHAPA_MODE: 'live' }),
     ).toThrow(/CHAPA_MODE/);
-    expect(() => loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc' })).toThrow(/CHAPA_MODE/);
-    expect(loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc', CHAPA_MODE: 'live' }).CHAPA_MODE).toBe('live');
+    expect(() => loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc' })).toThrow(
+      /CHAPA_MODE/,
+    );
+    expect(
+      loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc', CHAPA_MODE: 'live' }).CHAPA_MODE,
+    ).toBe('live');
   });
 });

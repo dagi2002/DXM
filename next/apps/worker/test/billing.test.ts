@@ -62,7 +62,10 @@ beforeEach(async () => {
     ('site_b','org_b','Shop B','shop-b.et','pk_b','{https://shop-b.et}')`);
 });
 
-const visit = (vid: string, over: { seq?: number; orgId?: string; siteId?: string; at?: Date } = {}): IngestJob => ({
+const visit = (
+  vid: string,
+  over: { seq?: number; orgId?: string; siteId?: string; at?: Date } = {},
+): IngestJob => ({
   siteId: over.siteId ?? 'site_a',
   orgId: over.orgId ?? 'org_a',
   receivedAt: (over.at ?? now).toISOString(),
@@ -79,8 +82,8 @@ const visit = (vid: string, over: { seq?: number; orgId?: string; siteId?: strin
 const visitCount = async (orgId = 'org_a') =>
   (await admin('select count(*)::int as n from visits where org_id = $1', [orgId])).rows[0].n as number;
 const used = async (orgId = 'org_a') =>
-  (await admin('select coalesce(sum(sessions), 0)::int as n from org_usage where org_id = $1', [orgId])).rows[0]
-    .n as number;
+  (await admin('select coalesce(sum(sessions), 0)::int as n from org_usage where org_id = $1', [orgId]))
+    .rows[0].n as number;
 const sub = async (orgId = 'org_a') =>
   (await admin('select * from subscriptions where org_id = $1', [orgId])).rows[0];
 const actor = { userId: 'u1' };
@@ -117,15 +120,22 @@ describe('session quota at ingest', () => {
     expect(over).toEqual({ status: 'over_quota', becameLive: false });
     expect(await used()).toBe(limit); // not counted
     expect(await visitCount()).toBe(2); // not stored
-    expect((await admin(`select count(*)::int as n from events where visit_id = 'visit_over0000'`)).rows[0].n).toBe(0);
-    expect((await admin(`select count(*)::int as n from ingest_dedupe where visit_id = 'visit_over0000'`)).rows[0].n).toBe(0);
+    expect(
+      (await admin(`select count(*)::int as n from events where visit_id = 'visit_over0000'`)).rows[0].n,
+    ).toBe(0);
+    expect(
+      (await admin(`select count(*)::int as n from ingest_dedupe where visit_id = 'visit_over0000'`)).rows[0]
+        .n,
+    ).toBe(0);
 
     // A session that is already stored keeps being accepted…
     expect((await applyIngest(db, visit('visit_atlimit0', { seq: 1 }))).status).toBe('applied');
     // …and the org can still read everything it has.
     expect(await withOrg(db, 'org_a', (tx) => tx.select().from(visits))).toHaveLength(2);
     // Another org is not affected.
-    expect((await applyIngest(db, visit('visit_other000', { orgId: 'org_b', siteId: 'site_b' }))).status).toBe('applied');
+    expect(
+      (await applyIngest(db, visit('visit_other000', { orgId: 'org_b', siteId: 'site_b' }))).status,
+    ).toBe('applied');
   });
 
   it('holds the limit when new sessions race', async () => {
@@ -151,7 +161,11 @@ describe('session quota at ingest', () => {
     expect((await applyIngest(db, visit('visit_before00'))).status).toBe('over_quota');
     await requestPlan(db, 'org_a', { plan: 'business', interval: 'month' }, actor); // starts the trial
     expect((await applyIngest(db, visit('visit_before00'))).status).toBe('applied'); // same batch, retried
-    expect(await ingestState(db, 'org_a')).toMatchObject({ plan: 'business', sessionLimit: 15_000, blocked: false });
+    expect(await ingestState(db, 'org_a')).toMatchObject({
+      plan: 'business',
+      sessionLimit: 15_000,
+      blocked: false,
+    });
   });
 
   it('starts a fresh count each usage month', async () => {
@@ -224,7 +238,13 @@ describe('the subscription clock', () => {
     // The lead window opens: one invoice, one email to the owner (not the admin).
     expect(await run(at(trialEnd, -RENEWAL_LEAD_DAYS))).toEqual({ orgs: 1, events: 1, failed: 0 });
     const [invoice] = (await admin('select * from invoices')).rows;
-    expect(invoice).toMatchObject({ number: 1, status: 'open', plan: 'business', amount_santim: 240_000, currency: 'ETB' });
+    expect(invoice).toMatchObject({
+      number: 1,
+      status: 'open',
+      plan: 'business',
+      amount_santim: 240_000,
+      currency: 'ETB',
+    });
     expect(new Date(invoice.period_start)).toEqual(trialEnd);
     expect(new Date(invoice.due_at)).toEqual(trialEnd);
     expect(mailer.outbox.map((m) => m.to)).toEqual(['owner@a.et']);
@@ -245,7 +265,10 @@ describe('the subscription clock', () => {
     expect(new Date(pastDue.grace_ends_at)).toEqual(at(trialEnd, GRACE_DAYS));
     expect(mailer.outbox.at(-1)!.subject).toContain('overdue');
     // In grace the plan still works: full quota, sessions stored.
-    expect(await ingestState(db, 'org_a', at(trialEnd, 1))).toMatchObject({ sessionLimit: 15_000, blocked: false });
+    expect(await ingestState(db, 'org_a', at(trialEnd, 1))).toMatchObject({
+      sessionLimit: 15_000,
+      blocked: false,
+    });
     expect((await applyIngest(db, visit('visit_ingrace0', { at: at(trialEnd, 1) }))).status).toBe('applied');
 
     // One second before the grace ends: still past due.
@@ -258,9 +281,16 @@ describe('the subscription clock', () => {
     expect((await run(at(trialEnd, GRACE_DAYS + 30))).orgs).toBe(0); // nothing more to do
     expect(mailer.outbox).toHaveLength(3);
 
-    const actions = (await admin(`select action from audit_log where org_id = 'org_a' order by created_at, action`)).rows.map((r) => r.action);
+    const actions = (
+      await admin(`select action from audit_log where org_id = 'org_a' order by created_at, action`)
+    ).rows.map((r) => r.action);
     expect(actions).toEqual(
-      expect.arrayContaining(['billing.trial_started', 'billing.invoice_created', 'billing.past_due', 'billing.restricted']),
+      expect.arrayContaining([
+        'billing.trial_started',
+        'billing.invoice_created',
+        'billing.past_due',
+        'billing.restricted',
+      ]),
     );
   });
 
@@ -270,7 +300,12 @@ describe('the subscription clock', () => {
     await run(trialEnd);
     await run(at(trialEnd, GRACE_DAYS));
     const late = at(trialEnd, GRACE_DAYS + 2);
-    expect(await ingestState(db, 'org_a', late)).toMatchObject({ status: 'restricted', sessionLimit: 0, blocked: true, replay: false });
+    expect(await ingestState(db, 'org_a', late)).toMatchObject({
+      status: 'restricted',
+      sessionLimit: 0,
+      blocked: true,
+      replay: false,
+    });
     expect((await applyIngest(db, visit('visit_blocked0', { at: late }))).status).toBe('over_quota');
     expect((await applyIngest(db, visit('visit_early000', { seq: 1, at: late }))).status).toBe('applied');
     expect(await withOrg(db, 'org_a', (tx) => tx.select().from(visits))).toHaveLength(1);
@@ -278,9 +313,20 @@ describe('the subscription clock', () => {
     const chapa = new FakeChapaClient();
     const [invoice] = (await admin('select id from invoices')).rows;
     const payer = { userId: 'u1', email: 'owner@a.et', name: 'Tigist Bekele' };
-    const { txRef } = await createPayLink(db, chapa, 'org_a', invoice.id, payer, 'https://app.example.et/x', late);
+    const { txRef } = await createPayLink(
+      db,
+      chapa,
+      'org_a',
+      invoice.id,
+      payer,
+      'https://app.example.et/x',
+      late,
+    );
     chapa.pay(txRef);
-    expect(await settlePayment(db, chapa, txRef, { mode: 'test', now: late })).toMatchObject({ outcome: 'paid', applied: true });
+    expect(await settlePayment(db, chapa, txRef, { mode: 'test', now: late })).toMatchObject({
+      outcome: 'paid',
+      applied: true,
+    });
     const back = await sub();
     expect(back).toMatchObject({ status: 'active', grace_ends_at: null });
     // The paid month starts on the day they came back, not on the old due date.
@@ -293,7 +339,15 @@ describe('the subscription clock', () => {
     const chapa = new FakeChapaClient();
     const [invoice] = (await admin('select id, period_end from invoices')).rows;
     const payer = { userId: 'u1', email: 'owner@a.et', name: 'Tigist' };
-    const { txRef } = await createPayLink(db, chapa, 'org_a', invoice.id, payer, 'https://x', at(trialEnd, -2));
+    const { txRef } = await createPayLink(
+      db,
+      chapa,
+      'org_a',
+      invoice.id,
+      payer,
+      'https://x',
+      at(trialEnd, -2),
+    );
     chapa.pay(txRef);
     await settlePayment(db, chapa, txRef, { mode: 'test', now: at(trialEnd, -2) });
     const active = await sub();
@@ -341,8 +395,16 @@ describe('replay retention by plan', () => {
               ('org_c', 'business', 'restricted', now() - interval '60 days', now() - interval '30 days')`,
     );
     const keys: Record<string, string> = {};
-    for (const [org, site] of [['org_a', 'site_a'], ['org_b', 'site_b'], ['org_c', 'site_c']] as const) {
-      for (const [seq, ageDays] of [[0, 3], [1, 10], [2, 40]] as const) {
+    for (const [org, site] of [
+      ['org_a', 'site_a'],
+      ['org_b', 'site_b'],
+      ['org_c', 'site_c'],
+    ] as const) {
+      for (const [seq, ageDays] of [
+        [0, 3],
+        [1, 10],
+        [2, 40],
+      ] as const) {
         const base = { orgId: org, siteId: site, visitId: 'visit_retain00', seq };
         const key = replayObjectKey(base);
         keys[`${org}:${seq}`] = key;

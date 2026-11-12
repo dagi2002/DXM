@@ -13,7 +13,6 @@ import {
   type BillingOverview,
   type PaidPlanId,
   type PlanId,
-  type SubscriptionStatus,
 } from '@pulse/contracts';
 import {
   and,
@@ -54,8 +53,7 @@ export function addMonths(d: Date, months: number): Date {
   out.setUTCDate(Math.min(day, last));
   return out;
 }
-export const addInterval = (d: Date, interval: BillingInterval) =>
-  addMonths(d, interval === 'year' ? 12 : 1);
+export const addInterval = (d: Date, interval: BillingInterval) => addMonths(d, interval === 'year' ? 12 : 1);
 
 /** A request the caller got wrong (unknown invoice, nothing to pay…). The API maps it to 404/409. */
 export class BillingError extends Error {
@@ -192,11 +190,18 @@ export async function requestPlan(
         .set({ plan: input.plan, interval: input.interval })
         .where(eq(subscriptions.orgId, orgId));
       await setPlan(tx, orgId, input.plan);
-      await audit(tx, orgId, actor, 'billing.plan_changed', { type: 'subscription', id: orgId }, {
-        from: sub.plan,
-        to: input.plan,
-        interval: input.interval,
-      });
+      await audit(
+        tx,
+        orgId,
+        actor,
+        'billing.plan_changed',
+        { type: 'subscription', id: orgId },
+        {
+          from: sub.plan,
+          to: input.plan,
+          interval: input.interval,
+        },
+      );
       return { outcome: 'plan_changed' };
     }
 
@@ -206,11 +211,18 @@ export async function requestPlan(
     const invoice = renewal
       ? await createRenewalInvoice(tx, sub)
       : await createInvoice(tx, orgId, { ...input, periodStart: now, dueAt: addDays(now, GRACE_DAYS) });
-    await audit(tx, orgId, actor, 'billing.invoice_created', { type: 'invoice', id: invoice.id }, {
-      plan: invoice.plan,
-      interval: invoice.interval,
-      amountSantim: invoice.amountSantim,
-    });
+    await audit(
+      tx,
+      orgId,
+      actor,
+      'billing.invoice_created',
+      { type: 'invoice', id: invoice.id },
+      {
+        plan: invoice.plan,
+        interval: invoice.interval,
+        amountSantim: invoice.amountSantim,
+      },
+    );
     return { outcome: 'invoice', invoiceId: invoice.id, created: true };
   });
 }
@@ -312,7 +324,9 @@ export async function settlePayment(
   opts: { mode: ChapaMode; now?: Date },
 ): Promise<SettleResult> {
   const now = opts.now ?? new Date();
-  const found = await db.execute<{ org_id: string | null }>(sql`select pulse_payment_org(${txRef}) as org_id`);
+  const found = await db.execute<{ org_id: string | null }>(
+    sql`select pulse_payment_org(${txRef}) as org_id`,
+  );
   const orgId = found.rows[0]?.org_id;
   if (!orgId) return { outcome: 'unknown' };
 
@@ -342,10 +356,17 @@ export async function settlePayment(
         .set({ status: judged.verdict, verifyResult, mode: got.mode ?? null })
         .where(eq(payments.id, payment.id));
       if (judged.verdict === 'mismatch') {
-        await audit(tx, orgId, { userId: null }, 'billing.payment_mismatch', { type: 'payment', id: payment.id }, {
-          txRef,
-          reason: judged.reason,
-        });
+        await audit(
+          tx,
+          orgId,
+          { userId: null },
+          'billing.payment_mismatch',
+          { type: 'payment', id: payment.id },
+          {
+            txRef,
+            reason: judged.reason,
+          },
+        );
       }
       return {
         outcome: judged.verdict,
@@ -368,12 +389,23 @@ export async function settlePayment(
 
     // Lock order is always subscription → invoice.
     const sub = await lockSubscription(tx, orgId);
-    const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, payment.invoiceId)).for('update');
+    const [invoice] = await tx
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, payment.invoiceId))
+      .for('update');
     if (!invoice || invoice.status !== 'open' || !sub) {
-      await audit(tx, orgId, { userId: null }, 'billing.payment_needs_review', { type: 'payment', id: payment.id }, {
-        txRef,
-        invoiceStatus: invoice?.status ?? null,
-      });
+      await audit(
+        tx,
+        orgId,
+        { userId: null },
+        'billing.payment_needs_review',
+        { type: 'payment', id: payment.id },
+        {
+          txRef,
+          invoiceStatus: invoice?.status ?? null,
+        },
+      );
       return { outcome: 'paid', orgId, invoiceId: payment.invoiceId, applied: false };
     }
 
@@ -399,13 +431,20 @@ export async function settlePayment(
       })
       .where(eq(subscriptions.orgId, orgId));
     await setPlan(tx, orgId, invoice.plan);
-    await audit(tx, orgId, { userId: null }, 'billing.invoice_paid', { type: 'invoice', id: invoice.id }, {
-      txRef,
-      plan: invoice.plan,
-      amountSantim: invoice.amountSantim,
-      currency: invoice.currency,
-      mode: got.mode ?? null,
-    });
+    await audit(
+      tx,
+      orgId,
+      { userId: null },
+      'billing.invoice_paid',
+      { type: 'invoice', id: invoice.id },
+      {
+        txRef,
+        plan: invoice.plan,
+        amountSantim: invoice.amountSantim,
+        currency: invoice.currency,
+        mode: got.mode ?? null,
+      },
+    );
     return { outcome: 'paid', orgId, invoiceId: invoice.id, applied: true };
   });
 }
@@ -422,7 +461,11 @@ export type LifecycleEvent =
  *   - grace over → restricted (read-only: no new sessions are stored).
  * Idempotent; returns what happened so the caller can email the owners.
  */
-export async function advanceSubscription(db: Db, orgId: string, now = new Date()): Promise<LifecycleEvent[]> {
+export async function advanceSubscription(
+  db: Db,
+  orgId: string,
+  now = new Date(),
+): Promise<LifecycleEvent[]> {
   return withOrg(db, orgId, async (tx) => {
     const events: LifecycleEvent[] = [];
     let sub = await lockSubscription(tx, orgId);
@@ -434,12 +477,19 @@ export async function advanceSubscription(db: Db, orgId: string, now = new Date(
       if (!open && now >= addDays(sub.currentPeriodEnd, -RENEWAL_LEAD_DAYS)) {
         open = await createRenewalInvoice(tx, sub);
         events.push({ type: 'invoice_created', invoiceId: open.id });
-        await audit(tx, orgId, system, 'billing.invoice_created', { type: 'invoice', id: open.id }, {
-          plan: open.plan,
-          interval: open.interval,
-          amountSantim: open.amountSantim,
-          renewal: true,
-        });
+        await audit(
+          tx,
+          orgId,
+          system,
+          'billing.invoice_created',
+          { type: 'invoice', id: open.id },
+          {
+            plan: open.plan,
+            interval: open.interval,
+            amountSantim: open.amountSantim,
+            renewal: true,
+          },
+        );
       }
       if (now >= sub.currentPeriodEnd && open) {
         const graceEndsAt = addDays(sub.currentPeriodEnd, GRACE_DAYS);
@@ -449,9 +499,16 @@ export async function advanceSubscription(db: Db, orgId: string, now = new Date(
           .where(eq(subscriptions.orgId, orgId))
           .returning();
         events.push({ type: 'past_due', invoiceId: open.id });
-        await audit(tx, orgId, system, 'billing.past_due', { type: 'subscription', id: orgId }, {
-          graceEndsAt: graceEndsAt.toISOString(),
-        });
+        await audit(
+          tx,
+          orgId,
+          system,
+          'billing.past_due',
+          { type: 'subscription', id: orgId },
+          {
+            graceEndsAt: graceEndsAt.toISOString(),
+          },
+        );
       }
     }
     if (sub!.status === 'past_due' && sub!.graceEndsAt && now >= sub!.graceEndsAt) {
@@ -504,12 +561,19 @@ export async function applyOverride(
         .onConflictDoUpdate({ target: subscriptions.orgId, set: { ...values, updatedAt: now } })
         .returning();
       await setPlan(tx, orgId, input.plan);
-      await audit(tx, orgId, actor, 'billing.override.comp', { type: 'subscription', id: orgId }, {
-        plan: input.plan,
-        until: until.toISOString(),
-        note: input.note,
-        previous: sub ? { plan: sub.plan, status: sub.status } : null,
-      });
+      await audit(
+        tx,
+        orgId,
+        actor,
+        'billing.override.comp',
+        { type: 'subscription', id: orgId },
+        {
+          plan: input.plan,
+          until: until.toISOString(),
+          note: input.note,
+          previous: sub ? { plan: sub.plan, status: sub.status } : null,
+        },
+      );
       return row!;
     }
 
@@ -530,13 +594,22 @@ export async function applyOverride(
     await tx
       .update(invoices)
       .set({ periodStart: end, periodEnd: addInterval(end, sub.interval), dueAt: end })
-      .where(and(eq(invoices.status, 'open'), eq(invoices.plan, sub.plan), eq(invoices.interval, sub.interval)));
-    await audit(tx, orgId, actor, 'billing.override.extend', { type: 'subscription', id: orgId }, {
-      days: input.days,
-      until: end.toISOString(),
-      note: input.note,
-      previous: { status: sub.status, currentPeriodEnd: sub.currentPeriodEnd.toISOString() },
-    });
+      .where(
+        and(eq(invoices.status, 'open'), eq(invoices.plan, sub.plan), eq(invoices.interval, sub.interval)),
+      );
+    await audit(
+      tx,
+      orgId,
+      actor,
+      'billing.override.extend',
+      { type: 'subscription', id: orgId },
+      {
+        days: input.days,
+        until: end.toISOString(),
+        note: input.note,
+        previous: { status: sub.status, currentPeriodEnd: sub.currentPeriodEnd.toISOString() },
+      },
+    );
     return row!;
   });
 }

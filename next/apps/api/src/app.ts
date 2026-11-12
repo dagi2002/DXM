@@ -15,7 +15,7 @@ import { ApiError, errorBody, type AppEnv } from './http';
 import type { RateLimiterOptions } from './rate-limit';
 import type { Mailer } from '@pulse/mail';
 import { createBlobStore, type BlobStore } from '@pulse/storage';
-import { billingAdminRoutes, billingRoutes, chapaWebhook } from './routes/billing';
+import { billingAdminRoutes, billingRoutes, billingStatusRoute, chapaWebhook } from './routes/billing';
 import { fixRoutes } from './routes/fixes';
 import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
@@ -175,6 +175,7 @@ export function createApp(deps: AppDeps) {
     chapa: deps.chapa ?? (billingConfigured(env) ? new HttpChapaClient(env.CHAPA_SECRET_KEY!) : undefined),
   };
   app.route('/api/v1/billing/chapa/webhook', chapaWebhook(billing));
+  app.route('/api/v1/billing/status', billingStatusRoute(billing));
   app.route('/api/v1/billing', billingRoutes(billing));
   app.route('/api/v1/admin/billing', billingAdminRoutes(billing));
 

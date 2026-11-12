@@ -1,9 +1,4 @@
-import {
-  PLAN_IDS,
-  entitlementsFor,
-  type PlanId,
-  type SubscriptionStatus,
-} from '@pulse/contracts/constants';
+import { PLAN_IDS, entitlementsFor, type PlanId, type SubscriptionStatus } from '@pulse/contracts/constants';
 import { sql, type Db, type Tx } from '@pulse/db';
 
 /**
@@ -29,7 +24,9 @@ export async function ingestState(db: Db | Tx, orgId: string, at = new Date()): 
     status: string | null;
     period_start: Date | string;
     sessions: number;
-  }>(sql`select plan, status, period_start, sessions from pulse_org_ingest_state(${orgId}, ${at.toISOString()}::timestamptz)`);
+  }>(
+    sql`select plan, status, period_start, sessions from pulse_org_ingest_state(${orgId}, ${at.toISOString()}::timestamptz)`,
+  );
   const row = res.rows[0]!;
   const plan = (PLAN_IDS as readonly string[]).includes(row.plan) ? (row.plan as PlanId) : 'free';
   const status = row.status as SubscriptionStatus | null;
@@ -45,4 +42,3 @@ export async function ingestState(db: Db | Tx, orgId: string, at = new Date()): 
     blocked: sessions >= ent.sessions,
   };
 }
-

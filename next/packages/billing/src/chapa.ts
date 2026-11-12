@@ -189,7 +189,9 @@ export function verifyChapaSignature(
   secret: string,
 ): boolean {
   if (!secret) return false;
-  const body = headers.xChapaSignature ? safeEqualHex(headers.xChapaSignature, signChapaBody(rawBody, secret)) : false;
+  const body = headers.xChapaSignature
+    ? safeEqualHex(headers.xChapaSignature, signChapaBody(rawBody, secret))
+    : false;
   const self = headers.chapaSignature ? safeEqualHex(headers.chapaSignature, signChapaSecret(secret)) : false;
   return body || self;
 }
@@ -213,7 +215,8 @@ export function judgeVerification(
   if (got.status !== 'success') return { verdict: 'pending' };
   if (got.txRef !== expected.txRef) return { verdict: 'mismatch', reason: 'tx_ref' };
   if (birrToSantim(got.amount) !== expected.amountSantim) return { verdict: 'mismatch', reason: 'amount' };
-  if ((got.currency ?? '').toUpperCase() !== expected.currency) return { verdict: 'mismatch', reason: 'currency' };
+  if ((got.currency ?? '').toUpperCase() !== expected.currency)
+    return { verdict: 'mismatch', reason: 'currency' };
   if ((got.mode ?? '').toLowerCase() !== expected.mode) return { verdict: 'mismatch', reason: 'mode' };
   return { verdict: 'paid' };
 }

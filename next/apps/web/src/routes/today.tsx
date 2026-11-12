@@ -15,6 +15,7 @@ import {
   Panel,
   SeverityPill,
   Sparkline,
+  StorageNotice,
   statusTabClass,
   tabPanelClass,
 } from '../components/pulse';
@@ -295,6 +296,9 @@ export function TodayPage() {
           </>
         }
       />
+      <div className="mb-4 empty:hidden">
+        <StorageNotice />
+      </div>
 
       {live.length > 0 ? (
         <div className="mb-6">

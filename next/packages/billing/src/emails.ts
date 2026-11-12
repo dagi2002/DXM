@@ -20,10 +20,17 @@ export async function sendBillingEmail(
   invoiceId?: string,
 ): Promise<number> {
   const invoice = invoiceId
-    ? await withOrg(db, orgId, async (tx) => (await tx.select().from(invoices).where(eq(invoices.id, invoiceId)))[0])
+    ? await withOrg(
+        db,
+        orgId,
+        async (tx) => (await tx.select().from(invoices).where(eq(invoices.id, invoiceId)))[0],
+      )
     : undefined;
   if (invoiceId && !invoice) return 0;
-  const [org] = await db.select({ name: organization.name }).from(organization).where(eq(organization.id, orgId));
+  const [org] = await db
+    .select({ name: organization.name })
+    .from(organization)
+    .where(eq(organization.id, orgId));
   const owners = await db
     .select({ email: user.email, locale: user.locale })
     .from(member)

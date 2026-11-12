@@ -1,8 +1,15 @@
-import { StatusBadge, cx } from '@pulse/ui';
+import type { BillingStatus } from '@pulse/contracts';
+import { canManageBilling, type FixSeverity as Severity } from '@pulse/contracts/constants';
+import type { Locale } from '@pulse/i18n';
+import { formatMetric } from '@pulse/metrics';
+import { Banner, StatusBadge, cx } from '@pulse/ui';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FixSeverity as Severity } from '@pulse/contracts/constants';
+import { api } from '../lib/api';
+import { useMe } from '../lib/queries';
 
 export function SeverityPill({ severity }: { severity: Severity }) {
   const { t } = useTranslation();
@@ -192,4 +199,62 @@ export function Panel({
       {children}
     </section>
   );
+}
+
+/* ── Storage notice (billing) ──────────────────────────────────────────────
+ * Lives here, in a chunk the app pages already share, so it adds no chunk of its own: every extra
+ * lazy chunk costs bytes in the first-load import map, and that budget is full.
+ */
+
+/** Is Pulse storing new sessions, and does the plan record replays? Any team member may ask. */
+export const billingStatusQuery = (orgId: string) =>
+  queryOptions({
+    queryKey: ['orgs', orgId, 'billing', 'status'],
+    queryFn: ({ signal }) => api<BillingStatus>('/billing/status', { signal }),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+/**
+ * Says plainly when Pulse is not storing new sessions (quota used up, or unpaid past the grace
+ * period), and, on the Replays page, when the plan doesn't record. Renders nothing otherwise.
+ */
+export function StorageNotice({ replays = false }: { replays?: boolean }) {
+  const { t, i18n } = useTranslation();
+  const { orgId, role } = useMe();
+  const { data } = useQuery({ ...billingStatusQuery(orgId), enabled: role !== 'client_viewer' });
+  if (!data) return null;
+  const owner = canManageBilling(role);
+  const action = owner ? (
+    <Link to="/settings" search={{ tab: 'billing' }} className="font-semibold text-primary underline">
+      {t('billing.notice.action')}
+    </Link>
+  ) : (
+    t('billing.notice.askOwner')
+  );
+  if (data.restricted) {
+    return (
+      <Banner tone="bad" title={t('billing.notice.restricted.title')}>
+        {t('billing.notice.restricted.body')} {action}
+      </Banner>
+    );
+  }
+  if (data.blocked) {
+    return (
+      <Banner tone="warn" title={t('billing.notice.quota.title')}>
+        {t('billing.notice.quota.body', {
+          limit: formatMetric('visitors', data.sessionLimit, i18n.language as Locale),
+        })}{' '}
+        {action}
+      </Banner>
+    );
+  }
+  if (replays && !data.replay) {
+    return (
+      <Banner tone="info" title={t('billing.notice.replay.title')}>
+        {t('billing.notice.replay.body')} {action}
+      </Banner>
+    );
+  }
+  return null;
 }

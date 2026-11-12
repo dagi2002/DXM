@@ -1,11 +1,19 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { billingConfigured } from '@pulse/config';
-import { BillingOverride, BillingSubscribe, canManageBilling, type BillingPayLink } from '@pulse/contracts';
+import {
+  BillingOverride,
+  BillingSubscribe,
+  canManageBilling,
+  canWorkOnFixes,
+  type BillingPayLink,
+  type BillingStatus,
+} from '@pulse/contracts';
 import {
   BillingError,
   ChapaError,
   applyOverride,
   createPayLink,
+  ingestState,
   loadOverview,
   requestPlan,
   sendBillingEmail,
@@ -32,10 +40,36 @@ const mapBillingError = (err: unknown): never => {
     throw err.code === 'not_found' ? notFound('Invoice') : new ApiError(409, 'conflict', err.message);
   }
   if (err instanceof ChapaError) {
-    throw new ApiError(502, 'payment_provider_error', 'The payment provider could not be reached. Try again.');
+    throw new ApiError(
+      502,
+      'payment_provider_error',
+      'The payment provider could not be reached. Try again.',
+    );
   }
   throw err;
 };
+
+/**
+ * What the whole team may see: whether new sessions are being stored and whether the plan records
+ * replays, so Today and Replays can say so plainly. No prices, invoices or payment details.
+ */
+export function billingStatusRoute(deps: BillingDeps) {
+  const r = new Hono<AppEnv>();
+  r.use('*', requireSession(deps), requireOrg(deps));
+  r.get('/', async (c) => {
+    if (!canWorkOnFixes(c.get('role'))) throw forbidden();
+    const state = await ingestState(deps.db, c.get('orgId')!);
+    return c.json({
+      plan: state.plan,
+      blocked: state.blocked,
+      restricted: state.status === 'restricted',
+      replay: state.replay,
+      sessions: state.sessions,
+      sessionLimit: state.sessionLimit,
+    } satisfies BillingStatus);
+  });
+  return r;
+}
 
 /** Settings → Billing for the active org. Owner only: plan, usage, invoices, pay links. */
 export function billingRoutes(deps: BillingDeps) {
@@ -102,7 +136,10 @@ export function chapaWebhook(deps: BillingDeps) {
       const raw = await c.req.text();
       const ok = verifyChapaSignature(
         raw,
-        { xChapaSignature: c.req.header('x-chapa-signature'), chapaSignature: c.req.header('chapa-signature') },
+        {
+          xChapaSignature: c.req.header('x-chapa-signature'),
+          chapaSignature: c.req.header('chapa-signature'),
+        },
         secret,
       );
       if (!ok) throw new ApiError(401, 'unauthenticated', 'Bad signature');
@@ -126,11 +163,19 @@ export function chapaWebhook(deps: BillingDeps) {
         }
         throw err;
       }
-      c.get('log').info({ outcome: result.outcome, orgId: 'orgId' in result ? result.orgId : undefined }, 'chapa webhook');
+      c.get('log').info(
+        { outcome: result.outcome, orgId: 'orgId' in result ? result.orgId : undefined },
+        'chapa webhook',
+      );
       if (result.outcome === 'paid' && result.applied) {
-        await sendBillingEmail(deps.db, deps.mailer, deps.env.APP_URL, result.orgId, 'receipt', result.invoiceId).catch(
-          (err: unknown) => c.get('log').error({ err }, 'receipt email failed'),
-        );
+        await sendBillingEmail(
+          deps.db,
+          deps.mailer,
+          deps.env.APP_URL,
+          result.orgId,
+          'receipt',
+          result.invoiceId,
+        ).catch((err: unknown) => c.get('log').error({ err }, 'receipt email failed'));
       }
       return c.json({ ok: true });
     },

@@ -55,7 +55,13 @@ async function ownerWithInvoice(email = 'owner@example.et') {
   const invoiceId = inv.body.result.invoiceId as string;
   const pay = await client.post(`/api/v1/billing/invoices/${invoiceId}/pay`);
   expect(pay.status).toBe(201);
-  return { client, orgId, invoiceId, txRef: pay.body.txRef as string, checkoutUrl: pay.body.checkoutUrl as string };
+  return {
+    client,
+    orgId,
+    invoiceId,
+    txRef: pay.body.txRef as string,
+    checkoutUrl: pay.body.checkoutUrl as string,
+  };
 }
 
 const payment = async (txRef: string) =>
@@ -146,13 +152,19 @@ describe('billing overview and plans', () => {
     ]);
     // Asking again returns the same open invoice instead of making another.
     const again = await client.post('/api/v1/billing/subscribe', { plan: 'growth', interval: 'year' });
-    expect(again.body.result).toEqual({ outcome: 'invoice', invoiceId: inv.body.result.invoiceId, created: false });
+    expect(again.body.result).toEqual({
+      outcome: 'invoice',
+      invoiceId: inv.body.result.invoiceId,
+      created: false,
+    });
   });
 
   it('rejects unknown plans and intervals', async () => {
     const { client } = await signUpWithOrg(ctx.app, 'bad@example.et');
     expect((await client.post('/api/v1/billing/subscribe', { plan: 'free' })).status).toBe(400);
-    expect((await client.post('/api/v1/billing/subscribe', { plan: 'business', interval: 'week' })).status).toBe(400);
+    expect(
+      (await client.post('/api/v1/billing/subscribe', { plan: 'business', interval: 'week' })).status,
+    ).toBe(400);
   });
 });
 
@@ -175,6 +187,30 @@ describe('billing access', () => {
     expect((await subscription(orgId))!.plan).toBe('business');
   });
 
+  it('lets the team (not client viewers, not other orgs) see only the storage status', async () => {
+    const { orgId, client } = await ownerWithInvoice();
+    const member = await addMember(orgId, 'teammate@example.et', 'member');
+    const status = await member.get('/api/v1/billing/status');
+    expect(status.status).toBe(200);
+    expect(status.body).toEqual({
+      plan: 'business',
+      blocked: false,
+      restricted: false,
+      replay: true,
+      sessions: 0,
+      sessionLimit: 15_000,
+    });
+    expect((await client.get('/api/v1/billing/status')).status).toBe(200);
+    const viewer = await addMember(orgId, 'viewer@example.et', 'client_viewer');
+    expect((await viewer.get('/api/v1/billing/status')).status).toBe(403);
+    expect((await new Client(ctx.app).get('/api/v1/billing/status')).status).toBe(401);
+    const other = await signUpWithOrg(ctx.app, 'elsewhere@example.et');
+    expect((await other.client.get('/api/v1/billing/status')).body).toMatchObject({
+      plan: 'free',
+      replay: false,
+    });
+  });
+
   it("keeps organizations apart: another org's invoice is a 404 and never listed", async () => {
     const a = await ownerWithInvoice('a@example.et');
     const b = await signUpWithOrg(ctx.app, 'b@example.et');
@@ -192,8 +228,18 @@ describe('pay links', () => {
     const { client, invoiceId, txRef, checkoutUrl } = await ownerWithInvoice();
     expect(txRef).toMatch(/^pulse-[A-Za-z0-9]{24}$/);
     expect(checkoutUrl).toContain(txRef);
-    expect(chapa.initialized[0]).toMatchObject({ txRef, amountSantim: 240_000, currency: 'ETB', email: 'owner@example.et' });
-    expect(await payment(txRef)).toMatchObject({ status: 'pending', amount_santim: 240_000, currency: 'ETB', invoice_id: invoiceId });
+    expect(chapa.initialized[0]).toMatchObject({
+      txRef,
+      amountSantim: 240_000,
+      currency: 'ETB',
+      email: 'owner@example.et',
+    });
+    expect(await payment(txRef)).toMatchObject({
+      status: 'pending',
+      amount_santim: 240_000,
+      currency: 'ETB',
+      invoice_id: invoiceId,
+    });
 
     // A second click soon after reuses the pending link…
     const again = await client.post(`/api/v1/billing/invoices/${invoiceId}/pay`);
@@ -233,13 +279,21 @@ describe('Chapa webhook', () => {
     const raw = JSON.stringify(charge(txRef));
     expect((await webhook(charge(txRef), {})).status).toBe(401);
     expect((await webhook(charge(txRef), { 'x-chapa-signature': 'deadbeef' })).status).toBe(401);
-    expect((await webhook(charge(txRef), { 'x-chapa-signature': signChapaBody(raw, 'another-secret') })).status).toBe(401);
+    expect(
+      (await webhook(charge(txRef), { 'x-chapa-signature': signChapaBody(raw, 'another-secret') })).status,
+    ).toBe(401);
     // Signed for a different body (tampered payload).
     expect(
-      (await webhook(charge(txRef), { 'x-chapa-signature': signChapaBody(raw.replace('success', 'failed'), WEBHOOK_SECRET) })).status,
+      (
+        await webhook(charge(txRef), {
+          'x-chapa-signature': signChapaBody(raw.replace('success', 'failed'), WEBHOOK_SECRET),
+        })
+      ).status,
     ).toBe(401);
     // Both headers present and both wrong.
-    expect((await webhook(charge(txRef), { 'x-chapa-signature': 'aa', 'chapa-signature': 'bb' })).status).toBe(401);
+    expect(
+      (await webhook(charge(txRef), { 'x-chapa-signature': 'aa', 'chapa-signature': 'bb' })).status,
+    ).toBe(401);
     expect(chapa.verifyCalls).toBe(0);
     expect((await payment(txRef)).status).toBe('pending');
   });
@@ -272,7 +326,9 @@ describe('Chapa webhook', () => {
     expect(inv.paidAt).not.toBeNull();
     expect(inv.paymentReference).toBeTruthy();
     expect(new Date(sub!.current_period_end).toISOString()).toBe(inv.periodEnd);
-    expect(new Date(sub!.current_period_end).getTime()).toBeGreaterThan(new Date(before!.current_period_end).getTime());
+    expect(new Date(sub!.current_period_end).getTime()).toBeGreaterThan(
+      new Date(before!.current_period_end).getTime(),
+    );
 
     expect(await audits(orgId, 'billing.invoice_paid')).toHaveLength(1);
     const receipt = ctx.mailer.lastTo('owner@example.et');
@@ -352,7 +408,9 @@ describe('Chapa webhook', () => {
     expect((await payment(txRef)).status).toBe('paid');
     expect(await audits(orgId, 'billing.invoice_paid')).toHaveLength(1);
     expect(receipts()).toHaveLength(1);
-    expect((await adminQuery(`select count(*)::int as n from invoices where status = 'paid'`)).rows[0]!.n).toBe(1);
+    expect(
+      (await adminQuery(`select count(*)::int as n from invoices where status = 'paid'`)).rows[0]!.n,
+    ).toBe(1);
   });
 
   it('does not apply a second payment for the same invoice, and flags it for review', async () => {
@@ -419,9 +477,19 @@ describe('staff override', () => {
     const { client, orgId } = await signUpWithOrg(ctx.app, 'comp@example.et');
     const res = await override(orgId, comp);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ orgId, plan: 'agency', status: 'active', comp: true, currentPeriodEnd: until });
+    expect(await res.json()).toMatchObject({
+      orgId,
+      plan: 'agency',
+      status: 'active',
+      comp: true,
+      currentPeriodEnd: until,
+    });
     const overview = await client.get('/api/v1/billing');
-    expect(overview.body).toMatchObject({ plan: 'agency', subscription: { status: 'active', comp: true }, usage: { siteLimit: 10 } });
+    expect(overview.body).toMatchObject({
+      plan: 'agency',
+      subscription: { status: 'active', comp: true },
+      usage: { siteLimit: 10 },
+    });
     const [entry] = await audits(orgId, 'billing.override.comp');
     expect(entry).toMatchObject({ actor_user_id: null, target_type: 'subscription' });
     expect(entry!.metadata).toMatchObject({ plan: 'agency', until, note: comp.note, previous: null });
@@ -443,10 +511,16 @@ describe('staff override', () => {
     expect(days).toBeGreaterThan(13.9);
     expect(days).toBeLessThan(14.1);
     const [entry] = await audits(orgId, 'billing.override.extend');
-    expect(entry!.metadata).toMatchObject({ days: 14, note: 'Bank transfer on its way', previous: { status: 'restricted' } });
+    expect(entry!.metadata).toMatchObject({
+      days: 14,
+      note: 'Bank transfer on its way',
+      previous: { status: 'restricted' },
+    });
     // Nothing to extend on a free org.
     const free = await signUpWithOrg(ctx.app, 'free2@example.et');
-    expect((await override(free.orgId, { action: 'extend', days: 5, note: 'nothing here' })).status).toBe(409);
+    expect((await override(free.orgId, { action: 'extend', days: 5, note: 'nothing here' })).status).toBe(
+      409,
+    );
   });
 });
 
@@ -461,11 +535,19 @@ describe('plan gating', () => {
     expect(fourth.status).toBe(409);
     expect(fourth.body.error).toMatchObject({
       code: 'plan_limit_reached',
-      details: { currentPlan: 'growth', limitType: 'sites', limit: 3, currentCount: 3, upgradePlan: 'agency' },
+      details: {
+        currentPlan: 'growth',
+        limitType: 'sites',
+        limit: 3,
+        currentCount: 3,
+        upgradePlan: 'agency',
+      },
     });
 
     await adminQuery(`update subscriptions set status = 'restricted' where org_id = $1`, [orgId]);
-    await client.delete(`/api/v1/sites/${(await client.get('/api/v1/sites')).body.sites[2].id}`, { confirmDomain: 'c.et' });
+    await client.delete(`/api/v1/sites/${(await client.get('/api/v1/sites')).body.sites[2].id}`, {
+      confirmDomain: 'c.et',
+    });
     const blocked = await client.post('/api/v1/sites', { name: 'e', domain: 'e.et' });
     expect(blocked.status).toBe(409);
     expect(blocked.body.error.details).toMatchObject({ limit: 1 });

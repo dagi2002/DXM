@@ -147,3 +147,20 @@ export async function seedIssues(siteId: string) {
     await db.end();
   }
 }
+
+/** Uses up this month's session quota for a free org (found by name), as real traffic would. */
+export async function useUpSessionQuota(orgName: string, sessions = 1000) {
+  const db = new pg.Client({ connectionString: E2E_ADMIN_DB });
+  await db.connect();
+  try {
+    const res = await db.query(
+      `insert into org_usage (org_id, period_start, sessions)
+       select id, date_trunc('month', now() at time zone 'UTC') at time zone 'UTC', $2
+         from organization where name = $1`,
+      [orgName, sessions],
+    );
+    if (res.rowCount !== 1) throw new Error(`expected one organization named ${orgName}`);
+  } finally {
+    await db.end();
+  }
+}

@@ -81,6 +81,19 @@ export const BillingOverview = z.object({
 });
 export type BillingOverview = z.infer<typeof BillingOverview>;
 
+/** The little every team member may know: is data being stored, and is replay on this plan? */
+export const BillingStatus = z.object({
+  plan: PlanIdSchema,
+  /** New sessions are not being stored (quota used up, or the org is restricted). */
+  blocked: z.boolean(),
+  /** Unpaid past the grace period. */
+  restricted: z.boolean(),
+  replay: z.boolean(),
+  sessions: z.number().int(),
+  sessionLimit: z.number().int(),
+});
+export type BillingStatus = z.infer<typeof BillingStatus>;
+
 /** Start a trial (first time) or ask for an invoice for a plan. */
 export const BillingSubscribe = z.object({
   plan: PaidPlanIdSchema,

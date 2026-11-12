@@ -130,7 +130,8 @@ function checkBilling(
     ctx.addIssue({
       code: 'custom',
       path: ['CHAPA_MODE'],
-      message: 'does not match CHAPA_SECRET_KEY (a test key needs CHAPA_MODE=test, a live key CHAPA_MODE=live)',
+      message:
+        'does not match CHAPA_SECRET_KEY (a test key needs CHAPA_MODE=test, a live key CHAPA_MODE=live)',
     });
   }
   if (env.NODE_ENV !== 'production') return;
