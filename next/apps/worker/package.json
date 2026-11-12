@@ -8,6 +8,7 @@
     "build": "tsup",
     "typecheck": "tsc -p .",
     "lint": "eslint src test",
+    "backfill": "tsx --env-file-if-exists=../../.env src/backfill.ts",
     "test": "vitest run"
   },
   "dependencies": {

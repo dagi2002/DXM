@@ -64,7 +64,7 @@ export interface TestContext {
 
 export function createTestContext(
   overrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof createApp>[0], 'telegram' | 'ai' | 'blobs'> = {},
+  extra: Pick<Parameters<typeof createApp>[0], 'telegram' | 'push' | 'ai' | 'blobs'> = {},
 ): TestContext {
   const env = loadServerEnv({
     NODE_ENV: 'test',

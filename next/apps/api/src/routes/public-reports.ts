@@ -13,7 +13,10 @@ export const PUBLIC_REPORT_RATE_LIMIT = { capacity: 30, refillPerSecond: 0.5 };
 
 /** For request logs: the token is a bearer credential and must never be written down. */
 export const PUBLIC_REPORT_PATH_RE = /^(\/api\/v1\/public\/reports\/)[^/]+/;
-export const redactPath = (path: string) => path.replace(PUBLIC_REPORT_PATH_RE, '$1:token');
+/** The digest's unsubscribe token (task 15) is a capability too. */
+const DIGEST_UNSUBSCRIBE_PATH_RE = /^(\/api\/v1\/public\/digest\/unsubscribe\/)[^/]+/;
+export const redactPath = (path: string) =>
+  path.replace(PUBLIC_REPORT_PATH_RE, '$1:token').replace(DIGEST_UNSUBSCRIBE_PATH_RE, '$1:token');
 
 /**
  * `GET /api/v1/public/reports/:token` — unauthenticated, token-scoped. It returns that one

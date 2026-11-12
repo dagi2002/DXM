@@ -109,7 +109,7 @@ export function useReportText() {
     /** What the before/after numbers count. Kinds without a per-element measure say so. */
     measure: (f: ReportFix) =>
       i18n.exists(`report.measure.${f.kind}`) ? t(`report.measure.${f.kind}`) : t('report.measure.other'),
-    /** True when this kind of fix has no before/after count (only click friction is measured). */
+    /** True when this kind of fix has no before/after count (tracking fixes, and old snapshots). */
     unmeasured: (f: ReportFix) => f.before.perDay === null && f.before.days >= 1,
     perDay: (n: number | null) =>
       n === null ? t('report.tooEarly') : t('report.perDay', { value: nf.format(n) }),

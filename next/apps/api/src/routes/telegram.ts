@@ -9,6 +9,7 @@ import {
 import {
   auditLog,
   newId,
+  notificationSettings,
   organization,
   randomBase62,
   sql,
@@ -60,6 +61,18 @@ function audit(
   });
 }
 
+/** Upserts the org's shared quiet hours (Telegram and web push follow the same rule). */
+export async function saveQuietHours(
+  tx: Tx,
+  orgId: string,
+  q: { quietStart: number | null; quietEnd: number | null },
+) {
+  await tx
+    .insert(notificationSettings)
+    .values({ orgId, ...q })
+    .onConflictDoUpdate({ target: notificationSettings.orgId, set: { ...q, updatedAt: new Date() } });
+}
+
 /**
  * Telegram alerts settings for the active org. Anyone on the team can see whether alerts are on;
  * owners and admins link, change and unlink the chat.
@@ -70,7 +83,10 @@ export function telegramRoutes(deps: AppDeps) {
   r.use('*', requireSession(deps), requireOrg(deps), requireTeam);
 
   const status = async (orgId: string): Promise<TelegramStatus> => {
-    const [link] = await withOrg(deps.db, orgId, (tx) => tx.select().from(telegramLinks).limit(1));
+    const { link, quiet } = await withOrg(deps.db, orgId, async (tx) => ({
+      link: (await tx.select().from(telegramLinks).limit(1))[0],
+      quiet: (await tx.select().from(notificationSettings).limit(1))[0],
+    }));
     return {
       configured,
       botUsername: configured ? deps.env.TELEGRAM_BOT_USERNAME! : null,
@@ -78,9 +94,9 @@ export function telegramRoutes(deps: AppDeps) {
         ? {
             chatTitle: link.chatTitle,
             linkedAt: link.updatedAt.toISOString(),
-            quietStart: link.quietStart,
-            quietEnd: link.quietEnd,
-            timeZone: link.timeZone,
+            quietStart: quiet?.quietStart ?? null,
+            quietEnd: quiet?.quietEnd ?? null,
+            timeZone: quiet?.timeZone ?? link.timeZone,
             locale: isLocale(link.locale) ? link.locale : 'en',
           }
         : null,
@@ -116,9 +132,13 @@ export function telegramRoutes(deps: AppDeps) {
     await withOrg(deps.db, c.get('orgId')!, async (tx) => {
       const updated = await tx
         .update(telegramLinks)
-        .set({ quietStart: input.quietStart, quietEnd: input.quietEnd, locale: input.locale })
+        .set({ locale: input.locale })
         .returning({ id: telegramLinks.id });
       if (!updated.length) throw notFound('Telegram chat');
+      // Older clients still send quiet hours here: they write the org's shared setting.
+      if (input.quietStart !== undefined && input.quietEnd !== undefined) {
+        await saveQuietHours(tx, c.get('orgId')!, { quietStart: input.quietStart, quietEnd: input.quietEnd });
+      }
       await audit(tx, c, 'telegram.updated', updated[0]!.id, input);
     });
     return c.json(await status(c.get('orgId')!));

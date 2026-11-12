@@ -34,6 +34,7 @@ import {
   isFuturePeriod,
   newShareToken,
 } from '@pulse/reports';
+import { rollupReportSource } from '@pulse/insights/db';
 import { Hono, type Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { AppDeps } from '../app';
@@ -184,7 +185,11 @@ export function reportRoutes(deps: AppDeps) {
     const body = await withOrg(deps.db, orgId, async (tx) => {
       let snapshot;
       try {
-        snapshot = await buildReportSnapshot(tx, { siteId: input.siteId, period: input.period, now });
+        snapshot = await buildReportSnapshot(
+          tx,
+          { siteId: input.siteId, period: input.period, now },
+          rollupReportSource,
+        );
       } catch (err) {
         if (err instanceof ReportSiteGoneError) throw notFound('Site');
         throw err;

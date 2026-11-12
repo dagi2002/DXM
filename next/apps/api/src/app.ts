@@ -3,6 +3,7 @@ import type { AiClient } from '@pulse/ai';
 import { aiConfigured, type ServerEnv } from '@pulse/config';
 import type { PublicConfig } from '@pulse/contracts';
 import type { TelegramClient } from '@pulse/mail/telegram';
+import type { PushClient } from '@pulse/mail/push';
 import type { Db } from '@pulse/db';
 import { sql } from '@pulse/db';
 import { Hono } from 'hono';
@@ -21,6 +22,7 @@ import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
 import { insightRoutes } from './routes/insights';
 import { meRoutes } from './routes/me';
+import { notificationRoutes, publicDigestRoutes } from './routes/notifications';
 import { replayRoutes } from './routes/replays';
 import { siteRoutes } from './routes/sites';
 import { telegramRoutes, telegramWebhook } from './routes/telegram';
@@ -38,6 +40,8 @@ export interface AppDeps {
   ai?: AiClient | null;
   /** Sends Telegram messages (link confirmations, tests). Absent without a bot token. */
   telegram?: TelegramClient;
+  /** Sends web push (the Settings test). Absent without VAPID keys. */
+  push?: PushClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
   peerAddress?: (raw: Request, c: unknown) => string | undefined;
   /** Overrides the public report route's per-IP rate limit (tests). */
@@ -172,6 +176,8 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/insights', insightRoutes(deps));
   app.route('/api/v1/telegram/webhook', telegramWebhook(deps));
   app.route('/api/v1/telegram', telegramRoutes(deps));
+  app.route('/api/v1/notifications', notificationRoutes(deps));
+  app.route('/api/v1/public/digest', publicDigestRoutes(deps));
 
   app.notFound((c) => c.json(errorBody(c, 'not_found', 'Route not found'), 404));
 

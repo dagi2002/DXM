@@ -44,6 +44,16 @@ export const QUEUES = {
     name: 'insights.site',
     options: { policy: 'stately', retryLimit: 3, retryBackoff: true, retryDelay: 30 },
   },
+  /**
+   * Builds missing, stale or old-version daily rollups from raw events (idempotent). Queued on
+   * worker start (every deploy), daily, and on demand (`pnpm --filter @pulse/worker backfill`).
+   */
+  insightsBackfill: {
+    name: 'insights.backfill',
+    options: { policy: 'stately', retryLimit: 2, retryBackoff: true, retryDelay: 60 },
+  },
+  /** Daily: deletes raw events, visits and rollups past each org's retention; drops empty partitions. */
+  retention: { name: 'maintenance.retention', options: { retryLimit: 2 } },
   /** Hourly: live sites that went quiet (tracking-broken), and quiet ones that came back. */
   detectTracking: { name: 'detect.tracking', options: { retryLimit: 1 } },
   /** Hourly: queue a before/after check for every fixed issue whose after-window is complete. */
@@ -57,6 +67,18 @@ export const QUEUES = {
   alertTelegram: {
     name: 'alert.telegram',
     options: { retryLimit: 4, retryBackoff: true, retryDelay: 15 },
+  },
+  /** Web push for the same news, to every subscribed browser of the org's team (task 15). */
+  alertPush: {
+    name: 'alert.push',
+    options: { retryLimit: 2, retryBackoff: true, retryDelay: 15 },
+  },
+  /** Mondays: queue one weekly digest per organization with sites. */
+  digestSweep: { name: 'digest.sweep', options: { retryLimit: 2 } },
+  /** One org's Monday digest email (singletonKey = org:week; members already sent are skipped). */
+  digestOrg: {
+    name: 'digest.org',
+    options: { retryLimit: 3, retryBackoff: true, retryDelay: 60 },
   },
   /** AI suggested fix for one issue; skipped unless AI_ENABLED with a key and budget left. */
   aiRecommend: {
@@ -81,10 +103,15 @@ export interface JobPayloads {
   'reports.site': { siteId: string; orgId: string; period: string };
   'insights.sweep': Record<string, never>;
   'insights.site': { siteId: string; orgId: string };
+  'insights.backfill': Record<string, never>;
+  'maintenance.retention': Record<string, never>;
   'detect.tracking': Record<string, never>;
   'issue.verify-sweep': Record<string, never>;
   'issue.verify': { issueId: string; orgId: string };
   'alert.telegram': TelegramAlertJob;
+  'alert.push': AlertJob;
+  'digest.sweep': Record<string, never>;
+  'digest.org': DigestJob;
   'ai.recommend': { issueId: string; orgId: string };
 }
 
@@ -95,6 +122,15 @@ export interface TelegramAlertJob {
   orgId: string;
   siteId: string;
   alerts: { issueId: string; reason: AlertReason }[];
+}
+
+/** The news from one detection run on one site; Telegram and web push send the same job. */
+export type AlertJob = TelegramAlertJob;
+
+/** One org's weekly digest. `week` is the Monday (UTC, YYYY-MM-DD) the reported week started. */
+export interface DigestJob {
+  orgId: string;
+  week: string;
 }
 
 /** A pg-boss client for application roles: never migrates or creates schema objects itself. */

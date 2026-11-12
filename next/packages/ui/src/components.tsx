@@ -1,31 +1,17 @@
 import { clsx } from 'clsx';
-import { AlertOctagon, AlertTriangle, CheckCircle2, ChevronDown, Info, Sparkles, X } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, Info, Sparkles, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   Button as RACButton,
-  Dialog,
-  FieldError,
-  Heading,
-  Input,
   Label,
-  ListBox,
-  ListBoxItem,
-  Modal as RACModal,
-  ModalOverlay,
-  Popover,
   Radio,
   RadioGroup,
-  Select as RACSelect,
-  SelectValue,
-  Text,
-  TextField as RACTextField,
   type ButtonProps as RACButtonProps,
-  type Key,
 } from 'react-aria-components';
 
 export const cx = clsx;
 
-const focusRing =
+export const focusRing =
   'outline-none data-[focus-visible]:outline-3 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-primary';
 
 /* ── Button ──────────────────────────────────────────────────────────────── */
@@ -130,128 +116,6 @@ export function Skeleton({ className }: { className?: string }) {
       aria-hidden="true"
       className={cx('rounded-md bg-surface-sunken motion-safe:animate-pulse', className)}
     />
-  );
-}
-
-/* ── Fields ──────────────────────────────────────────────────────────────── */
-export interface TextFieldProps {
-  label: string;
-  name?: string;
-  value?: string;
-  defaultValue?: string;
-  onChange?: (value: string) => void;
-  type?: 'text' | 'email' | 'password' | 'url' | 'search';
-  autoComplete?: string;
-  placeholder?: string;
-  description?: ReactNode;
-  errorMessage?: string;
-  isRequired?: boolean;
-  isDisabled?: boolean;
-  autoFocus?: boolean;
-  inputMode?: 'text' | 'email' | 'url' | 'numeric';
-  maxLength?: number;
-  className?: string;
-  endAdornment?: ReactNode;
-  lang?: string;
-}
-
-export function TextField({
-  label,
-  description,
-  errorMessage,
-  className,
-  placeholder,
-  endAdornment,
-  inputMode,
-  lang,
-  ...props
-}: TextFieldProps) {
-  return (
-    <RACTextField
-      {...props}
-      isInvalid={!!errorMessage}
-      validationBehavior="aria"
-      className={cx('grid gap-1.5', className)}
-    >
-      <Label className="text-sm font-semibold text-text">{label}</Label>
-      <div className="relative">
-        <Input
-          placeholder={placeholder}
-          inputMode={inputMode}
-          lang={lang}
-          className={cx(
-            'min-h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-[0.9375rem] text-text placeholder:text-text-faint',
-            'outline-none data-[focused]:border-primary data-[focused]:ring-3 data-[focused]:ring-primary-soft',
-            'data-[invalid]:border-bad',
-            endAdornment ? 'pr-12' : '',
-          )}
-        />
-        {endAdornment ? (
-          <div className="absolute inset-y-0 right-0 flex items-center">{endAdornment}</div>
-        ) : null}
-      </div>
-      {description && !errorMessage ? (
-        <Text slot="description" className="text-[0.8125rem] text-text-muted">
-          {description}
-        </Text>
-      ) : null}
-      <FieldError className="text-[0.8125rem] font-medium text-bad">{errorMessage}</FieldError>
-    </RACTextField>
-  );
-}
-
-export interface SelectOption {
-  id: string;
-  label: string;
-}
-
-export function Select({
-  label,
-  options,
-  selectedKey,
-  onSelectionChange,
-  name,
-  className,
-}: {
-  label: string;
-  options: SelectOption[];
-  selectedKey?: string;
-  onSelectionChange?: (key: string) => void;
-  name?: string;
-  className?: string;
-}) {
-  return (
-    <RACSelect
-      name={name}
-      selectedKey={selectedKey}
-      onSelectionChange={(k: Key | null) => k !== null && onSelectionChange?.(String(k))}
-      className={cx('grid gap-1.5', className)}
-    >
-      <Label className="text-sm font-semibold text-text">{label}</Label>
-      <RACButton
-        className={cx(
-          'flex min-h-11 w-full items-center justify-between rounded-md border border-border-strong bg-surface px-3 text-left text-[0.9375rem] text-text',
-          focusRing,
-        )}
-      >
-        <SelectValue />
-        <ChevronDown size={16} aria-hidden="true" className="text-text-muted" />
-      </RACButton>
-      <Popover className="min-w-(--trigger-width) rounded-md border border-border bg-surface p-1 shadow-lg">
-        <ListBox className="max-h-72 overflow-auto outline-none">
-          {options.map((o) => (
-            <ListBoxItem
-              key={o.id}
-              id={o.id}
-              textValue={o.label}
-              className="cursor-default rounded-sm px-3 py-2 text-sm text-text outline-none data-[focused]:bg-surface-sunken data-[selected]:font-semibold data-[selected]:text-primary"
-            >
-              {o.label}
-            </ListBoxItem>
-          ))}
-        </ListBox>
-      </Popover>
-    </RACSelect>
   );
 }
 
@@ -443,42 +307,6 @@ export function PageHeader({
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
-  );
-}
-
-/* ── Dialog ──────────────────────────────────────────────────────────────── */
-export function Modal({
-  isOpen,
-  onOpenChange,
-  title,
-  children,
-  closeLabel = 'Close',
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: ReactNode;
-  children: ReactNode;
-  closeLabel?: string;
-}) {
-  return (
-    <ModalOverlay
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      isDismissable
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
-    >
-      <RACModal className="w-full max-w-lg rounded-t-xl border border-border bg-surface shadow-xl sm:rounded-xl">
-        <Dialog className="relative max-h-[90dvh] overflow-y-auto p-6 outline-none">
-          <Heading slot="title" className="pr-10 font-display text-xl font-bold text-text">
-            {title}
-          </Heading>
-          <IconButton label={closeLabel} slot="close" className="absolute top-3 right-3">
-            <X size={18} aria-hidden="true" />
-          </IconButton>
-          <div className="mt-4">{children}</div>
-        </Dialog>
-      </RACModal>
-    </ModalOverlay>
   );
 }
 

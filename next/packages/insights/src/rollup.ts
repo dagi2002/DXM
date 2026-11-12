@@ -1,5 +1,5 @@
 import { DEVICES, INSIGHT_NETWORKS, type Device, type InsightNetwork } from '@pulse/contracts';
-import { normalizePath } from '@pulse/detectors';
+import { normalizePath, uTurnStats, type DetectorEvent } from '@pulse/detectors';
 import { VITAL_METRICS, type VitalMetric, type VitalSamples } from './vitals';
 
 /**
@@ -20,7 +20,17 @@ export interface DayEvent {
   visitId: string;
   type: string;
   path: string | null;
+  /** Server and browser times; page views need them to find U-turns. */
+  at?: Date;
+  clientAt?: Date | null;
 }
+
+/**
+ * Bumped whenever a rollup gains a column or changes a definition. Rows made by an older version
+ * are recomputed by the backfill while raw events exist, and readers don't trust their new columns.
+ * v2: `pv_visits`, U-turn counts per page, `slow-2g` as its own network.
+ */
+export const ROLLUP_VERSION = 2;
 
 export interface DayVital {
   visitId: string;
@@ -46,6 +56,8 @@ export interface SiteDayRollup {
   rageClicks: number;
   deadClicks: number;
   errors: number;
+  /** Distinct visits with at least one page view. */
+  pvVisits: number;
 }
 
 export interface PageDayRollup {
@@ -57,6 +69,9 @@ export interface PageDayRollup {
   bounces: number;
   frictionVisits: number;
   errorVisits: number;
+  /** U-turn exposure and U-turns, counted exactly as the U-turn detector counts them. */
+  uturnReached: number;
+  uturnTurned: number;
 }
 
 /** Page template for grouping: ids collapsed, unknown paths grouped under `(unknown)`. */
@@ -64,15 +79,15 @@ export const pageKey = (path: string | null) => normalizePath(path) ?? '(unknown
 
 export const toDevice = (d: string): Device =>
   (DEVICES as readonly string[]).includes(d) ? (d as Device) : 'desktop';
-/** `slow-2g` folds into `2g`; anything else unknown. */
+/** Known connection types (including `slow-2g`, its own bucket); anything else is unknown. */
 export function toNetwork(n: string | null): InsightNetwork {
-  if (n === 'slow-2g') return '2g';
   return n && (INSIGHT_NETWORKS as readonly string[]).includes(n) ? (n as InsightNetwork) : 'unknown';
 }
 
 export function rollupSiteDay(visits: readonly DayVisit[], events: readonly DayEvent[]): SiteDayRollup {
   const friction = new Set<string>();
   const errored = new Set<string>();
+  const viewed = new Set<string>();
   let rage = 0;
   let dead = 0;
   let errors = 0;
@@ -86,7 +101,7 @@ export function rollupSiteDay(visits: readonly DayVisit[], events: readonly DayE
     } else if (e.type === 'er') {
       errors += 1;
       errored.add(e.visitId);
-    }
+    } else if (e.type === 'pv') viewed.add(e.visitId);
   }
   return {
     visits: visits.length,
@@ -98,7 +113,30 @@ export function rollupSiteDay(visits: readonly DayVisit[], events: readonly DayE
     rageClicks: rage,
     deadClicks: dead,
     errors,
+    pvVisits: viewed.size,
   };
+}
+
+/**
+ * U-turns per page template for one day of page views (the detector's own `uTurnStats`). Visits
+ * that cross midnight are judged per day, so a U-turn split by midnight isn't counted.
+ */
+export function uTurnsByPage(events: readonly DayEvent[]): Map<string, { reached: number; turned: number }> {
+  const pvs: DetectorEvent[] = [];
+  for (const e of events)
+    if (e.type === 'pv')
+      pvs.push({
+        visitId: e.visitId,
+        at: e.at ?? new Date(0),
+        clientAt: e.clientAt ?? null,
+        type: 'pv',
+        path: e.path,
+        props: {},
+      });
+  const out = new Map<string, { reached: number; turned: number }>();
+  for (const [path, s] of uTurnStats({ events: pvs, visits: new Map(), windowHours: 24 }))
+    out.set(path, { reached: s.reached.size, turned: s.turned.size });
+  return out;
 }
 
 export function rollupPagesDay(visits: readonly DayVisit[], events: readonly DayEvent[]): PageDayRollup[] {
@@ -132,6 +170,7 @@ export function rollupPagesDay(visits: readonly DayVisit[], events: readonly Day
       page(pageKey(e.path)).errors.add(e.visitId);
     }
   }
+  const uTurns = uTurnsByPage(events);
   for (const v of visits) {
     if (v.bounced === null || !v.entryPath) continue;
     const p = page(pageKey(v.entryPath));
@@ -147,6 +186,8 @@ export function rollupPagesDay(visits: readonly DayVisit[], events: readonly Day
       bounces: p.bounces,
       frictionVisits: p.friction.size,
       errorVisits: p.errors.size,
+      uturnReached: uTurns.get(path)?.reached ?? 0,
+      uturnTurned: uTurns.get(path)?.turned ?? 0,
     }))
     .sort((a, b) => b.pageviews - a.pageviews || a.path.localeCompare(b.path));
 }

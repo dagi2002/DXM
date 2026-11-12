@@ -1,7 +1,7 @@
 import { isLocale, type Locale } from '@pulse/i18n';
 import i18next, { type BackendModule } from 'i18next';
-import ICU from 'i18next-icu';
 import { initReactI18next } from 'react-i18next';
+import { icuFormat } from './lib/icu-format';
 
 const STORAGE_KEY = 'pulse.lang';
 
@@ -42,7 +42,7 @@ export const i18n = i18next.createInstance();
 
 export const i18nReady = i18n
   .use(lazyLocales)
-  .use(ICU)
+  .use(icuFormat)
   .use(initReactI18next)
   .init({
     lng: initialLocale(),
