@@ -22,6 +22,9 @@ test('records a short visit on the customer site and plays it back, masked', asy
   await page.getByLabel('Organization name').fill('Abebe Furniture');
   await page.getByRole('button', { name: 'Create organization' }).click();
   await page.getByRole('button', { name: 'Add a site' }).click();
+  // Recording is a paid-plan feature: this organization starts its free trial of Business.
+  const trial = await page.request.post('/api/v1/billing/subscribe', { data: { plan: 'business' } });
+  expect(trial.ok()).toBe(true);
   const dialog = page.getByRole('dialog', { name: 'Add a site' });
   await dialog.getByLabel('Site name').fill('Demo shop');
   await dialog.getByLabel('Domain').fill(`replay-${info.project.name}-${Date.now()}.example.et`);

@@ -31,7 +31,8 @@ Tests: `packages/sdk/src/replay.test.ts` pins the options and mask functions; `a
 
 ## Retention
 
-- Replays are deleted after **30 days** by default (`REPLAY_RETENTION_DAYS`). The worker's daily `maintenance.replay-retention` job deletes the rows and then the blobs, in batches.
+- Replays are kept for as long as the organization's plan says: **7 days** on Free, **30** on Business, **90** on Growth and Agency (`PLANS` in `@pulse/contracts`; an org restricted for non-payment keeps the Free figure). `REPLAY_RETENTION_DAYS` (default 90) is a server-wide cap on top. The worker's daily `maintenance.replay-retention` job deletes the rows and then the blobs, in batches.
+- Recording is a paid-plan feature: the collector does not record visits for organizations on Free (see [billing.md](./billing.md)).
 - A deleted site's replays disappear from the dashboard immediately and are removed by retention like any other (a site purge job, when it exists, should also call `deletePrefix(orgs/{org}/sites/{site}/)`).
 
 ## Deleting one visitor's recording

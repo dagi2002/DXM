@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { aiConfigured, type ServerEnv } from '@pulse/config';
+import { aiConfigured, billingConfigured, type ServerEnv } from '@pulse/config';
+import { HttpChapaClient, type ChapaClient } from '@pulse/billing';
 import type { PublicConfig } from '@pulse/contracts';
 import type { TelegramClient } from '@pulse/mail/telegram';
 import type { PushClient } from '@pulse/mail/push';
@@ -15,6 +16,7 @@ import { ApiError, errorBody, type AppEnv } from './http';
 import type { RateLimiterOptions } from './rate-limit';
 import type { Mailer } from '@pulse/mail';
 import { createBlobStore, type BlobStore } from '@pulse/storage';
+import { billingAdminRoutes, billingRoutes, billingStatusRoute, chapaWebhook } from './routes/billing';
 import { fixRoutes } from './routes/fixes';
 import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
@@ -38,6 +40,8 @@ export interface AppDeps {
   telegram?: TelegramClient;
   /** Sends web push (the Settings test). Absent without VAPID keys. */
   push?: PushClient;
+  /** Chapa (billing). Defaults to the HTTP client when the env has keys; tests pass the fake. */
+  chapa?: ChapaClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
   peerAddress?: (raw: Request, c: unknown) => string | undefined;
   /** Overrides the public report route's per-IP rate limit (tests). */
@@ -172,6 +176,14 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/telegram', telegramRoutes(deps));
   app.route('/api/v1/notifications', notificationRoutes(deps));
   app.route('/api/v1/public/digest', publicDigestRoutes(deps));
+  const billing = {
+    ...deps,
+    chapa: deps.chapa ?? (billingConfigured(env) ? new HttpChapaClient(env.CHAPA_SECRET_KEY!) : undefined),
+  };
+  app.route('/api/v1/billing/chapa/webhook', chapaWebhook(billing));
+  app.route('/api/v1/billing/status', billingStatusRoute(billing));
+  app.route('/api/v1/billing', billingRoutes(billing));
+  app.route('/api/v1/admin/billing', billingAdminRoutes(billing));
 
   app.notFound((c) => c.json(errorBody(c, 'not_found', 'Route not found'), 404));
 

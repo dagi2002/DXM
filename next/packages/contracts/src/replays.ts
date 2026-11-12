@@ -12,8 +12,8 @@ export const REPLAY_CHUNK_MAX_BYTES = 512 * 1024;
 export const REPLAY_CHUNK_MAX_INFLATED_BYTES = 8 * 1024 * 1024;
 /** Highest chunk sequence number accepted for one visit. */
 export const REPLAY_MAX_SEQ = 100_000;
-/** Default replay retention in days (REPLAY_RETENTION_DAYS overrides it). */
-export const REPLAY_RETENTION_DAYS = 30;
+/** Server-wide cap on replay retention in days (REPLAY_RETENTION_DAYS overrides it); plans keep less. */
+export const REPLAY_RETENTION_DAYS = 90;
 
 /** Query string of `POST /i/replay` (the body is the gzip'd JSON array of rrweb events). */
 export const ReplayChunkParams = z.object({

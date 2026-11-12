@@ -13,6 +13,8 @@ export const ERROR_CODES = [
   'plan_limit_reached',
   'feature_not_in_plan',
   'no_active_org',
+  'billing_not_configured',
+  'payment_provider_error',
   'internal',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -40,12 +42,72 @@ export type SiteStatus = (typeof SITE_STATUSES)[number];
 
 export const PLAN_IDS = ['free', 'business', 'growth', 'agency'] as const;
 export type PlanId = (typeof PLAN_IDS)[number];
-export const PLAN_LIMITS: Record<PlanId, { sites: number }> = {
-  free: { sites: 1 },
-  business: { sites: 1 },
-  growth: { sites: 3 },
-  agency: { sites: 10 },
+export const PAID_PLAN_IDS = ['business', 'growth', 'agency'] as const;
+export type PaidPlanId = (typeof PAID_PLAN_IDS)[number];
+
+/**
+ * What each plan includes (docs/rebuild/01-product-brief.md §7). Plans live in code; the ledger
+ * only records which plan an invoice bought. Prices are integer santim (1 birr = 100 santim).
+ * `sessions` is the number of new visits stored per usage period (a month).
+ */
+export interface PlanDef {
+  /** Price per month, in santim. 0 = free. */
+  priceSantim: number;
+  sites: number;
+  sessions: number;
+  retentionDays: number;
+  replay: boolean;
+}
+export const PLANS: Record<PlanId, PlanDef> = {
+  free: { priceSantim: 0, sites: 1, sessions: 1_000, retentionDays: 7, replay: false },
+  business: { priceSantim: 240_000, sites: 1, sessions: 15_000, retentionDays: 30, replay: true },
+  growth: { priceSantim: 590_000, sites: 3, sessions: 60_000, retentionDays: 90, replay: true },
+  // The brief gives Agency no session figure; 200k is a placeholder for the founder to confirm.
+  agency: { priceSantim: 990_000, sites: 10, sessions: 200_000, retentionDays: 90, replay: true },
 };
+/** Kept for callers that only need the site limit. */
+export const PLAN_LIMITS: Record<PlanId, { sites: number }> = PLANS;
+
+export const BILLING_CURRENCY = 'ETB';
+export const BILLING_INTERVALS = ['month', 'year'] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+/** Annual prepay = 2 months free: a year costs 10 months. */
+export const YEAR_PRICE_MONTHS = 10;
+/** Price of one billing period, in santim (integer arithmetic only). */
+export const planPriceSantim = (plan: PlanId, interval: BillingInterval): number =>
+  PLANS[plan].priceSantim * (interval === 'year' ? YEAR_PRICE_MONTHS : 1);
+
+export const TRIAL_DAYS = 14;
+/** After a period ends unpaid, the plan keeps working this long before the org is restricted. */
+export const GRACE_DAYS = 7;
+/** The renewal invoice is created (and emailed) this many days before the period ends. */
+export const RENEWAL_LEAD_DAYS = 7;
+
+export const SUBSCRIPTION_STATUSES = ['trialing', 'active', 'past_due', 'restricted'] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+export const INVOICE_STATUSES = ['open', 'paid', 'void'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+/** pending = link made; paid = webhook + verify agreed; failed = Chapa says so; mismatch = verify disagreed with the ledger. */
+export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'mismatch'] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/**
+ * What an org may do right now. A restricted org (unpaid past the grace period) keeps read access
+ * to its data but stores no new sessions and gets the free plan's limits for everything else.
+ */
+export function entitlementsFor(plan: PlanId, status: SubscriptionStatus | null | undefined): PlanDef {
+  if (status === 'restricted') return { ...PLANS.free, sessions: 0 };
+  return PLANS[plan];
+}
+/** Days of data an org on this plan keeps. `retentionDaysFor` (@pulse/insights) and replay retention read this. */
+export const retentionDaysForPlan = (plan: PlanId, status?: SubscriptionStatus | null): number =>
+  entitlementsFor(plan, status).retentionDays;
+/** The next plan up that would lift a limit, or null on the top plan. */
+export const upgradePlanFor = (plan: PlanId): PaidPlanId | null =>
+  plan === 'free' ? 'business' : plan === 'business' ? 'growth' : plan === 'growth' ? 'agency' : null;
+
+/** Only the organization's owner sees and changes billing. */
+export const canManageBilling = (role: Role | null | undefined): boolean => role === 'owner';
 
 /* ── Fixes (detected issues) ────────────────────────────────────────────────── */
 /** Detector kinds that can produce a Fix card. Grows as slice 3 adds detectors. */

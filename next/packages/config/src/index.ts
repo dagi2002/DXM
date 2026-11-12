@@ -48,8 +48,11 @@ const blobStoreShape = {
   S3_REGION: optionalString,
   S3_ACCESS_KEY_ID: optionalString,
   S3_SECRET_ACCESS_KEY: optionalString,
-  /** Days to keep replay chunks before the maintenance job deletes them. */
-  REPLAY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /**
+   * Server-wide cap on days replay chunks are kept. Each org keeps what its plan allows (7 / 30 /
+   * 90 days), never more than this.
+   */
+  REPLAY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
 };
 
 function checkBlobStore(
@@ -137,6 +140,63 @@ function checkVapid(
 export const pushConfigured = (env: { VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string }) =>
   Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 
+/**
+ * Billing through Chapa. No secret key = billing is "not configured": plans and usage still show,
+ * but no pay links are made. CHAPA_MODE says which kind of payment this server accepts; it stays
+ * `test` (no real money) until the founder switches it to `live` together with a live key.
+ */
+const billingEnv = {
+  /** Chapa secret key (Bearer). Secret: never logged. */
+  CHAPA_SECRET_KEY: optionalString,
+  /** The "secret hash" set in Chapa's dashboard for webhooks; signs every webhook call. */
+  CHAPA_WEBHOOK_SECRET: optionalString,
+  CHAPA_MODE: z.enum(['test', 'live']).default('test'),
+  /** Bearer token for the staff billing override endpoint. Unset = the endpoint answers 503. */
+  BILLING_ADMIN_TOKEN: optionalString,
+};
+/** Pay links can be made and confirmed only with both the key and the webhook secret. */
+export const billingConfigured = (env: { CHAPA_SECRET_KEY?: string; CHAPA_WEBHOOK_SECRET?: string }) =>
+  Boolean(env.CHAPA_SECRET_KEY && env.CHAPA_WEBHOOK_SECRET);
+
+function checkBilling(
+  env: {
+    NODE_ENV: string;
+    CHAPA_SECRET_KEY?: string | undefined;
+    CHAPA_WEBHOOK_SECRET?: string | undefined;
+    CHAPA_MODE: 'test' | 'live';
+    BILLING_ADMIN_TOKEN?: string | undefined;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (env.CHAPA_SECRET_KEY && !env.CHAPA_WEBHOOK_SECRET) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['CHAPA_WEBHOOK_SECRET'],
+      message: 'is required when CHAPA_SECRET_KEY is set (payments are confirmed by webhook)',
+    });
+  }
+  // Chapa test keys carry TEST in the prefix; a live server must not run on one, or the reverse.
+  if (env.CHAPA_SECRET_KEY && /TEST/i.test(env.CHAPA_SECRET_KEY) !== (env.CHAPA_MODE === 'test')) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['CHAPA_MODE'],
+      message:
+        'does not match CHAPA_SECRET_KEY (a test key needs CHAPA_MODE=test, a live key CHAPA_MODE=live)',
+    });
+  }
+  if (env.NODE_ENV !== 'production') return;
+  for (const key of ['CHAPA_WEBHOOK_SECRET', 'BILLING_ADMIN_TOKEN'] as const) {
+    const value = env[key];
+    if (value && (PLACEHOLDER.test(value) || entropyBits(value) < 96)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [key],
+        message: 'looks weak or like a placeholder; generate one with `openssl rand -hex 32`',
+      });
+    }
+  }
+}
+
 /** AI suggestions. Off by default; on only with AI_ENABLED=1 and a key. */
 const aiEnv = {
   AI_ENABLED: flag,
@@ -182,10 +242,12 @@ export const serverEnvSchema = z
     ...telegramEnv,
     ...pushEnv,
     ...aiEnv,
+    ...billingEnv,
   })
   .superRefine((env, ctx) => {
     checkBlobStore(env, ctx);
     checkVapid(env, ctx);
+    checkBilling(env, ctx);
     if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
       ctx.addIssue({
         code: 'custom',
@@ -291,8 +353,9 @@ export const workerEnvSchema = z
     SENTRY_DSN: optionalString,
     WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
     /**
-     * Days of raw visitor data (events, visits) kept per org until billing sets retention by plan
-     * (`retentionDaysFor` in @pulse/insights). Daily rollups are kept at least 400 days.
+     * Server-wide cap on raw visitor data (events, visits). Each org keeps what its plan allows,
+     * never more than this (`retentionDaysFor` in @pulse/insights). Daily rollups are kept at
+     * least 400 days.
      */
     DATA_RETENTION_DAYS: z.coerce.number().int().min(7).max(3650).default(90),
     ...blobStoreShape,

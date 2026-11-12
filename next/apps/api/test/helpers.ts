@@ -14,6 +14,10 @@ export const TEST_DATABASE_ADMIN_URL =
 export const APP_URL = 'http://localhost:5174';
 
 const TABLES = [
+  'payments',
+  'invoices',
+  'subscriptions',
+  'org_usage',
   'rollup_funnel_day',
   'rollup_vitals_day',
   'rollup_page_day',
@@ -64,7 +68,7 @@ export interface TestContext {
 
 export function createTestContext(
   overrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof createApp>[0], 'telegram' | 'push'> = {},
+  extra: Pick<Parameters<typeof createApp>[0], 'telegram' | 'push' | 'chapa'> = {},
 ): TestContext {
   const env = loadServerEnv({
     NODE_ENV: 'test',

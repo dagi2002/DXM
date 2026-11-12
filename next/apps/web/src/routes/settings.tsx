@@ -1,4 +1,4 @@
-import { canManage, type Role } from '@pulse/contracts/constants';
+import { canManage, canManageBilling, type Role } from '@pulse/contracts/constants';
 import type { Me } from '@pulse/contracts';
 import type { CalendarPref, Locale } from '@pulse/i18n';
 import { Banner, Button, PageHeader, Segmented, Select, Skeleton, StatusBadge, TextField } from '@pulse/ui';
@@ -11,10 +11,14 @@ import { Panel } from '../components/pulse';
 import { api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { meQuery, refreshMe, useFormatDate, useMe } from '../lib/queries';
+// Like every Settings section, Billing ships in the lazily loaded Settings chunk, never in the
+// first-load JS. (A nested dynamic import here made the bundler split shared helpers into extra
+// first-load chunks, which cost more than it saved.)
+import { BillingSection } from './settings-billing';
 import { NotificationsSection } from './settings-notifications';
 import { SecuritySection } from './settings-security';
 
-const TABS = ['profile', 'security', 'organization', 'team', 'notifications'] as const;
+const TABS = ['profile', 'security', 'organization', 'team', 'notifications', 'billing'] as const;
 type TabId = (typeof TABS)[number];
 
 type Theme = 'system' | 'light' | 'dark';
@@ -307,10 +311,12 @@ function TeamSection() {
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const { me, activeOrg } = useMe();
+  const { me, activeOrg, role } = useMe();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { tab?: string };
-  const tab: TabId = TABS.includes(search.tab as TabId) ? (search.tab as TabId) : 'profile';
+  // Billing is the owner's: nobody else gets the tab.
+  const tabs = TABS.filter((id) => id !== 'billing' || canManageBilling(role));
+  const tab: TabId = tabs.includes(search.tab as TabId) ? (search.tab as TabId) : 'profile';
   // Same underline tabs as Today and Site detail.
   const tabClass =
     'inline-flex min-h-11 shrink-0 cursor-default items-center border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-text-muted outline-none data-[hovered]:text-text data-[selected]:border-text data-[selected]:font-semibold data-[selected]:text-text data-[focus-visible]:bg-primary-soft';
@@ -329,7 +335,7 @@ export function SettingsPage() {
           aria-label={t('settings.title')}
           className="mb-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
         >
-          {TABS.map((id) => (
+          {tabs.map((id) => (
             <Tab key={id} id={id} className={tabClass}>
               {t(`settings.${id}`)}
             </Tab>
@@ -350,6 +356,11 @@ export function SettingsPage() {
         <TabPanel id="notifications" className="outline-none">
           <NotificationsSection />
         </TabPanel>
+        {canManageBilling(role) ? (
+          <TabPanel id="billing" className="outline-none">
+            <BillingSection />
+          </TabPanel>
+        ) : null}
       </Tabs>
     </>
   );

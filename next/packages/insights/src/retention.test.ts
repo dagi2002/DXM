@@ -11,14 +11,26 @@ import {
 describe('retention', () => {
   const org = { id: 'org_a', plan: 'free' };
 
-  it('gives every org the per-org default until billing sets retention by plan', () => {
-    expect(retentionDaysFor(org)).toBe(DEFAULT_RETENTION_DAYS);
-    expect(retentionDaysFor({ id: 'org_b', plan: null })).toBe(DEFAULT_RETENTION_DAYS);
-    expect(retentionDaysFor(org, { defaultDays: 30 })).toBe(30);
-    expect(retentionDaysFor(org, { defaultDays: MIN_RETENTION_DAYS })).toBe(MIN_RETENTION_DAYS);
+  it('keeps what the plan allows (7 / 30 / 90 days), with no plan row counted as Free', () => {
+    expect(retentionDaysFor(org)).toBe(7);
+    expect(retentionDaysFor({ id: 'org_b', plan: null })).toBe(7);
+    expect(retentionDaysFor({ id: 'org_c', plan: 'business' })).toBe(30);
+    expect(retentionDaysFor({ id: 'org_d', plan: 'growth' })).toBe(90);
+    expect(retentionDaysFor({ id: 'org_e', plan: 'agency' })).toBe(90);
+  });
+
+  it('uses the server-wide default for an unknown plan, and caps every plan at it', () => {
+    const odd = { id: 'org_x', plan: 'legacy' };
+    expect(retentionDaysFor(odd)).toBe(DEFAULT_RETENTION_DAYS);
+    expect(retentionDaysFor(odd, { defaultDays: 30 })).toBe(30);
+    expect(retentionDaysFor({ id: 'org_d', plan: 'growth' }, { defaultDays: 30 })).toBe(30);
+    expect(retentionDaysFor({ id: 'org_d', plan: 'growth' }, { defaultDays: MIN_RETENTION_DAYS })).toBe(
+      MIN_RETENTION_DAYS,
+    );
     // A broken setting never shortens retention below the floor.
-    expect(retentionDaysFor(org, { defaultDays: MIN_RETENTION_DAYS - 1 })).toBe(DEFAULT_RETENTION_DAYS);
-    expect(retentionDaysFor(org, { defaultDays: 1.5 })).toBe(DEFAULT_RETENTION_DAYS);
+    expect(retentionDaysFor(odd, { defaultDays: MIN_RETENTION_DAYS - 1 })).toBe(DEFAULT_RETENTION_DAYS);
+    expect(retentionDaysFor(odd, { defaultDays: 1.5 })).toBe(DEFAULT_RETENTION_DAYS);
+    expect(retentionDaysFor({ id: 'org_d', plan: 'growth' }, { defaultDays: 1.5 })).toBe(90);
   });
 
   it('keeps rollups at least ROLLUP_MIN_RETENTION_DAYS, or as long as raw data', () => {

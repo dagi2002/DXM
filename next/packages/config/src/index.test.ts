@@ -3,6 +3,7 @@ import {
   EnvError,
   aiConfigured,
   pushConfigured,
+  billingConfigured,
   entropyBits,
   loadCollectorEnv,
   loadServerEnv,
@@ -79,10 +80,10 @@ describe('entropyBits', () => {
 
 describe('blob storage env (replays)', () => {
   const db = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse' };
-  it('defaults to local disk with 30-day retention', () => {
+  it('defaults to local disk with a 90-day retention cap', () => {
     const env = loadWorkerEnv(db);
     expect(env.BLOB_STORE).toBe('local');
-    expect(env.REPLAY_RETENTION_DAYS).toBe(30);
+    expect(env.REPLAY_RETENTION_DAYS).toBe(90);
     expect(env.DATA_RETENTION_DAYS).toBe(90);
     expect(() => loadWorkerEnv({ ...db, DATA_RETENTION_DAYS: '6' })).toThrow(EnvError);
   });
@@ -173,5 +174,37 @@ describe('web push (VAPID) settings', () => {
       expect((err as Error).message).not.toContain('too-short-secret');
     }
     expect(() => loadServerEnv({ ...base, VAPID_SUBJECT: 'ops@x.et' })).toThrow(/VAPID_SUBJECT/);
+  });
+});
+
+describe('billing env (Chapa)', () => {
+  const base = { DATABASE_URL: 'postgres://u:p@localhost:5432/pulse', BETTER_AUTH_SECRET: 'x'.repeat(40) };
+  it('is off without keys and defaults to test mode', () => {
+    const env = loadServerEnv(base);
+    expect(billingConfigured(env)).toBe(false);
+    expect(env.CHAPA_MODE).toBe('test');
+  });
+  it('needs the webhook secret whenever a key is set', () => {
+    expect(() => loadServerEnv({ ...base, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc' })).toThrow(
+      /CHAPA_WEBHOOK_SECRET/,
+    );
+    const env = loadServerEnv({
+      ...base,
+      CHAPA_SECRET_KEY: 'CHASECK_TEST-abc',
+      CHAPA_WEBHOOK_SECRET: 'whsec',
+    });
+    expect(billingConfigured(env)).toBe(true);
+  });
+  it('refuses a test key in live mode and a live key in test mode', () => {
+    const secret = { CHAPA_WEBHOOK_SECRET: 'whsec' };
+    expect(() =>
+      loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK_TEST-abc', CHAPA_MODE: 'live' }),
+    ).toThrow(/CHAPA_MODE/);
+    expect(() => loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc' })).toThrow(
+      /CHAPA_MODE/,
+    );
+    expect(
+      loadServerEnv({ ...base, ...secret, CHAPA_SECRET_KEY: 'CHASECK-abc', CHAPA_MODE: 'live' }).CHAPA_MODE,
+    ).toBe('live');
   });
 });

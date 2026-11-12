@@ -37,6 +37,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.4
         version: 2.1.4(hono@4.13.13)
+      '@pulse/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@pulse/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -101,6 +104,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.4
         version: 2.1.4(hono@4.13.13)
+      '@pulse/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@pulse/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -259,6 +265,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@pulse/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@pulse/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -305,6 +314,28 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+      vitest:
+        specifier: ^5.0.4
+        version: 5.0.4(@types/node@22.20.5)(happy-dom@21.0.4)(vite@8.3.4)
+
+  packages/billing:
+    dependencies:
+      '@pulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@pulse/db':
+        specifier: workspace:*
+        version: link:../db
+      '@pulse/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@pulse/mail':
+        specifier: workspace:*
+        version: link:../mail
+      '@pulse/metrics':
+        specifier: workspace:*
+        version: link:../metrics
+    devDependencies:
       vitest:
         specifier: ^5.0.4
         version: 5.0.4(@types/node@22.20.5)(happy-dom@21.0.4)(vite@8.3.4)

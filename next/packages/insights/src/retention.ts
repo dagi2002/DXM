@@ -1,6 +1,8 @@
+import { PLANS, retentionDaysForPlan, type PlanId } from '@pulse/contracts';
+
 /**
- * Data retention (task 14). One function decides how long an org's raw visitor data is kept, so
- * billing (task 11) can set it by plan by changing this function only.
+ * Data retention (task 14, set by plan since billing, task 11). One function decides how long an
+ * org's raw visitor data is kept.
  */
 
 /** Raw-data retention when nothing else says otherwise (the most generous paid plan). */
@@ -20,19 +22,31 @@ export interface RetentionOrg {
 }
 
 export interface RetentionDefaults {
-  /** Per-org default until billing sets retention by plan (`DATA_RETENTION_DAYS`). */
+  /**
+   * Server-wide default and cap (`DATA_RETENTION_DAYS`): what an org with an unknown plan keeps,
+   * and the most any plan keeps on this server.
+   */
   defaultDays?: number;
 }
 
+const isPlanId = (plan: string): plan is PlanId => Object.hasOwn(PLANS, plan);
+
 /**
- * Days of raw events and visits to keep for an org. Until billing (slice 7) sets retention by
- * plan, every org gets the same per-org default. Billing overrides this function.
+ * Days of raw events and visits to keep for an org.
+ * - Task 14's default: `DATA_RETENTION_DAYS` (default 90, never under 7), for any org whose plan
+ *   isn't one billing knows.
+ * - Billing's rule on top: an org keeps what its plan allows (`retentionDaysForPlan`; no plan row
+ *   means Free), never more than the server-wide default. A restricted org keeps its plan's
+ *   retention here: it stays able to read its data until it pays (replays follow billing's own
+ *   restricted rule).
  */
 export function retentionDaysFor(org: RetentionOrg, defaults: RetentionDefaults = {}): number {
-  void org;
-  const days = defaults.defaultDays ?? DEFAULT_RETENTION_DAYS;
-  if (!Number.isInteger(days) || days < MIN_RETENTION_DAYS) return DEFAULT_RETENTION_DAYS;
-  return days;
+  const configured = defaults.defaultDays ?? DEFAULT_RETENTION_DAYS;
+  const cap =
+    Number.isInteger(configured) && configured >= MIN_RETENTION_DAYS ? configured : DEFAULT_RETENTION_DAYS;
+  const plan = org.plan ?? 'free';
+  if (!isPlanId(plan)) return cap;
+  return Math.max(MIN_RETENTION_DAYS, Math.min(retentionDaysForPlan(plan), cap));
 }
 
 /** Days of daily rollups to keep for an org with `rawDays` of raw-data retention. */

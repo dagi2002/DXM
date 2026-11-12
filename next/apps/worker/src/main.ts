@@ -23,6 +23,7 @@ import { applyIngest } from './ingest';
 import { generateMonthlyReport, sweepMonthlyReports, type MonthlyReportJob } from './reports';
 import { notifySiteLive } from './notify';
 import { applyReplayChunk, purgeReplays } from './replays';
+import { sweepBilling } from './billing';
 
 const env = loadWorkerEnv();
 const log = pino({ level: env.LOG_LEVEL });
@@ -229,6 +230,12 @@ await boss.work<MonthlyReportJob>('reports.site', async (jobs) => {
   }
 });
 
+// Billing (slice 7): renewal invoices, past due after the period ends, restricted after the grace.
+await boss.work('billing.sweep', async () => {
+  const res = await sweepBilling(db, mailer, env.APP_URL);
+  if (res.events || res.failed) log.info(res, 'billing sweep');
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
@@ -242,6 +249,7 @@ await boss.schedule('issue.verify-sweep', '41 * * * *');
 await boss.schedule('insights.backfill', '47 3 * * *'); // after yesterday's rollups settle
 await boss.schedule('maintenance.retention', '13 2 * * *');
 await boss.schedule('digest.sweep', '13 4 * * 1'); // Mondays 04:13 UTC = 07:13 in Addis Ababa
+await boss.schedule('billing.sweep', '11 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 await sendJob(boss, 'insights.backfill', {}, { singletonKey: 'backfill' }); // once per deploy
 

@@ -1,22 +1,22 @@
 import {
-  PLAN_LIMITS,
   SiteCreate,
   SiteDelete,
   SiteUpdate,
   allowedOriginsFor,
-  type PlanId,
+  entitlementsFor,
+  upgradePlanFor,
   type Site,
   InstallEmail,
   buildSnippet,
   type SiteInstall,
 } from '@pulse/contracts';
+import { ingestState } from '@pulse/billing/ingest';
 import { isLocale } from '@pulse/i18n';
 import { t as translate } from '@pulse/i18n/messages';
 import {
   auditLog,
   newId,
   newPublicKey,
-  orgPlans,
   sites,
   visits,
   withOrg,
@@ -48,15 +48,6 @@ export const toSiteDto = (row: SiteRow): Site => ({
   verifiedAt: row.verifiedAt?.toISOString() ?? null,
   replaySampleRate: row.replaySampleRate,
 });
-
-async function planFor(tx: Tx, orgId: string): Promise<PlanId> {
-  const [row] = await tx
-    .select({ plan: orgPlans.plan })
-    .from(orgPlans)
-    .where(eq(orgPlans.orgId, orgId))
-    .limit(1);
-  return row?.plan ?? 'free';
-}
 
 async function assertDomainFree(tx: Tx, domain: string, exceptId?: string) {
   const [dupe] = await tx
@@ -122,15 +113,17 @@ export function siteRoutes(deps: AppDeps) {
     const input = SiteCreate.parse(await c.req.json());
     const orgId = c.get('orgId')!;
     const row = await withOrg(deps.db, orgId, async (tx) => {
-      const plan = await planFor(tx, orgId);
+      // Billing decides the limit; a restricted org gets the free plan's.
+      const { plan, status } = await ingestState(tx, orgId);
       const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(sites).where(isNull(sites.deletedAt));
-      const limit = PLAN_LIMITS[plan].sites;
+      const limit = entitlementsFor(plan, status).sites;
       if (n >= limit) {
         throw new ApiError(409, 'plan_limit_reached', `Your plan allows ${limit} site(s)`, {
           currentPlan: plan,
           limitType: 'sites',
           limit,
           currentCount: n,
+          upgradePlan: upgradePlanFor(plan),
         });
       }
       await assertDomainFree(tx, input.domain);

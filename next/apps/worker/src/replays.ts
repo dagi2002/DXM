@@ -1,5 +1,7 @@
 import type { ReplayChunkJob } from '@pulse/contracts/replays';
-import { replayChunks, sql, withOrg, type Db } from '@pulse/db';
+import { ingestState } from '@pulse/billing/ingest';
+import { PLANS, PLAN_IDS, entitlementsFor } from '@pulse/contracts/constants';
+import { and, eq, replayChunks, sql, visits, withOrg, type Db } from '@pulse/db';
 import type { BlobStore } from '@pulse/storage';
 
 /**
@@ -10,8 +12,24 @@ export async function applyReplayChunk(
   db: Db,
   store: BlobStore,
   job: ReplayChunkJob,
-): Promise<'applied' | 'duplicate' | 'site_gone'> {
+): Promise<'applied' | 'duplicate' | 'site_gone' | 'over_quota'> {
   try {
+    // Replay counts toward the session quota: when the org stores no new sessions, a chunk for a
+    // visit that was never stored is dropped too (blob included).
+    const blocked = await withOrg(db, job.orgId, async (tx) => {
+      const state = await ingestState(tx, job.orgId, new Date(job.receivedAt));
+      if (!state.blocked) return false;
+      const [visit] = await tx
+        .select({ id: visits.id })
+        .from(visits)
+        .where(and(eq(visits.siteId, job.siteId), eq(visits.id, job.visitId)))
+        .limit(1);
+      return !visit;
+    });
+    if (blocked) {
+      await store.delete(job.objectKey);
+      return 'over_quota';
+    }
     const inserted = await withOrg(db, job.orgId, (tx) =>
       tx
         .insert(replayChunks)
@@ -45,20 +63,28 @@ export async function applyReplayChunk(
   }
 }
 
+/** Days of replays each plan keeps, plus what a restricted org keeps (the free plan's). */
+export const REPLAY_DAYS_BY_PLAN: Record<string, number> = {
+  ...Object.fromEntries(PLAN_IDS.map((p) => [p, PLANS[p].retentionDays])),
+  restricted: entitlementsFor('free', 'restricted').retentionDays,
+};
+
 /**
- * Retention: deletes replay rows older than `keepDays` (across orgs, via a narrow SECURITY DEFINER
- * function) and then their blobs, in batches until nothing is left to delete.
+ * Retention: deletes replay rows older than the org's plan keeps (never more than `maxDays`, the
+ * server-wide cap) across orgs, via a narrow SECURITY DEFINER function, and then their blobs, in
+ * batches until nothing is left to delete.
  */
 export async function purgeReplays(
   db: Db,
   store: BlobStore,
-  keepDays: number,
+  maxDays: number,
   batch = 2000,
+  daysByPlan: Record<string, number> = REPLAY_DAYS_BY_PLAN,
 ): Promise<{ rows: number; blobs: number; failed: number }> {
   const out = { rows: 0, blobs: 0, failed: 0 };
   for (;;) {
     const res = await db.execute<{ object_key: string }>(
-      sql`select object_key from pulse_purge_replay_chunks(${keepDays}, ${batch})`,
+      sql`select object_key from pulse_purge_replay_chunks_by_plan(${JSON.stringify(daysByPlan)}::jsonb, ${maxDays}, ${batch})`,
     );
     out.rows += res.rows.length;
     for (const { object_key } of res.rows) {

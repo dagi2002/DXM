@@ -34,6 +34,16 @@ export interface CollectorDeps {
   /** Absolute path to the built SDK (packages/sdk/dist). */
   sdkDir?: string;
   peerAddress?: (c: Context) => string | undefined;
+  /**
+   * Billing (slice 7): the plan's session quota and replay gating. `state` is cached here for a
+   * short while; `visitExists` is only asked when an org is blocked, so the hot path of a healthy
+   * org gains no query. The worker enforces the exact limit; this turns new sessions away early
+   * and tells the SDK to stop. Without it (tests, tools) nothing is gated.
+   */
+  billing?: {
+    state: (orgId: string) => Promise<{ blocked: boolean; replay: boolean }>;
+    visitExists: (siteId: string, visitId: string) => Promise<boolean>;
+  };
   /** Session replay (slice 4). Without it, /r answers 503 and the SDK stops recording. */
   replays?: {
     store: BlobStore;
@@ -84,6 +94,31 @@ export function createCollector(deps: CollectorDeps) {
     if (cache.size > 10_000) cache.clear();
     cache.set(key, { site: found, until: t + (found ? 60_000 : 30_000) });
     return found;
+  };
+
+  const ORG_STATE_TTL_MS = 30_000;
+  const orgStates = new Map<string, { state: { blocked: boolean; replay: boolean }; until: number }>();
+  const orgState = async (orgId: string) => {
+    if (!deps.billing) return { blocked: false, replay: true };
+    const hit = orgStates.get(orgId);
+    const t = now();
+    if (hit && hit.until > t) return hit.state;
+    const state = await deps.billing.state(orgId);
+    if (orgStates.size > 10_000) orgStates.clear();
+    orgStates.set(orgId, { state, until: t + ORG_STATE_TTL_MS });
+    return state;
+  };
+  // Visits known to be stored (so their later batches skip the lookup while the org is blocked).
+  const knownVisits = new Set<string>();
+  /** May this visit send data? Always, unless its org stores no new sessions and the visit is new. */
+  const admitted = async (found: SiteInfo, visitId: string) => {
+    if (!(await orgState(found.orgId)).blocked) return true;
+    const key = `${found.id}:${visitId}`;
+    if (knownVisits.has(key)) return true;
+    if (!(await deps.billing!.visitExists(found.id, visitId))) return false;
+    if (knownVisits.size > 50_000) knownVisits.clear();
+    knownVisits.add(key);
+    return true;
   };
 
   const clientIp = (c: Context) => {
@@ -156,6 +191,9 @@ export function createCollector(deps: CollectorDeps) {
       c.header('retry-after', '30');
       return reply(c, 429, 'rate_limited');
     }
+    // Over the plan's session quota (or restricted): new sessions are turned away, and the 403
+    // makes the SDK stop for this page. Sessions already stored keep being accepted.
+    if (!(await admitted(found, batch.vid))) return reply(c, 403, 'session_quota_exceeded');
 
     await deps.enqueue({
       siteId: found.id,
@@ -193,6 +231,9 @@ export function createCollector(deps: CollectorDeps) {
     const found = await site(q.data.k);
     const origin = c.req.header('origin');
     if (!found || !origin || !found.allowedOrigins.includes(origin)) return off();
+    // Replay is a paid-plan feature, and counts toward the session quota.
+    const plan = await orgState(found.orgId);
+    if (!plan.replay || plan.blocked) return off();
     cors(c);
     return c.json({ on: replaySampled(q.data.vid, found.replaySampleRate ?? 1) });
   });
@@ -219,6 +260,8 @@ export function createCollector(deps: CollectorDeps) {
     const origin = c.req.header('origin');
     if (!origin || !found.allowedOrigins.includes(origin)) return reply(c, 403, 'origin_not_allowed');
     if (!replaySampled(vid, found.replaySampleRate ?? 1)) return reply(c, 403, 'not_sampled');
+    if (!(await orgState(found.orgId)).replay) return reply(c, 403, 'feature_not_in_plan');
+    if (!(await admitted(found, vid))) return reply(c, 403, 'session_quota_exceeded');
     if (!replayPerVisit.take(`${found.id}:${vid}`, t) || !replayPerSite.take(found.id, t)) {
       c.header('retry-after', '30');
       return reply(c, 429, 'rate_limited');

@@ -359,5 +359,36 @@ Task 15 of parallel plan 3 (`task/15-notify`, migration `0018`). Details: [notif
 - Email is plain text (as before); an HTML template could come later.
 - Amharic strings for the new screens and the digest need a native review.
 
+## 2026-11-12 — Phase 2, slice 7 (billing) ✅ (task 11)
+
+Task 11 of parallel plan 3 (`task/11-billing`, migration `0015`). Full description, env vars and the go-live steps: [billing.md](./billing.md). **No real payment has been taken**: tests use a fake Chapa client and the server accepts test-mode payments only until `CHAPA_MODE=live`.
+
+**Shipped:**
+- **Plans in code** (`PLANS` in `@pulse/contracts`): price in santim, sites, sessions per month, retention days, replay. `entitlementsFor(plan, status)` and `retentionDaysForPlan` are the one place limits come from.
+- **Ledger (`0015_billing`):** `subscriptions`, `invoices`, `payments` (one row per Chapa attempt, unique `tx_ref`, verify result, amount and currency), `org_usage`. Forced RLS and policies on all four, composite FK payment → invoice → org, check constraints (a payment can't be `paid` without a verification; one open invoice per org), and five narrow `SECURITY DEFINER` helpers. The app role can't delete invoices or payments.
+- **`packages/billing`:** `ChapaClient` interface with `HttpChapaClient` and `FakeChapaClient`; santim ↔ birr with no floating-point math; signature check; the lifecycle (trial → active → past due → restricted), pay links, settlement, staff override, emails.
+- **API:** `GET /api/v1/billing`, `POST /billing/subscribe`, `POST /billing/invoices/:id/pay` (owner only; 503 without keys, 502 when Chapa fails), `GET /billing/status` (team: is data being stored), `POST /billing/chapa/webhook` (signature, then verify, idempotent on `tx_ref`), `POST /admin/billing/orgs/:orgId/override` (staff token; comp, extend; audited).
+- **Enforcement:** session quota in the worker's ingest (atomic count per usage month; new sessions over quota aren't stored, existing ones carry on) and early in the collector (`session_quota_exceeded`, cached state, no extra query for healthy orgs). Replay recording only on plans with replay. Site limit now reads entitlements. Replay retention follows the plan (7 / 30 / 90 days). Restricted orgs keep read access.
+- **Worker:** `billing.sweep` hourly: renewal invoice 7 days before the period ends, past due at the end, restricted after 7 days of grace, each with an email to the owners (en/am).
+- **Web:** Settings → Billing (owner only, in the lazily loaded Settings chunk): plan and status, usage against the quota, invoices with "Pay with Chapa" and receipt details, plans with monthly/yearly prices, "not configured" and "test mode" notices. Today and Replays tell the whole team when sessions aren't being stored. First-load JS: 216.0 KB (221,159 bytes; budget 221,184).
+- **Tests:** billing unit 13, API 32 new (signature, verify mismatch on amount / currency / mode / tx_ref, replay, two concurrent webhooks, double payment, unknown refs, roles, tenant isolation, override), worker 11 new (quota boundary, race, upgrade, the grace-period clock, retention by plan), collector 6 new, config 3 new, RLS invariants extended. E2E `billing.spec.ts` (quota notice → trial → invoice, desktop + 360px, en + am, axe).
+
+**Decisions:**
+- A payment is marked paid by the webhook path only (signature **and** verify). The browser returning from Chapa confirms nothing.
+- `CHAPA_MODE` (default `test`) is the go-live switch: a payment in the other mode is a mismatch.
+- Usage months: calendar months for Free, months from the billing-period start for subscribers.
+- Restricted means "stores no new sessions, Free limits otherwise, reads untouched", not a downgrade to Free's 1,000 sessions.
+- `REPLAY_RETENTION_DAYS` became a server-wide cap (default 90, was 30); the plan decides below it.
+- Emails link to Settings → Billing, where the owner opens a fresh Chapa link, instead of carrying a Chapa link that expires.
+
+**Not done yet:**
+- **Never run against Chapa itself.** Field names follow Chapa's documentation as read on 2026-11-12; the docs are unclear about which key signs webhooks. A test-mode payment on staging is step one of going live.
+- The Agency plan's session figure (200,000) is a placeholder: the brief doesn't give one.
+- Proration, downgrade to Free, refunds, PDF invoices, extra Agency sites, Pulse Care, Enterprise.
+- Gating for AI, share links and API keys (contract 25), and "upgrade requests" (contract 26).
+- The staff override is a token-guarded endpoint, not a role-gated console (contract 29).
+- Event and rollup retention by plan belongs to task 14 (`retentionDaysForPlan` is ready for it).
+- Amharic review of the billing strings and emails.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

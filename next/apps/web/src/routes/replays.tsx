@@ -1,6 +1,7 @@
 import { PageHeader } from '@pulse/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { StorageNotice } from '../components/pulse';
 import { ReplayBrowser } from '../components/replay-list';
 import { useMe } from '../lib/queries';
 import { replaysQuery } from '../lib/replays';
@@ -16,6 +17,9 @@ export function ReplaysPage() {
         title={all?.length ? t('replays.headline', { count: all.length }) : t('nav.replays')}
         summary={t('replays.intro')}
       />
+      <div className="mb-4 empty:hidden">
+        <StorageNotice replays />
+      </div>
       <ReplayBrowser />
     </>
   );
