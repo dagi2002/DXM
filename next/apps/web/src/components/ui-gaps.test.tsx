@@ -88,7 +88,14 @@ describe('sample rate options', () => {
       { id: '0.1', label: '10%' },
       { id: '0', label: 'Off' },
     ]);
-    expect(sampleRateOptions(0.3, 'en', 'Off').map((o) => o.id)).toEqual(['1', '0.5', '0.3', '0.25', '0.1', '0']);
+    expect(sampleRateOptions(0.3, 'en', 'Off').map((o) => o.id)).toEqual([
+      '1',
+      '0.5',
+      '0.3',
+      '0.25',
+      '0.1',
+      '0',
+    ]);
   });
 });
 
@@ -136,11 +143,11 @@ describe('<FunnelEditorDialog>', () => {
     down.focus();
     fireEvent.click(down);
     await waitFor(() =>
-      expect(within(list).getAllByLabelText('Step name').map((i) => (i as HTMLInputElement).value)).toEqual([
-        'Checkout',
-        'Cart',
-        'Paid',
-      ]),
+      expect(
+        within(list)
+          .getAllByLabelText('Step name')
+          .map((i) => (i as HTMLInputElement).value),
+      ).toEqual(['Checkout', 'Cart', 'Paid']),
     );
     expect(document.activeElement).toBe(within(list).getByRole('button', { name: 'Move “Cart” down' }));
     expect(screen.getByRole('status').textContent).toBe('“Cart” is now step 2 of 3.');

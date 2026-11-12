@@ -31,9 +31,9 @@ Tests: `packages/sdk/src/replay.test.ts` pins the options and mask functions; `a
 
 ## Retention
 
-- Replays are deleted after **30 days** by default (`REPLAY_RETENTION_DAYS`). The worker's daily `maintenance.replay-retention` job deletes the rows and then the blobs, in batches.
+- Replays are deleted after **30 days** by default (`REPLAY_RETENTION_DAYS`). The worker's daily `maintenance.replay-retention` job deletes the rows and then the blobs, in batches. AI recaps of recordings that are gone are deleted in the same run.
 - A deleted site's replays disappear from the dashboard immediately and are removed by retention like any other (a site purge job, when it exists, should also call `deletePrefix(orgs/{org}/sites/{site}/)`).
 
 ## Deleting one visitor's recording
 
-When a visitor asks to be forgotten, an owner or admin calls `DELETE /api/v1/replays/:visitId` (the visit id is in the replay URL). It deletes the rows and every blob of that visit, and writes `replay.delete` to the audit log. (A button in the player is a follow-up.)
+When a visitor asks to be forgotten, an owner or admin opens the recording and presses **Delete recording** (it asks to confirm), or calls `DELETE /api/v1/replays/:visitId` (the visit id is in the replay URL). It deletes the rows, every blob of that visit and the visit's AI recap, and writes `replay.delete` to the audit log.
