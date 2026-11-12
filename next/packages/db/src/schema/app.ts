@@ -93,7 +93,10 @@ export const auditLog = pgTable(
   (t) => [index('audit_log_org_created_idx').on(t.orgId, t.createdAt)],
 );
 
-/** Current plan per org. Billing (slice 7) will own this via subscriptions; until then everyone is on free. */
+/**
+ * Current plan per org: the fast read for limits (sites route, collector). Billing (slice 7) keeps
+ * it in step with `subscriptions`; an org with no row is on free.
+ */
 export const orgPlans = pgTable('org_plans', {
   orgId: text('org_id')
     .primaryKey()
@@ -524,3 +527,115 @@ export const reportShares = pgTable(
 
 export type ReportRow = typeof reports.$inferSelect;
 export type ReportShareRow = typeof reportShares.$inferSelect;
+
+/* ── Billing ledger (slice 7) ────────────────────────────────────────────────
+ * Plans live in code (`PLANS` in @pulse/contracts). Money is integer santim with an ISO currency.
+ * RLS, checks and the cross-org helpers: drizzle/0015_billing.sql.
+ */
+
+const PAID_PLANS = ['business', 'growth', 'agency'] as const;
+const INTERVALS = ['month', 'year'] as const;
+
+/** One row per org that has ever started a paid plan (trial included). No row = free. */
+export const subscriptions = pgTable('subscriptions', {
+  orgId: text('org_id')
+    .primaryKey()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  plan: text('plan', { enum: PAID_PLANS }).notNull(),
+  interval: text('interval', { enum: INTERVALS }).notNull().default('month'),
+  status: text('status', { enum: ['trialing', 'active', 'past_due', 'restricted'] }).notNull(),
+  currentPeriodStart: timestamp('current_period_start', { withTimezone: true }).notNull(),
+  currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }).notNull(),
+  /** Set when the period ends unpaid: the plan keeps working until then. */
+  graceEndsAt: timestamp('grace_ends_at', { withTimezone: true }),
+  /** The current period was granted by staff (admin override), not paid for. */
+  comp: boolean('comp').notNull().default(false),
+  ...timestamps,
+});
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    /** Per-org running number. */
+    number: integer('number').notNull(),
+    plan: text('plan', { enum: PAID_PLANS }).notNull(),
+    interval: text('interval', { enum: INTERVALS }).notNull(),
+    amountSantim: integer('amount_santim').notNull(),
+    currency: text('currency').notNull().default('ETB'),
+    status: text('status', { enum: ['open', 'paid', 'void'] })
+      .notNull()
+      .default('open'),
+    /** The period this invoice buys. */
+    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+    periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+    dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('invoices_org_number_uq').on(t.orgId, t.number),
+    // At most one unpaid invoice per org at a time.
+    uniqueIndex('invoices_org_open_uq')
+      .on(t.orgId)
+      .where(sql`${t.status} = 'open'`),
+    index('invoices_org_created_idx').on(t.orgId, t.createdAt),
+  ],
+);
+
+/**
+ * One row per Chapa attempt (a hosted pay link). `tx_ref` is ours, unique, and never reused. A row
+ * becomes `paid` only after a signed webhook and Chapa's verify endpoint agree with it.
+ */
+export const payments = pgTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    txRef: text('tx_ref').notNull(),
+    amountSantim: integer('amount_santim').notNull(),
+    currency: text('currency').notNull(),
+    status: text('status', { enum: ['pending', 'paid', 'failed', 'mismatch'] })
+      .notNull()
+      .default('pending'),
+    checkoutUrl: text('checkout_url'),
+    /** Chapa's own reference, payment method and mode, from the verify call. */
+    providerReference: text('provider_reference'),
+    method: text('method'),
+    mode: text('mode'),
+    /** What Chapa's verify endpoint last said (status, amount, currency, mode) and our verdict. */
+    verifyResult: jsonb('verify_result').$type<Record<string, unknown>>(),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('payments_tx_ref_uq').on(t.txRef),
+    index('payments_invoice_idx').on(t.invoiceId),
+  ],
+);
+
+/** New sessions stored per org per usage period (a month). The ingest quota counts against it. */
+export const orgUsage = pgTable(
+  'org_usage',
+  {
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+    sessions: integer('sessions').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.periodStart] })],
+);
+
+export type SubscriptionRow = typeof subscriptions.$inferSelect;
+export type InvoiceRow = typeof invoices.$inferSelect;
+export type PaymentRow = typeof payments.$inferSelect;

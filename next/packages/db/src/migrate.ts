@@ -35,6 +35,13 @@ export async function migrateDatabase(
       grant execute on function pulse_issues_due_for_verification(integer, integer, integer) to ${appRole};
       grant execute on function pulse_live_sites() to ${appRole};
       grant execute on function pulse_claim_telegram_link(text, text, text, text) to ${appRole};
+      grant execute on function pulse_payment_org(text) to ${appRole};
+      grant execute on function pulse_org_ingest_state(text, timestamptz) to ${appRole};
+      grant execute on function pulse_visit_exists(text, text) to ${appRole};
+      grant execute on function pulse_billing_due(timestamptz, integer) to ${appRole};
+      grant execute on function pulse_purge_replay_chunks_by_plan(jsonb, integer, integer) to ${appRole};
+      -- The ledger is never deleted by the app (invoices are voided; payments are kept).
+      revoke delete, truncate on invoices, payments from ${appRole};
       -- The audit log is append-only for the app (RLS already has no UPDATE/DELETE policy;
       -- this makes it explicit). Org deletion still cascades via the foreign key.
       revoke update, delete, truncate on audit_log from ${appRole};

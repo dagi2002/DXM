@@ -1,0 +1,26 @@
+{
+  "name": "@pulse/billing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./chapa": "./src/chapa.ts",
+    "./money": "./src/money.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pulse/contracts": "workspace:*",
+    "@pulse/db": "workspace:*",
+    "@pulse/i18n": "workspace:*",
+    "@pulse/mail": "workspace:*",
+    "@pulse/metrics": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.4"
+  }
+}
