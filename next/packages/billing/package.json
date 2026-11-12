@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./chapa": "./src/chapa.ts",
+    "./ingest": "./src/ingest.ts",
     "./money": "./src/money.ts"
   },
   "scripts": {

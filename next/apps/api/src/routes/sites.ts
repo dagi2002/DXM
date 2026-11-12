@@ -10,7 +10,7 @@ import {
   buildSnippet,
   type SiteInstall,
 } from '@pulse/contracts';
-import { ingestState } from '@pulse/billing';
+import { ingestState } from '@pulse/billing/ingest';
 import { isLocale } from '@pulse/i18n';
 import { t as translate } from '@pulse/i18n/messages';
 import {

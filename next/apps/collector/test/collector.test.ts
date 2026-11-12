@@ -205,3 +205,68 @@ describe('SDK files', () => {
     expect((await a.request('/v.js')).status).toBe(200);
   });
 });
+
+describe('session quota and plan gating', () => {
+  let blocked: boolean;
+  let stored: Set<string>;
+  let stateCalls: number;
+  let existsCalls: number;
+  const gated = () =>
+    createCollector({
+      log: pino({ level: 'silent' }),
+      now: () => t,
+      lookupSite: async (key) =>
+        key === 'pk_good' ? { id: 'site_1', orgId: 'org_1', allowedOrigins: [ORIGIN] } : null,
+      enqueue: async (job) => void jobs.push(job),
+      billing: {
+        state: async () => {
+          stateCalls++;
+          return { blocked, replay: true };
+        },
+        visitExists: async (siteId, visitId) => {
+          existsCalls++;
+          return stored.has(`${siteId}:${visitId}`);
+        },
+      },
+    });
+  beforeEach(() => {
+    blocked = false;
+    stored = new Set();
+    stateCalls = 0;
+    existsCalls = 0;
+  });
+
+  it('adds no visit lookup while the org is under quota, and caches the plan state', async () => {
+    const a = gated();
+    for (let i = 0; i < 5; i++) expect((await post(a, batch({ seq: i }))).status).toBe(204);
+    expect(jobs).toHaveLength(5);
+    expect(stateCalls).toBe(1);
+    expect(existsCalls).toBe(0);
+  });
+
+  it('turns new sessions away over quota with session_quota_exceeded, but keeps stored ones', async () => {
+    blocked = true;
+    stored.add('site_1:visit_existing');
+    const a = gated();
+    const fresh = await post(a, batch({ vid: 'visit_brandnew' }));
+    expect(fresh.status).toBe(403);
+    expect(await fresh.json()).toEqual({ error: 'session_quota_exceeded' });
+    expect(fresh.headers.get('access-control-allow-origin')).toBe(ORIGIN); // the SDK must be able to read it and stop
+    expect(jobs).toHaveLength(0);
+
+    expect((await post(a, batch({ vid: 'visit_existing' }))).status).toBe(204);
+    expect((await post(a, batch({ vid: 'visit_existing', seq: 1 }))).status).toBe(204);
+    expect(jobs.map((j) => j.batch.vid)).toEqual(['visit_existing', 'visit_existing']);
+    expect(existsCalls).toBe(2); // one per visit, then remembered
+  });
+
+  it('lets sessions in again once the cached state expires after an upgrade', async () => {
+    blocked = true;
+    const a = gated();
+    expect((await post(a, batch({ vid: 'visit_brandnew' }))).status).toBe(403);
+    blocked = false; // upgraded
+    t += 31_000;
+    expect((await post(a, batch({ vid: 'visit_brandnew' }))).status).toBe(204);
+    expect(stateCalls).toBe(2);
+  });
+});

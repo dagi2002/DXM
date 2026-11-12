@@ -17,7 +17,7 @@ export const QUEUES = {
     name: 'replay.chunk',
     options: { retryLimit: 5, retryBackoff: true, retryDelay: 2, deadLetter: 'ingest.dead' },
   },
-  /** Daily: delete replay chunks (rows and blobs) past REPLAY_RETENTION_DAYS. */
+  /** Daily: delete replay chunks (rows and blobs) past the org's plan retention (capped by REPLAY_RETENTION_DAYS). */
   replayRetention: { name: 'maintenance.replay-retention', options: { retryLimit: 2 } },
   siteLive: { name: 'site.live', options: { retryLimit: 5, retryBackoff: true } },
   partitions: { name: 'maintenance.partitions', options: { retryLimit: 2 } },
@@ -58,6 +58,8 @@ export const QUEUES = {
     name: 'alert.telegram',
     options: { retryLimit: 4, retryBackoff: true, retryDelay: 15 },
   },
+  /** Hourly: renewal invoices, past-due and restricted transitions, and their emails. */
+  billingSweep: { name: 'billing.sweep', options: { retryLimit: 1 } },
   /** AI suggested fix for one issue; skipped unless AI_ENABLED with a key and budget left. */
   aiRecommend: {
     name: 'ai.recommend',
@@ -86,6 +88,7 @@ export interface JobPayloads {
   'issue.verify': { issueId: string; orgId: string };
   'alert.telegram': TelegramAlertJob;
   'ai.recommend': { issueId: string; orgId: string };
+  'billing.sweep': Record<string, never>;
 }
 
 /** Why an issue is worth a message. */

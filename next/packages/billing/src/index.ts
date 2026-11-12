@@ -4,5 +4,6 @@
  */
 export * from './chapa';
 export * from './emails';
+export * from './ingest';
 export * from './lifecycle';
 export * from './money';

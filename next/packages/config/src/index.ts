@@ -48,8 +48,11 @@ const blobStoreShape = {
   S3_REGION: optionalString,
   S3_ACCESS_KEY_ID: optionalString,
   S3_SECRET_ACCESS_KEY: optionalString,
-  /** Days to keep replay chunks before the maintenance job deletes them. */
-  REPLAY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /**
+   * Server-wide cap on days replay chunks are kept. Each org keeps what its plan allows (7 / 30 /
+   * 90 days), never more than this.
+   */
+  REPLAY_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
 };
 
 function checkBlobStore(

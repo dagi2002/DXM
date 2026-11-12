@@ -25,8 +25,10 @@ let store: LocalDiskBlobStore;
 let t: number;
 let failEnqueue = false;
 
-const app = (withReplays = true) =>
+type Billing = NonNullable<Parameters<typeof createCollector>[0]['billing']>;
+const app = (withReplays = true, billing?: Billing) =>
   createCollector({
+    billing,
     log: pino({ level: 'silent' }),
     now: () => t,
     lookupSite: async (key) => SITES[key] ?? null,
@@ -221,5 +223,43 @@ describe('GET /i/replay/cfg', () => {
     expect(await (await cfg(a, 'pk_a', VID, 'https://evil.example')).json()).toEqual({ on: false });
     expect(await (await cfg(a, 'pk_a', 'bad id')).json()).toEqual({ on: false });
     expect(await (await cfg(app(false), 'pk_a')).json()).toEqual({ on: false });
+  });
+});
+
+describe('replay plan gating and quota', () => {
+  const plan = (state: { blocked: boolean; replay: boolean }, stored: string[] = []): Billing => ({
+    state: async () => state,
+    visitExists: async (siteId, visitId) => stored.includes(`${siteId}:${visitId}`),
+  });
+  const cfg = (a: ReturnType<typeof app>) =>
+    a.request(`/i/replay/cfg?${new URLSearchParams({ k: 'pk_a', vid: VID })}`, {
+      headers: { origin: ORIGIN, 'user-agent': UA },
+    });
+
+  it('does not record on a plan without replay (Free)', async () => {
+    const a = app(true, plan({ blocked: false, replay: false }));
+    expect(await (await cfg(a)).json()).toEqual({ on: false });
+    const res = await send(a, gz(rr()));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'feature_not_in_plan' });
+    expect(jobs).toHaveLength(0);
+    expect(await store.get(`orgs/org_a/sites/site_a/visits/${VID}/0.json.gz`)).toBeNull();
+  });
+
+  it('records on a paid plan', async () => {
+    const a = app(true, plan({ blocked: false, replay: true }));
+    expect(await (await cfg(a)).json()).toEqual({ on: true });
+    expect((await send(a, gz(rr()))).status).toBe(204);
+    expect(jobs).toHaveLength(1);
+  });
+
+  it('counts toward the session quota: no new recordings over quota, stored visits carry on', async () => {
+    const a = app(true, plan({ blocked: true, replay: true }, [`site_a:${VID}`]));
+    expect(await (await cfg(a)).json()).toEqual({ on: false });
+    const fresh = await send(a, gz(rr()), { vid: 'visit_brandnew' });
+    expect(fresh.status).toBe(403);
+    expect(await fresh.json()).toEqual({ error: 'session_quota_exceeded' });
+    expect((await send(a, gz(rr()))).status).toBe(204); // this visit was stored before the quota ran out
+    expect(jobs.map((j) => j.visitId)).toEqual([VID]);
   });
 });

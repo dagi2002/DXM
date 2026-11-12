@@ -20,6 +20,7 @@ import { applyIngest } from './ingest';
 import { generateMonthlyReport, sweepMonthlyReports, type MonthlyReportJob } from './reports';
 import { notifySiteLive } from './notify';
 import { applyReplayChunk, purgeReplays } from './replays';
+import { sweepBilling } from './billing';
 
 const env = loadWorkerEnv();
 const log = pino({ level: env.LOG_LEVEL });
@@ -182,6 +183,12 @@ await boss.work<MonthlyReportJob>('reports.site', async (jobs) => {
   }
 });
 
+// Billing (slice 7): renewal invoices, past due after the period ends, restricted after the grace.
+await boss.work('billing.sweep', async () => {
+  const res = await sweepBilling(db, mailer, env.APP_URL);
+  if (res.events || res.failed) log.info(res, 'billing sweep');
+});
+
 // Schedules are idempotent (keyed by queue name).
 await boss.schedule('maintenance.partitions', '7 * * * *');
 await boss.schedule('maintenance.close-visits', '* * * * *');
@@ -192,6 +199,7 @@ await boss.schedule('reports.monthly', '23 4 1 * *'); // 04:23 UTC on the 1st
 await boss.schedule('insights.sweep', '*/10 * * * *');
 await boss.schedule('detect.tracking', '23 * * * *');
 await boss.schedule('issue.verify-sweep', '41 * * * *');
+await boss.schedule('billing.sweep', '11 * * * *');
 await sendJob(boss, 'maintenance.partitions', {}); // on boot too
 
 // Health endpoint for the orchestrator / uptime checks.

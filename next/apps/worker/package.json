@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@pulse/billing": "workspace:*",
     "@pulse/config": "workspace:*",
     "@pulse/contracts": "workspace:*",
     "@pulse/db": "workspace:*",

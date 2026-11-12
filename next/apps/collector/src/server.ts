@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { fileURLToPath } from 'node:url';
+import { ingestState } from '@pulse/billing/ingest';
 import { loadCollectorEnv } from '@pulse/config';
 import { createDatabase, sql } from '@pulse/db';
 import { createBoss, sendJob } from '@pulse/jobs';
@@ -40,6 +41,18 @@ const app = createCollector({
   },
   enqueue: async (job) => {
     await sendJob(boss, 'ingest.apply', job);
+  },
+  billing: {
+    state: async (orgId) => {
+      const { blocked, replay } = await ingestState(database.db, orgId);
+      return { blocked, replay };
+    },
+    visitExists: async (siteId, visitId) => {
+      const res = await database.db.execute<{ known: boolean }>(
+        sql`select pulse_visit_exists(${siteId}, ${visitId}) as known`,
+      );
+      return res.rows[0]?.known === true;
+    },
   },
   replays: {
     store: createBlobStore(env),
