@@ -1485,6 +1485,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "last_digest_week": {
+          "name": "last_digest_week",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",

@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 /**
  * Telegram alerts (slice 3). One chat per organization receives created / escalated / reopened
- * fixes. Quiet hours are whole local hours in the chat's time zone; alerts that fall inside them
- * wait until the quiet hours end.
+ * fixes. Quiet hours are the org's shared rule (see `notifications.ts`), the same for web push;
+ * alerts that fall inside them wait until the quiet hours end.
  */
 
 const hour = z.number().int().min(0).max(23);
@@ -11,7 +11,7 @@ const hour = z.number().int().min(0).max(23);
 export const TelegramLink = z.object({
   chatTitle: z.string().nullable(),
   linkedAt: z.string(),
-  /** Quiet hours [start, end) in local time; both null = always send. start > end wraps midnight. */
+  /** The org's shared quiet hours (also apply to web push). Read-only mirror for older clients. */
   quietStart: hour.nullable(),
   quietEnd: hour.nullable(),
   timeZone: z.string(),
@@ -37,15 +37,20 @@ export type TelegramLinkCode = z.infer<typeof TelegramLinkCode>;
 
 export const TelegramSettingsUpdate = z
   .object({
-    quietStart: hour.nullable(),
-    quietEnd: hour.nullable(),
+    /** Optional: quiet hours are the org's shared setting (PUT /notifications/quiet-hours). */
+    quietStart: hour.nullable().optional(),
+    quietEnd: hour.nullable().optional(),
     locale: z.enum(['en', 'am']),
   })
-  .refine((v) => (v.quietStart === null) === (v.quietEnd === null), {
+  .refine((v) => (v.quietStart === undefined) === (v.quietEnd === undefined), {
     message: 'Set both quiet-hours ends, or neither',
     path: ['quietEnd'],
   })
-  .refine((v) => v.quietStart === null || v.quietStart !== v.quietEnd, {
+  .refine((v) => ((v.quietStart ?? null) === null) === ((v.quietEnd ?? null) === null), {
+    message: 'Set both quiet-hours ends, or neither',
+    path: ['quietEnd'],
+  })
+  .refine((v) => v.quietStart == null || v.quietStart !== v.quietEnd, {
     message: 'Quiet hours must start and end at different times',
     path: ['quietEnd'],
   });

@@ -444,6 +444,8 @@ export const notificationPrefs = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     weeklyDigest: boolean('weekly_digest').notNull().default(true),
     unsubscribeToken: text('unsubscribe_token').notNull(),
+    /** Monday (UTC) of the last week whose digest went to this member: a retried job skips them. */
+    lastDigestWeek: date('last_digest_week', { mode: 'string' }),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

@@ -31,5 +31,19 @@
   "telegram.open": "Open: {url}",
   "telegram.linked": "This chat now gets Pulse alerts for {org}. Change quiet hours or unlink in Settings.",
   "telegram.test": "Test from Pulse: alerts for {org} will arrive here.",
-  "telegram.unknownCode": "This link has expired. Create a new one in Pulse → Settings → Notifications."
+  "telegram.unknownCode": "This link has expired. Create a new one in Pulse → Settings → Notifications.",
+  "email.digest.subject": "{org}: your week on Pulse",
+  "email.digest.intro": "Here is last week for {org} ({from} – {to}).",
+  "email.digest.fixes": "Fixes: {opened} new, {fixed} marked fixed, {verified} verified.",
+  "email.digest.topFix": "The fix that needs you most:",
+  "email.digest.noOpen": "No open fixes right now.",
+  "email.digest.sites": "Health by site:",
+  "email.digest.siteHealth": "{site}: health {score} ({direction, select, up {up {change}} down {down {change}} other {no change}} on the week before)",
+  "email.digest.siteNew": "{site}: health {score}",
+  "email.digest.siteNoScore": "{site}: not enough visits for a health score yet ({visits, plural, one {# visit} other {# visits}})",
+  "email.digest.open": "Open Pulse: {url}",
+  "email.digest.unsubscribe": "You get this email every Monday. To stop it, open: {url}",
+  "push.more": "{count, plural, one {and # more} other {and # more}}",
+  "push.test.title": "Pulse",
+  "push.test.body": "Notifications for {org} will arrive on this device."
 }

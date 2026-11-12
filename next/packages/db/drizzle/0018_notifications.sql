@@ -3,6 +3,7 @@ CREATE TABLE "notification_prefs" (
 	"user_id" text NOT NULL,
 	"weekly_digest" boolean DEFAULT true NOT NULL,
 	"unsubscribe_token" text NOT NULL,
+	"last_digest_week" date,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "notification_prefs_org_id_user_id_pk" PRIMARY KEY("org_id","user_id")
 );

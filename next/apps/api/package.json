@@ -10,7 +10,9 @@
     "typecheck": "tsc -p .",
     "lint": "eslint src test scripts",
     "test": "vitest run",
-    "seed": "tsx --env-file-if-exists=../../.env scripts/seed.ts"
+    "seed": "tsx --env-file-if-exists=../../.env scripts/seed.ts",
+    "telegram:webhook": "tsx --env-file-if-exists=../../.env scripts/telegram-webhook.ts",
+    "vapid:keys": "tsx scripts/vapid-keys.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
