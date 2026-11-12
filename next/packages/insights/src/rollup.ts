@@ -64,9 +64,8 @@ export const pageKey = (path: string | null) => normalizePath(path) ?? '(unknown
 
 export const toDevice = (d: string): Device =>
   (DEVICES as readonly string[]).includes(d) ? (d as Device) : 'desktop';
-/** `slow-2g` folds into `2g`; anything else unknown. */
+/** Known connection types (including `slow-2g`, its own bucket); anything else is unknown. */
 export function toNetwork(n: string | null): InsightNetwork {
-  if (n === 'slow-2g') return '2g';
   return n && (INSIGHT_NETWORKS as readonly string[]).includes(n) ? (n as InsightNetwork) : 'unknown';
 }
 

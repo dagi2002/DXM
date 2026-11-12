@@ -583,6 +583,7 @@
   "insights.network.4g": "4ጂ",
   "insights.network.3g": "3ጂ",
   "insights.network.2g": "2ጂ",
+  "insights.network.slow-2g": "ቀርፋፋ 2ጂ",
   "insights.network.unknown": "ያልታወቀ",
   "insights.device.mobile": "ስልኮች",
   "insights.device.desktop": "ኮምፒውተሮች",

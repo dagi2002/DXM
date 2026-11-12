@@ -257,11 +257,13 @@ describe('day rollups', () => {
       dims,
     );
     expect(groups).toEqual([
-      { metric: 'LCP', device: 'mobile', network: '2g', path: '/', values: [3000, 3100] },
+      { metric: 'LCP', device: 'mobile', network: 'slow-2g', path: '/', values: [3000, 3100] },
       { metric: 'INP', device: 'desktop', network: 'unknown', path: '/products/*', values: [120] },
       { metric: 'CLS', device: 'desktop', network: 'unknown', path: '/', values: [0.1] },
     ]);
     expect(toNetwork('4g')).toBe('4g');
+    expect(toNetwork('slow-2g')).toBe('slow-2g');
+    expect(toNetwork('2g')).toBe('2g');
     expect(toNetwork('wifi')).toBe('unknown');
     expect(pageKey(null)).toBe('(unknown)');
   });

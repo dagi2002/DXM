@@ -583,6 +583,7 @@
   "insights.network.4g": "4G",
   "insights.network.3g": "3G",
   "insights.network.2g": "2G",
+  "insights.network.slow-2g": "Slow 2G",
   "insights.network.unknown": "Unknown",
   "insights.device.mobile": "Phones",
   "insights.device.desktop": "Computers",
