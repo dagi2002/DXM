@@ -285,5 +285,30 @@ Task 9 of parallel plan 2 (`task/9-reports`). Task 8 (site insights) hadn't star
 - Before/after is only measured for click-friction fixes (rage/dead clicks); task 10's new kinds show "Too early to tell" until they get a measure.
 - Amharic copy needs a native-speaker review.
 
+## 2026-11-12 — Bundle reduction + CI upkeep ✅ (task 12)
+
+Task 12 of parallel plan 3 (`task/12-bundle-ci`). No migration and no new strings.
+
+**Shipped:**
+- **First-load JS: 216.0 → 154.0 KB gz.** The plan asked for ≤190, and the long-term target in 03 §8 is 160. The CI budget goes from **216 to 156 KB** (measured + 2).
+  - `@pulse/i18n/format`: a small ICU formatter for the subset our messages use. It replaces `i18next-icu` + `intl-messageformat` in the browser (216.0 → 201.9). A parity test compares it with `intl-messageformat` on every UI message in both locales. ICU outside the subset throws, so that test fails when a new message needs more. The server is unchanged.
+  - The Better Auth client is out of the shell. It loads with the auth pages, and on demand to activate or switch organization and to sign out (→ 191.8).
+  - `@pulse/ui`: `Select`, `Modal` and `TextField` are separate modules, and the package is marked side-effect free. The organization switcher is a lazy chunk, shown only to people in more than one organization. Their current organization's name shows while it loads (→ 154.0).
+  - Each route's full download (shell + route chunk + locale, gz) is smaller too: landing 231 → 170, sign-in 237 → 192, Today 240 → 193, site 279 → 260, settings 248 → 242, reports 246 → 226.
+  - No package is bundled twice (checked from the source maps).
+- **CI:** `actions/checkout` v4 → v7, `actions/setup-node` v4 → v7, `actions/upload-artifact` v4 → v7, `pnpm/action-setup` v4 → v6. All four run on Node 24; the versions come from each action's releases page, read on 2026-11-12. Both workflows now pin the runner to `ubuntu-24.04`.
+- **Advisories:** `@sentry/node` 11.6 → 11.12 brings `glob` 14 and `minimatch` 11 on the production path, so `pnpm audit --prod` is clean. `happy-dom` 21.0.1 → 21.0.4 (dev only, used by the SDK tests) clears a high advisory.
+- **Tests:** 34 new unit tests for the formatter (`packages/i18n`). One new e2e test: with one organization, its name shows and there's no switcher. With two, the switcher appears, passes axe when open, switches, and the choice survives a reload. Playwright: 46 runs pass against both the dev server and the production build (`vite preview`).
+
+**Decisions:**
+- A runtime formatter instead of compiling messages at build time. It saves the same bytes without a build step or a second message format, and the parity test keeps it honest.
+- The budget counts what `index.html` loads (the shared shell), as before. Route chunks are reported in the PR, not budgeted.
+
+**Not done yet:**
+- One moderate `minimatch` advisory remains, on dev tooling only: ESLint's packages pin minimatch 10, and the fix is 11, a major version. It will go away when ESLint moves to 11.
+- The legacy workflow (`ci.yml`) got the same action versions. It only runs for `main`, so it hasn't run from this branch.
+- Further shell cuts would mean replacing the router (24 KB) or i18next (15 KB). Both are rewrites, not splits.
+- The cloud sandbox couldn't download Playwright's pinned Chromium, so local e2e ran on the sandbox's pre-installed Chromium. CI runs the pinned build.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_
