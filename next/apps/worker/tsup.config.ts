@@ -5,7 +5,7 @@ import { defineConfig } from 'tsup';
  * such as pg call require() at runtime, so the ESM bundle gets a real require via createRequire.
  */
 export default defineConfig({
-  entry: ['src/main.ts'],
+  entry: ['src/main.ts', 'src/backfill.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',

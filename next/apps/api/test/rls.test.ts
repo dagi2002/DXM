@@ -36,9 +36,12 @@ describe('row-level security invariants', () => {
         'invoices',
         'issue_events',
         'issues',
+        'notification_prefs',
+        'notification_settings',
         'org_plans',
         'org_usage',
         'payments',
+        'push_subscriptions',
         'replay_chunks',
         'report_shares',
         'reports',
@@ -79,6 +82,32 @@ describe('row-level security invariants', () => {
     } finally {
       await client.end();
     }
+  });
+
+  it('lets the app role call the task 14 helpers, and not PUBLIC', async () => {
+    const fns = [
+      'pulse_rollup_backfill_candidates(date, integer, integer, integer)',
+      'pulse_orgs_for_retention()',
+      'pulse_drop_empty_event_partitions(integer)',
+    ];
+    for (const fn of fns) {
+      const { rows } = await adminQuery<{ app: boolean; pub: boolean }>(
+        `select has_function_privilege($1, $2, 'EXECUTE') as app, has_function_privilege('public', $2, 'EXECUTE') as pub`,
+        [APP_ROLE, fn],
+      );
+      expect(rows[0], fn).toEqual({ app: true, pub: false });
+    }
+  });
+
+  it('lets the app role call the task 15 helpers, not the public', async () => {
+    const { rows } = await adminQuery<{ unsub: boolean; orgs: boolean; pub1: boolean; pub2: boolean }>(
+      `select has_function_privilege($1, 'pulse_digest_unsubscribe(text)', 'EXECUTE') as unsub,
+              has_function_privilege($1, 'pulse_digest_orgs()', 'EXECUTE') as orgs,
+              has_function_privilege('public', 'pulse_digest_unsubscribe(text)', 'EXECUTE') as pub1,
+              has_function_privilege('public', 'pulse_digest_orgs()', 'EXECUTE') as pub2`,
+      [APP_ROLE],
+    );
+    expect(rows[0]).toEqual({ unsub: true, orgs: true, pub1: false, pub2: false });
   });
 
   it('keeps the audit log append-only and internal helpers private for the app role', async () => {
@@ -153,6 +182,9 @@ describe('row-level security invariants', () => {
         'invoices',
         'payments',
         'org_usage',
+        'notification_settings',
+        'notification_prefs',
+        'push_subscriptions',
       ]) {
         const { rows } = await client.query(`select count(*)::int as n from ${table}`);
         expect(rows[0].n, table).toBe(0);

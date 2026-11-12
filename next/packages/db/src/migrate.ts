@@ -35,6 +35,11 @@ export async function migrateDatabase(
       grant execute on function pulse_issues_due_for_verification(integer, integer, integer) to ${appRole};
       grant execute on function pulse_live_sites() to ${appRole};
       grant execute on function pulse_claim_telegram_link(text, text, text, text) to ${appRole};
+      grant execute on function pulse_rollup_backfill_candidates(date, integer, integer, integer) to ${appRole};
+      grant execute on function pulse_orgs_for_retention() to ${appRole};
+      grant execute on function pulse_drop_empty_event_partitions(integer) to ${appRole};
+      grant execute on function pulse_digest_unsubscribe(text) to ${appRole};
+      grant execute on function pulse_digest_orgs() to ${appRole};
       grant execute on function pulse_payment_org(text) to ${appRole};
       grant execute on function pulse_org_ingest_state(text, timestamptz) to ${appRole};
       grant execute on function pulse_visit_exists(text, text) to ${appRole};

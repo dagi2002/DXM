@@ -3,6 +3,7 @@ import { aiConfigured, billingConfigured, type ServerEnv } from '@pulse/config';
 import { HttpChapaClient, type ChapaClient } from '@pulse/billing';
 import type { PublicConfig } from '@pulse/contracts';
 import type { TelegramClient } from '@pulse/mail/telegram';
+import type { PushClient } from '@pulse/mail/push';
 import type { Db } from '@pulse/db';
 import { sql } from '@pulse/db';
 import { Hono } from 'hono';
@@ -21,6 +22,7 @@ import { publicReportRoutes, redactPath } from './routes/public-reports';
 import { reportRoutes } from './routes/reports';
 import { insightRoutes } from './routes/insights';
 import { meRoutes } from './routes/me';
+import { notificationRoutes, publicDigestRoutes } from './routes/notifications';
 import { replayRoutes } from './routes/replays';
 import { siteRoutes } from './routes/sites';
 import { telegramRoutes, telegramWebhook } from './routes/telegram';
@@ -36,6 +38,8 @@ export interface AppDeps {
   blobs?: BlobStore;
   /** Sends Telegram messages (link confirmations, tests). Absent without a bot token. */
   telegram?: TelegramClient;
+  /** Sends web push (the Settings test). Absent without VAPID keys. */
+  push?: PushClient;
   /** Chapa (billing). Defaults to the HTTP client when the env has keys; tests pass the fake. */
   chapa?: ChapaClient;
   /** Resolves the TCP peer address; injected so tests and the Node server can differ. */
@@ -170,6 +174,8 @@ export function createApp(deps: AppDeps) {
   app.route('/api/v1/insights', insightRoutes(deps));
   app.route('/api/v1/telegram/webhook', telegramWebhook(deps));
   app.route('/api/v1/telegram', telegramRoutes(deps));
+  app.route('/api/v1/notifications', notificationRoutes(deps));
+  app.route('/api/v1/public/digest', publicDigestRoutes(deps));
   const billing = {
     ...deps,
     chapa: deps.chapa ?? (billingConfigured(env) ? new HttpChapaClient(env.CHAPA_SECRET_KEY!) : undefined),

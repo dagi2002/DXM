@@ -351,6 +351,7 @@ describe('reading insights from rollups', () => {
         at('2026-10-01T00:00:00Z'),
       ),
       buckets: await rollupReportSource.bucketVisits(tx, 'site_a', {
+        period: '2026-09',
         start: at('2026-09-01T00:00:00Z'),
         end: at('2026-10-01T00:00:00Z'),
       }),

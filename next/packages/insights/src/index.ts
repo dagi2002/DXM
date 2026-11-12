@@ -6,5 +6,6 @@ export * from './compute';
 export * from './funnels';
 export * from './glob';
 export * from './health';
+export * from './retention';
 export * from './rollup';
 export * from './vitals';

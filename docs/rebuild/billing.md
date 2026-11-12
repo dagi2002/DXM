@@ -28,6 +28,7 @@ Plans live in code: `PLANS` in `next/packages/contracts/src/constants.ts`, from 
 | `CHAPA_MODE` | api | `test` (default) or `live`: the kind of payment this server accepts. A payment whose mode differs is never marked paid. The server refuses to start if the mode and the key disagree (test keys carry `TEST` in the prefix). |
 | `BILLING_ADMIN_TOKEN` | api | Bearer token for the staff override. Unset = the override answers 503. Generate with `openssl rand -hex 32`. |
 | `REPLAY_RETENTION_DAYS` | worker | Now a server-wide cap (default 90). Each org keeps what its plan allows. |
+| `DATA_RETENTION_DAYS` | worker | Server-wide cap on raw events and visits (default 90, minimum 7). Each org keeps what its plan allows. |
 
 Keys are read from the environment only. They are never logged, stored in the database, or sent to the browser.
 
@@ -76,7 +77,7 @@ The browser coming back from Chapa confirms nothing: the Billing screen shows "W
 - **Collector:** caches each org's state for 30 seconds. For an org that is over quota or restricted it answers a new session with `403 {"error":"session_quota_exceeded"}`, which makes the SDK stop for that page. Healthy orgs get no extra query.
 - **Replay:** recorded only on plans that include it. The collector answers `403 feature_not_in_plan` otherwise, and replay chunks count toward the session quota.
 - **Sites:** `plan_limit_reached` with `{currentPlan, limitType, limit, currentCount, upgradePlan}`.
-- **Retention:** `retentionDaysForPlan(plan, status)` in `@pulse/contracts`. Replay retention uses it today; task 14's event and rollup retention should call it too.
+- **Retention:** `retentionDaysForPlan(plan, status)` in `@pulse/contracts`. Replay retention uses it, and so does raw event and visit retention through task 14's `retentionDaysFor(org)` in `@pulse/insights` (the plan's days, capped by `DATA_RETENTION_DAYS`).
 - **In the app:** Today and Replays show a notice to the whole team when sessions are not being stored. Settings → Billing (owner only) shows the plan, usage against the quota, invoices and the plans.
 
 ## Staff override

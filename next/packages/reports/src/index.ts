@@ -4,6 +4,7 @@
  */
 export * from './build';
 export * from './period';
+export * from './raw';
 export * from './snapshot';
 export * from './source';
 export * from './token';

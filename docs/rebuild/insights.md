@@ -30,7 +30,7 @@ The implementation is `healthScore()` in `packages/insights/src/health.ts`, with
 - **Percentiles** follow behaviour contract 21: sort the values and take index `floor((n − 1) × p)` — always an observed value. Each value is one final Web Vital per page view (from the SDK's deferred `v.js`). p75 is shown only with at least 5 samples.
 - **Days are UTC calendar days.** A 7-day range is today (so far) plus the 6 days before; the comparison period is the 7 days before that. 30 days works the same way.
 - **Visits** count visits that *started* that day; **pageviews** sum those visits' page views. **Bounce** = bounced ÷ ended visits (a visit's bounce is known once it ends, 30 min idle).
-- **Vitals by device and network:** device comes from the visit (phone, computer, tablet); network is `NetworkInformation.effectiveType` (`slow-2g` folds into 2G; browsers that don't report it are "unknown" — Safari and Firefox never do).
+- **Vitals by device and network:** device comes from the visit (phone, computer, tablet); network is `NetworkInformation.effectiveType` (`slow-2g` is its own bucket, "Slow 2G", since task 14; browsers that don't report it are "unknown" — Safari and Firefox never do).
 - **Pages that need you:** page templates (ids collapsed to `*`, as in detectors) ranked by open critical fixes, then by `need` = visits with friction on the page + visits with errors on the page + a share of the page's visits when its p75 LCP is slow (0.5 when poor, 0.25 when needs-work). Only pages with 5+ visits and some need, or an open fix, are listed; at most 5.
 - **Funnels:** one per site. Each step matches any of up to 5 matchers — a page path glob, a custom event name, a click selector glob, or a form start/submit (optionally narrowed by form name). Globs use `*` only and are matched in linear time; there is no user regex. A visit reaches step *n* only after reaching step *n − 1*, and one event satisfies at most one step. Counts are per visit that started that day. Conversion = last step ÷ first step.
 - **Ethiopian templates** (`FUNNEL_TEMPLATE_DEFS` in `@pulse/contracts`): telebirr checkout, Chapa checkout, lead form, Telegram hand-off. They match common paths (`/product*`, `/cart*`, `/checkout*`, `*thank*`, `*/success*`) and the custom events `add_to_cart`, `telebirr_selected`, `chapa_selected`, `purchase` and `telegram_click` (send them with `dxm.track(name)` where paths don't tell). Step labels are filled in the owner's language when they pick a template.
@@ -41,13 +41,19 @@ Dashboards never scan raw events per request. The worker fills daily tables, all
 
 | Table | Key | Holds |
 |---|---|---|
-| `rollup_site_day` | site, day | visits, page views, ended/bounced visits, friction visits, error visits, rage/dead clicks, errors |
-| `rollup_page_day` | site, day, page template | visits, page views, entries, bounces, friction visits, error visits |
+| `rollup_site_day` | site, day | visits, page views, ended/bounced visits, friction visits, error visits, rage/dead clicks, errors, visits with a page view (`pv_visits`), rollup `version` |
+| `rollup_page_day` | site, day, page template | visits, page views, entries, bounces, friction visits, error visits, U-turn reach and U-turns (counted by the detector's `uTurnStats`) |
 | `rollup_vitals_day` | site, day, metric, device, network, template | the raw final values (`real[]`) — percentiles don't add up across days, so p75 over a range is taken over all its values |
 | `rollup_funnel_day` | site, day | step counts for the funnel version in `hash` |
 | `site_funnels` | site | name, template, steps (jsonb, validated by `FunnelConfig`), `hash` of the matchers |
 
 **Jobs.** `insights.sweep` runs every 10 minutes and asks the SECURITY DEFINER function `pulse_sites_for_insights(30)` for sites with visitor activity in the last 30 minutes, or whose funnel hasn't been rolled up for a recent day with visits (a new or edited funnel). It queues one `insights.site` per site (`stately`, singleton per site, staggered over 4 minutes). `insights.site` runs inside the org's RLS scope, recomputes **today and yesterday** from raw rows (delete-and-insert, so it's idempotent), then recomputes the funnel for any of the last 30 days whose rollup was made with another step list. Editing a funnel therefore shows "Counting visits for the new steps" until the next sweep (≤ ~15 minutes).
+
+**Complete rollups (task 14).** A day's rollup is *complete* when it was made by the current rollup definition (`version` = `ROLLUP_VERSION`, now 2) and computed at least 3 hours after the day ended (`ROLLUP_SETTLE_HOURS`: late batches, idle visits closing, funnel steps after midnight). Readers that need whole-day numbers (reports, verification) use complete rollups and fall back to raw events for anything else.
+
+**Backfill.** `insights.backfill` rebuilds every settled day that still has raw events but whose rollup is missing, stale or from an older version. `pulse_rollup_backfill_candidates(last_day, settle_hours, min_version, max_rows)` (SECURITY DEFINER, ids and days only, deleted sites skipped) finds them; each site's days are rebuilt with the same `rollupDay` the sweep uses, inside the org's RLS scope. A rebuilt day is complete, so a second run finds nothing and changes nothing (tested). It runs on every worker start (so each deploy), daily at 03:47 UTC, and on demand: `pnpm --filter @pulse/worker backfill` (or `node dist/backfill.js` in a deploy).
+
+**Retention.** `maintenance.retention` (daily, 02:13 UTC) asks `pulse_orgs_for_retention()` for every org and its plan, then for each org, inside that org's RLS scope, deletes raw events and visits from before `retentionDaysFor(org)` days and rollups from before `max(that, 400)` days (rollups hold counts and vital values, no visitor ids, and monthly reports compare months). Whole UTC days only, so the backfill never rebuilds a half-purged day. Afterwards `pulse_drop_empty_event_partitions(shortest retention)` drops daily partitions past it **only if they hold no rows**, so it can never remove another org's data. `retentionDaysFor` (in `@pulse/insights`) returns what the org's plan allows (Free 7, Business 30, Growth and Agency 90 days; no plan row counts as Free), capped by the server-wide `DATA_RETENTION_DAYS` (default 90), which is also what an org with an unknown plan keeps. A restricted org keeps its plan's retention for raw data.
 
 ## API
 
@@ -60,5 +66,6 @@ Dashboards never scan raw events per request. The worker fills daily tables, all
 `@pulse/insights/db` exports:
 
 - `loadSiteInsights(tx, siteId, range, now)` — the full `SiteInsights` for a range ending `now`, from rollups only. Call it inside an org-scoped transaction to freeze a snapshot.
-- `rollupReportSource` — `totals()` and `bucketVisits()` over the rollups; structurally the same as task 9's `ReportMetricsSource`, so it can be passed to `buildReportSnapshot` / `generateMonthlyReport` in place of `rawEventsSource`.
+- `rollupReportSource` — task 9's `ReportMetricsSource` over complete rollups, with raw events for partial days and days without one. The monthly job and "Create report" use it. It gives the same snapshot as `rawEventsSource` on the same data (tested with no, some and all days rolled up). Raw p75 now follows contract 21 too (`floor((n-1)×p)`, no interpolation).
+- `measureFixWindow(tx, siteId, kind, evidence, range)` — a fix's before/after measure with page-view exposure from rollups (used by `issue.verify` and reports).
 - The pure layer (`computeSiteInsights`, `healthScore`, `percentile`, funnel helpers) is in `@pulse/insights`.

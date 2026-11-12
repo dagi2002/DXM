@@ -339,12 +339,19 @@ describe('Telegram alerts', () => {
       [id, number, severity, status, JSON.stringify(evidence)],
     );
   }
-  const link = (quiet: [number, number] | null = null, locale = 'en') =>
-    admin(
-      `insert into telegram_links (id, org_id, chat_id, chat_title, quiet_start, quiet_end, locale)
-       values ('tgl_1', 'org_a', '-100123', 'Shop A team', $1, $2, $3)`,
-      [quiet?.[0] ?? null, quiet?.[1] ?? null, locale],
+  const link = async (quiet: [number, number] | null = null, locale = 'en') => {
+    await admin(
+      `insert into telegram_links (id, org_id, chat_id, chat_title, locale)
+       values ('tgl_1', 'org_a', '-100123', 'Shop A team', $1)`,
+      [locale],
     );
+    // Quiet hours are the org's shared setting (task 15), not the link's.
+    if (quiet)
+      await admin(
+        `insert into notification_settings (org_id, quiet_start, quiet_end) values ('org_a', $1, $2)`,
+        quiet,
+      );
+  };
   const job = {
     orgId: 'org_a',
     siteId: 'site_a',

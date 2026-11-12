@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./db": "./src/db.ts"
+    "./db": "./src/db-index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p .",
@@ -16,7 +16,8 @@
     "@pulse/contracts": "workspace:*",
     "@pulse/db": "workspace:*",
     "@pulse/detectors": "workspace:*",
-    "@pulse/metrics": "workspace:*"
+    "@pulse/metrics": "workspace:*",
+    "@pulse/reports": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^5.0.4"

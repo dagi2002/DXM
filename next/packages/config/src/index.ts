@@ -91,6 +91,55 @@ const telegramEnv = {
 };
 
 /**
+ * Web push (task 15). VAPID keys in the standard base64url form (`pnpm --filter @pulse/api
+ * vapid:keys` makes a pair). No keys = push is off and Settings says "not configured".
+ */
+const pushEnv = {
+  VAPID_PUBLIC_KEY: optionalString,
+  /** Secret: never logged. */
+  VAPID_PRIVATE_KEY: optionalString,
+  /** Contact the push services can reach (mailto: or https:). */
+  VAPID_SUBJECT: z
+    .string()
+    .regex(/^(mailto:|https:\/\/)/, 'must start with mailto: or https://')
+    .default('mailto:hello@dxmpulse.et'),
+};
+
+const b64uLength = (v: string) => (/^[A-Za-z0-9_-]+$/.test(v) ? Buffer.from(v, 'base64url').length : -1);
+
+/** Both VAPID keys or neither, each the right size. Values are never echoed. */
+function checkVapid(
+  env: { VAPID_PUBLIC_KEY?: string | undefined; VAPID_PRIVATE_KEY?: string | undefined },
+  ctx: z.RefinementCtx,
+) {
+  const pub = env.VAPID_PUBLIC_KEY;
+  const priv = env.VAPID_PRIVATE_KEY;
+  if (Boolean(pub) !== Boolean(priv)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['VAPID_PUBLIC_KEY'],
+      message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither',
+    });
+    return;
+  }
+  if (pub && b64uLength(pub) !== 65)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['VAPID_PUBLIC_KEY'],
+      message: 'is not a base64url P-256 public key',
+    });
+  if (priv && b64uLength(priv) !== 32)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['VAPID_PRIVATE_KEY'],
+      message: 'is not a base64url P-256 private key',
+    });
+}
+
+/** Push is on only when both keys are set (and valid — the env schema checks that). */
+export const pushConfigured = (env: { VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string }) =>
+  Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
+
  * Billing through Chapa. No secret key = billing is "not configured": plans and usage still show,
  * but no pay links are made. CHAPA_MODE says which kind of payment this server accepts; it stays
  * `test` (no real money) until the founder switches it to `live` together with a live key.
@@ -190,11 +239,13 @@ export const serverEnvSchema = z
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
     ...blobStoreShape,
     ...telegramEnv,
+    ...pushEnv,
     ...aiEnv,
     ...billingEnv,
   })
   .superRefine((env, ctx) => {
     checkBlobStore(env, ctx);
+    checkVapid(env, ctx);
     checkBilling(env, ctx);
     if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
       ctx.addIssue({
@@ -300,11 +351,21 @@ export const workerEnvSchema = z
     RESEND_API_KEY: optionalString,
     SENTRY_DSN: optionalString,
     WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
+    /**
+     * Server-wide cap on raw visitor data (events, visits). Each org keeps what its plan allows,
+     * never more than this (`retentionDaysFor` in @pulse/insights). Daily rollups are kept at
+     * least 400 days.
+     */
+    DATA_RETENTION_DAYS: z.coerce.number().int().min(7).max(3650).default(90),
     ...blobStoreShape,
     ...telegramEnv,
+    ...pushEnv,
     ...aiEnv,
   })
-  .superRefine(checkBlobStore);
+  .superRefine((env, ctx) => {
+    checkBlobStore(env, ctx);
+    checkVapid(env, ctx);
+  });
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 export function loadWorkerEnv(source: Record<string, string | undefined> = process.env): WorkerEnv {

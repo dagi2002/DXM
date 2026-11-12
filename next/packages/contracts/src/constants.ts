@@ -99,7 +99,7 @@ export function entitlementsFor(plan: PlanId, status: SubscriptionStatus | null 
   if (status === 'restricted') return { ...PLANS.free, sessions: 0 };
   return PLANS[plan];
 }
-/** Days of data an org on this plan keeps. Retention jobs read this (task 14 hooks in here). */
+/** Days of data an org on this plan keeps. `retentionDaysFor` (@pulse/insights) and replay retention read this. */
 export const retentionDaysForPlan = (plan: PlanId, status?: SubscriptionStatus | null): number =>
   entitlementsFor(plan, status).retentionDays;
 /** The next plan up that would lift a limit, or null on the top plan. */
