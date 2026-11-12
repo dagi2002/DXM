@@ -1,8 +1,8 @@
-import { Banner, Logo, Select, cx } from '@pulse/ui';
+import { Banner, Logo, cx } from '@pulse/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Activity, FileText, Globe, LogOut, PlaySquare, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Button as RACButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useRouteFocus } from '../lib/focus';
@@ -43,31 +43,25 @@ function useOnline() {
   return online;
 }
 
+const OrgSelect = lazy(() => import('./OrgSelect'));
+
 function OrgSwitcher() {
   const { t } = useTranslation();
   const { me, orgId } = useMe();
-  const qc = useQueryClient();
-  if (me.orgs.length < 2) {
-    return (
-      <p className="grid min-w-0 leading-tight">
-        <span className="text-xs text-text-muted">{t('nav.workspace')}</span>
-        <span className="truncate text-sm font-semibold text-text">
-          {me.orgs.find((o) => o.id === orgId)?.name}
-        </span>
-      </p>
-    );
-  }
+  const current = (
+    <p className="grid min-w-0 leading-tight">
+      <span className="text-xs text-text-muted">{t('nav.workspace')}</span>
+      <span className="truncate text-sm font-semibold text-text">
+        {me.orgs.find((o) => o.id === orgId)?.name}
+      </span>
+    </p>
+  );
+  if (me.orgs.length < 2) return current;
+  // The current workspace shows while the switcher's chunk arrives.
   return (
-    <Select
-      label={t('nav.switchOrg')}
-      selectedKey={orgId}
-      options={me.orgs.map((o) => ({ id: o.id, label: o.name }))}
-      onSelectionChange={async (id) => {
-        const authClient = await loadAuthClient();
-        await authClient.organization.setActive({ organizationId: id });
-        await qc.invalidateQueries();
-      }}
-    />
+    <Suspense fallback={current}>
+      <OrgSelect />
+    </Suspense>
   );
 }
 
