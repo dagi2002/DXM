@@ -2,9 +2,9 @@ import type { Fix } from '@pulse/contracts';
 import am from '@pulse/i18n/locales/am.json';
 import en from '@pulse/i18n/locales/en.json';
 import i18next from 'i18next';
-import ICU from 'i18next-icu';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { fixesQuery, toFixView, type ViewContext } from './fixes';
+import { icuFormat } from './icu-format';
 
 const respond = (body: unknown) =>
   vi
@@ -28,7 +28,7 @@ describe('fixesQuery', () => {
 
 const i18n = i18next.createInstance();
 beforeAll(async () => {
-  await i18n.use(ICU).init({
+  await i18n.use(icuFormat).init({
     lng: 'en',
     resources: { en: { translation: en }, am: { translation: am } },
     interpolation: { escapeValue: false },

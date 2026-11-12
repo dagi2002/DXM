@@ -2,9 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-// Measured baseline for React 19 + React Aria + router + i18n (2026-10-05). Reduction plan in
-// docs/rebuild/03-architecture.md §8 targets 160 KB; ratchet this down as items land.
-const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 216);
+// "First load" here is the JS that index.html itself pulls in (the entry and its modulepreloads):
+// the shell every route shares. The route's own chunk and the active locale load on top of it.
+// 2026-11-12 (task 12): 154.0 KB measured, down from 216.0. The budget is the measured number
+// plus 2 KB of headroom; lower it again when the shell shrinks, never raise it to fit a feature.
+// Lazy-load new screens and dialogs instead (docs/rebuild/03-architecture.md §8).
+const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 156);
 const html = readFileSync('dist/index.html', 'utf8');
 const files = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.js)"/g)].map((m) => m[1]);
 let total = 0;
