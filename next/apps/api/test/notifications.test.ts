@@ -91,7 +91,7 @@ describe('web push settings', () => {
     expect(push.sent).toEqual([
       {
         endpoint: sub.endpoint,
-        message: expect.objectContaining({ title: 'Pulse', body: expect.stringContaining('Shop') }),
+        message: expect.objectContaining({ title: 'Pulse — test', body: expect.stringContaining('Shop') }),
       },
     ]);
 

@@ -44,6 +44,6 @@
   "email.digest.open": "Open Pulse: {url}",
   "email.digest.unsubscribe": "You get this email every Monday. To stop it, open: {url}",
   "push.more": "{count, plural, one {and # more} other {and # more}}",
-  "push.test.title": "Pulse",
+  "push.test.title": "Pulse — test",
   "push.test.body": "Notifications for {org} will arrive on this device."
 }

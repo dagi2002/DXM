@@ -44,6 +44,6 @@
   "email.digest.open": "Pulseን ይክፈቱ፦ {url}",
   "email.digest.unsubscribe": "ይህ ኢሜይል በየሰኞ ይላክልዎታል። ለማቆም ይክፈቱ፦ {url}",
   "push.more": "{count, plural, one {እና # ተጨማሪ} other {እና # ተጨማሪ}}",
-  "push.test.title": "Pulse",
+  "push.test.title": "Pulse — ሙከራ",
   "push.test.body": "የ{org} ማሳወቂያዎች በዚህ መሣሪያ ላይ ይደርሳሉ።"
 }
