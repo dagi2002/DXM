@@ -104,7 +104,10 @@ test('Settings → Notifications: push never prompts on its own, digest and quie
 
   const digest = page.getByRole('checkbox', { name: 'Send me the Monday email for this organization' });
   await expect(digest).toBeChecked();
-  await digest.uncheck({ force: true });
+  await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/api/v1/notifications/digest') && r.ok()),
+    page.getByText('Send me the Monday email for this organization').click(),
+  ]);
   await expect(digest).not.toBeChecked();
   await page.reload();
   await expect(
@@ -132,8 +135,10 @@ test('the Monday email’s unsubscribe link asks first, then switches it off', a
   // The digest job creates the member's preferences; here, saving the setting does.
   await page.goto('/settings?tab=notifications');
   await expect(page.getByRole('checkbox', { name: /Monday email/ })).toBeChecked();
-  await page.getByRole('checkbox', { name: /Monday email/ }).uncheck({ force: true });
-  await page.getByRole('checkbox', { name: /Monday email/ }).check({ force: true });
+  // One save at a time: wait for each to reach the server.
+  const saved = () => page.waitForResponse((r) => r.url().endsWith('/api/v1/notifications/digest') && r.ok());
+  await Promise.all([saved(), page.getByText('Send me the Monday email for this organization').click()]);
+  await Promise.all([saved(), page.getByText('Send me the Monday email for this organization').click()]);
   await expect(page.getByRole('checkbox', { name: /Monday email/ })).toBeChecked();
   const { rows } = await admin(
     `select p.unsubscribe_token from notification_prefs p join "user" u on u.id = p.user_id where u.email = $1`,
