@@ -709,11 +709,16 @@ function usePrintInLight() {
   useEffect(() => {
     const root = document.documentElement;
     let before: string | null = null;
+    let printing = false;
     const toLight = () => {
+      if (printing) return; // a second beforeprint must not save "light" as the user's theme
+      printing = true;
       before = root.getAttribute('data-theme');
       root.setAttribute('data-theme', 'light');
     };
     const restore = () => {
+      if (!printing) return;
+      printing = false;
       if (before === null) root.removeAttribute('data-theme');
       else root.setAttribute('data-theme', before);
     };
