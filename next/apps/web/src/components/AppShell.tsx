@@ -5,11 +5,13 @@ import { Activity, FileText, Globe, LogOut, PlaySquare, Settings } from 'lucide-
 import { useEffect, useState } from 'react';
 import { Button as RACButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { authClient } from '../lib/auth-client';
 import { useRouteFocus } from '../lib/focus';
 import { isNavActive } from '../lib/nav';
 import { useMe } from '../lib/queries';
 import { LanguageSwitch } from './LanguageSwitch';
+
+/** The Better Auth client is only needed to switch workspace or sign out, so it loads on demand (03 §8). */
+const loadAuthClient = () => import('../lib/auth-client').then((m) => m.authClient);
 
 /** Only destinations that actually exist are shown (honest UI). More arrive slice by slice. */
 const NAV = [
@@ -61,6 +63,7 @@ function OrgSwitcher() {
       selectedKey={orgId}
       options={me.orgs.map((o) => ({ id: o.id, label: o.name }))}
       onSelectionChange={async (id) => {
+        const authClient = await loadAuthClient();
         await authClient.organization.setActive({ organizationId: id });
         await qc.invalidateQueries();
       }}
@@ -76,6 +79,7 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
     <RACButton
       aria-label={compact ? t('nav.signOut') : undefined}
       onPress={async () => {
+        const authClient = await loadAuthClient();
         await authClient.signOut();
         qc.clear();
         await navigate({ to: '/sign-in' });

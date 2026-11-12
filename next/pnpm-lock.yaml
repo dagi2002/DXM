@@ -189,12 +189,6 @@ importers:
       i18next:
         specifier: ^26.4.4
         version: 26.4.4(typescript@6.0.3)
-      i18next-icu:
-        specifier: ^2.5.0
-        version: 2.5.0(intl-messageformat@12.1.3)
-      intl-messageformat:
-        specifier: ^12.1.3
-        version: 12.1.3
       lucide-react:
         specifier: ^1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -3363,14 +3357,6 @@ packages:
 
   /html-parse-stringify@4.0.1:
     resolution: {integrity: sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw==}
-    dev: false
-
-  /i18next-icu@2.5.0(intl-messageformat@12.1.3):
-    resolution: {integrity: sha512-/du0wHUfcJhP3gzHw4ZHp9n0XA6xpDD029ZVNy9e2ohWEZHJUnW8X/ZAC0ltE72hceRa+XcAz72NU2UVF+Guuw==}
-    peerDependencies:
-      intl-messageformat: '>=10.3.3 <13.0.0'
-    dependencies:
-      intl-messageformat: 12.1.3
     dev: false
 
   /i18next@26.4.4(typescript@6.0.3):
