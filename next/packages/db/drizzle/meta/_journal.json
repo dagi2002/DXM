@@ -106,6 +106,13 @@
       "when": 1791979542332,
       "tag": "0014_detection_2",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791979546332,
+      "tag": "0018_notifications",
+      "breakpoints": true
     }
   ]
 }
