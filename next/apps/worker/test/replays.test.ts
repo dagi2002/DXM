@@ -30,7 +30,7 @@ let store: LocalDiskBlobStore;
 beforeEach(async () => {
   store = new LocalDiskBlobStore(mkdtempSync(join(tmpdir(), 'worker-replays-')));
   await admin(
-    'truncate replay_chunks, events, ingest_dedupe, visits, audit_log, sites, org_plans, invitation, member, organization, verification, account, session, "user" cascade',
+    'truncate ai_artifacts, replay_chunks, events, ingest_dedupe, visits, audit_log, sites, org_plans, invitation, member, organization, verification, account, session, "user" cascade',
   );
   await admin(
     `insert into organization (id, name, slug) values ('org_a','Org A','org-a'), ('org_b','Org B','org-b')`,
@@ -101,10 +101,23 @@ describe('purgeReplays', () => {
     await admin(`update replay_chunks set received_at = now() - interval '31 days' where seq = 0`);
 
     const res = await purgeReplays(database.db, store, 30, 1); // batch of 1 exercises the loop
-    expect(res).toEqual({ rows: 2, blobs: 2, failed: 0 });
+    expect(res).toEqual({ rows: 2, blobs: 2, failed: 0, recaps: 0 });
     for (const j of old) expect(await store.get(j.objectKey)).toBeNull();
     expect(await store.get(fresh.objectKey)).not.toBeNull();
     expect((await admin('select seq from replay_chunks')).rows).toEqual([{ seq: 1 }]);
+  });
+
+  it('deletes AI recaps whose recording is gone, and keeps recaps of recordings that remain', async () => {
+    const gone = job({ orgId: 'org_b', siteId: 'site_b', visitId: 'visit_bbbbbbbb', seq: 0 });
+    const kept = job({ seq: 1 });
+    for (const j of [gone, kept]) await applyReplayChunk(database.db, store, j);
+    await admin(`update replay_chunks set received_at = now() - interval '31 days' where site_id = 'site_b'`);
+    await admin(`insert into ai_artifacts (id, org_id, site_id, visit_id, kind, input_hash, model, content) values
+      ('ai_gone','org_b','site_b','visit_bbbbbbbb','replay_recap','h1','m','{"text":"x"}'),
+      ('ai_kept','org_a','site_a','visit_aaaaaaaa','replay_recap','h2','m','{"text":"y"}')`);
+    const res = await purgeReplays(database.db, store, 30);
+    expect(res.recaps).toBe(1);
+    expect((await admin('select id from ai_artifacts')).rows).toEqual([{ id: 'ai_kept' }]);
   });
 
   it('refuses nonsense retention values', async () => {

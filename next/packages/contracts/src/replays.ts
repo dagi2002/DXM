@@ -134,3 +134,29 @@ export const ReplayDetail = z.object({
   chunks: z.array(ReplayChunkRef),
 });
 export type ReplayDetail = z.infer<typeof ReplayDetail>;
+
+/* ── AI recap (task 13) ───────────────────────────────────────────────────── */
+
+/** Recaps are written in the reader's language. */
+export const ReplayRecapRequest = z.object({ locale: z.enum(['en', 'am']).default('en') });
+export type ReplayRecapRequest = z.input<typeof ReplayRecapRequest>;
+
+/**
+ * `GET|POST /api/v1/replays/:visitId/recap`.
+ * - `disabled`: AI is off (AI_ENABLED + key). The UI shows no recap box at all.
+ * - `none`: nothing written yet for this recording and language (POST writes one).
+ * - `ready`: the recap, cached by its input; a second request never pays again.
+ * - `over_budget`: the org used its monthly AI budget; nothing was generated.
+ * - `unavailable`: the model failed or answered in a shape we don't trust; nothing was stored.
+ */
+export const ReplayRecap = z.object({
+  status: z.enum(['disabled', 'none', 'ready', 'over_budget', 'unavailable']),
+  recap: z
+    .object({
+      text: z.string(),
+      locale: z.enum(['en', 'am']),
+      createdAt: z.string(),
+    })
+    .nullable(),
+});
+export type ReplayRecap = z.infer<typeof ReplayRecap>;

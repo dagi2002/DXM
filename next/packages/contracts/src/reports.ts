@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ReportBrand } from './branding';
 import { FIX_KINDS, FIX_SEVERITIES, REPORT_SHARE_DEFAULT_DAYS, REPORT_SHARE_MAX_DAYS } from './constants';
 
 /**
@@ -122,6 +123,8 @@ export type ReportList = z.infer<typeof ReportList>;
 export const ReportDetail = z.object({
   report: ReportSummary.extend({ snapshot: ReportSnapshot }),
   shares: z.array(ReportShare),
+  /** The org's current report branding (task 13); null when it has none. */
+  brand: ReportBrand.nullable(),
 });
 export type ReportDetail = z.infer<typeof ReportDetail>;
 
@@ -141,7 +144,13 @@ export type ReportShareCreated = z.infer<typeof ReportShareCreated>;
 
 /** `GET /api/v1/public/reports/:token` — only the snapshot, nothing else about the org. */
 export const PublicReport = z.object({
-  report: z.object({ period: ReportPeriod, expiresAt: z.string(), snapshot: ReportSnapshot }),
+  report: z.object({
+    period: ReportPeriod,
+    expiresAt: z.string(),
+    snapshot: ReportSnapshot,
+    /** The org's current report branding (task 13); null when it has none. */
+    brand: ReportBrand.nullable(),
+  }),
 });
 export type PublicReport = z.infer<typeof PublicReport>;
 

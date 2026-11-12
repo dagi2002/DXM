@@ -435,8 +435,10 @@ export const telegramLinkCodes = pgTable(
 );
 
 /**
- * Cached AI output (`ai.recommend`). One row per (issue, kind, input hash): the same evidence
- * never pays for a second call. Rows also count against the per-org monthly budget.
+ * Cached AI output. One row per (subject, kind, input hash): the same input never pays for a
+ * second call. Rows also count against the per-org monthly budget.
+ * - `fix_suggestion` (`ai.recommend`): subject = the issue.
+ * - `replay_recap` (task 13): subject = one visit's recording (site + visit). Deleted with it.
  */
 export const aiArtifacts = pgTable(
   'ai_artifacts',
@@ -445,10 +447,10 @@ export const aiArtifacts = pgTable(
     orgId: text('org_id')
       .notNull()
       .references(() => organization.id, { onDelete: 'cascade' }),
-    issueId: text('issue_id')
-      .notNull()
-      .references(() => issues.id, { onDelete: 'cascade' }),
-    kind: text('kind', { enum: ['fix_suggestion'] }).notNull(),
+    issueId: text('issue_id').references(() => issues.id, { onDelete: 'cascade' }),
+    siteId: text('site_id').references(() => sites.id, { onDelete: 'cascade' }),
+    visitId: text('visit_id'),
+    kind: text('kind', { enum: ['fix_suggestion', 'replay_recap'] }).notNull(),
     inputHash: text('input_hash').notNull(),
     model: text('model').notNull(),
     content: jsonb('content').$type<Record<string, unknown>>().notNull(),
@@ -458,9 +460,31 @@ export const aiArtifacts = pgTable(
   },
   (t) => [
     uniqueIndex('ai_artifacts_issue_kind_input_uq').on(t.issueId, t.kind, t.inputHash),
+    uniqueIndex('ai_artifacts_visit_kind_input_uq')
+      .on(t.siteId, t.visitId, t.kind, t.inputHash)
+      .where(sql`${t.visitId} is not null`),
     index('ai_artifacts_org_created_idx').on(t.orgId, t.createdAt),
   ],
 );
+
+/**
+ * An organization's report branding (task 13): the agency name and logo shown on client reports
+ * and their public share links. The logo bytes live in the BlobStore under the org's prefix;
+ * this row holds the key and the checked content type.
+ */
+export const orgBranding = pgTable('org_branding', {
+  orgId: text('org_id')
+    .primaryKey()
+    .references(() => organization.id, { onDelete: 'cascade' }),
+  agencyName: text('agency_name'),
+  logoKey: text('logo_key'),
+  logoType: text('logo_type', { enum: ['image/png', 'image/jpeg', 'image/webp'] }),
+  logoBytes: integer('logo_bytes'),
+  logoUpdatedAt: timestamp('logo_updated_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type OrgBrandingRow = typeof orgBranding.$inferSelect;
 
 export type TelegramLinkRow = typeof telegramLinks.$inferSelect;
 export type AiArtifactRow = typeof aiArtifacts.$inferSelect;

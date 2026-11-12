@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { FixEvidence, type FixKind } from '@pulse/contracts';
+import { monthStart, type AiClient } from '@pulse/ai';
 import { aiArtifacts, and, eq, gt, issues, newId, sites, sql, withOrg, type Db } from '@pulse/db';
 
 /**
@@ -8,54 +9,8 @@ import { aiArtifacts, and, eq, gt, issues, newId, sites, sql, withOrg, type Db }
  * The model only sees the issue's evidence — never visitor ids, replays or anything typed.
  */
 
-export interface AiCompletion {
-  text: string;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export interface AiClient {
-  complete(req: { system: string; prompt: string; maxTokens: number }): Promise<AiCompletion>;
-}
-
-/** Anthropic Messages API over fetch. The key is a secret: only ever a request header. */
-export class AnthropicClient implements AiClient {
-  constructor(
-    private readonly apiKey: string,
-    private readonly model: string,
-    private readonly baseUrl = 'https://api.anthropic.com',
-  ) {}
-  async complete(req: { system: string; prompt: string; maxTokens: number }): Promise<AiCompletion> {
-    const res = await fetch(`${this.baseUrl}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: req.maxTokens,
-        system: req.system,
-        messages: [{ role: 'user', content: req.prompt }],
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`AI provider responded ${res.status}`);
-    const body = (await res.json()) as {
-      model?: string;
-      content?: { type: string; text?: string }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-    };
-    return {
-      text: (body.content ?? []).map((c) => (c.type === 'text' ? (c.text ?? '') : '')).join(''),
-      model: body.model ?? this.model,
-      inputTokens: body.usage?.input_tokens ?? 0,
-      outputTokens: body.usage?.output_tokens ?? 0,
-    };
-  }
-}
+// The client lives in @pulse/ai so the API's replay recap uses the same one.
+export { AnthropicClient, type AiClient, type AiCompletion } from '@pulse/ai';
 
 export interface AiConfig {
   /** AI_ENABLED and a key are both set. */
@@ -108,7 +63,6 @@ export type RecommendResult = {
   status: 'disabled' | 'skipped' | 'cached' | 'over_budget' | 'created' | 'unparseable';
 };
 
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 /**
  * One suggested fix for one issue. Cached by evidence hash; skipped when AI is off, the issue is
