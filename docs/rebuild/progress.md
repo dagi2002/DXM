@@ -285,5 +285,9 @@ Task 9 of parallel plan 2 (`task/9-reports`). Task 8 (site insights) hadn't star
 - Before/after is only measured for click-friction fixes (rage/dead clicks); task 10's new kinds show "Too early to tell" until they get a measure.
 - Amharic copy needs a native-speaker review.
 
+## 2026-11-12 — Task 13: product gaps in the UI (in progress)
+
+Parallel plan 3, task 13 (`task/13-ui-gaps`, migration `0017`). Recording delete, replay sample rate, funnel editor, AI replay recap, report branding. Details land here when the PR is ready.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_
