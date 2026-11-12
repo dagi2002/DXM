@@ -134,3 +134,40 @@ test('settings: profile preferences persist and sign-out ends the session', asyn
   await page.goto('/today');
   await expect(page).toHaveURL(/\/sign-in/);
 });
+
+test('someone in two organizations can switch between them', async ({ page }, info) => {
+  await signUp(page, info, 'switch');
+  await page.getByLabel('Organization name').fill('First Org');
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  // One organization: its name is shown, with no switcher to download.
+  await expect(page.getByText('First Org').locator('visible=true')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Switch organization/ })).toHaveCount(0);
+
+  // The app has no "new organization" screen yet, so make the second one through the auth API.
+  const created = await page.evaluate(async (slug) => {
+    const res = await fetch('/api/auth/organization/create', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Second Org', slug }),
+    });
+    return res.status;
+  }, `second-org-${info.project.name}-${Date.now()}`);
+  expect(created).toBe(200);
+  await page.reload();
+
+  const switcher = page.getByRole('button', { name: /Switch organization/ }).locator('visible=true');
+  await expect(switcher).toBeVisible();
+  const before = (await switcher.textContent())!.includes('First Org') ? 'First Org' : 'Second Org';
+  const other = before === 'First Org' ? 'Second Org' : 'First Org';
+  await switcher.click();
+  await expectAccessible(page, 'organization switcher');
+  await page.getByRole('option', { name: other }).click();
+  await expect(switcher).toContainText(other);
+  // The choice is the server's: it survives a reload.
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: /Switch organization/ }).locator('visible=true'),
+  ).toContainText(other);
+});
