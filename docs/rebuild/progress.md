@@ -381,7 +381,7 @@ Parallel plan 3, task 13 (`task/13-ui-gaps`, migration `0017_ui_gaps`). Closes t
 - Web: funnel editor model (every template round-trips), keyboard reorder keeps focus and announces, save payload, validation; sample-rate options; logo pre-checks.
 - E2E `e2e/ui-gaps.spec.ts` (desktop + 360px, axe light and dark): delete recording (cancel keeps it, confirm deletes rows and logs it; no AI box with AI off), sample rate chosen by keyboard and persisted, the funnel editor driven by keyboard alone (reorder, remove, add, page/event switch, validation, save), report branding (size and type limits, the logo on the report and on the share link without a session, the org route closed to guests, A4 print in the light theme).
 
-**Bundle:** every new dialog and editor is a lazy chunk. On the old baseline that costs about 2 KB of first-load JS (218.0 KB of 216): a dynamic import inside a route chunk makes the bundler split shared code out of the entry. Measured on top of task 12's branch it is 155.4 KB of its 156 KB budget, so it fits once task 12 is merged. The budget was left alone, as the plan says.
+**Bundle:** every new dialog and editor is a lazy chunk. After merging `rebuild` (tasks 12, 14 and 15), first-load JS is 155.2 KB of the 156 KB budget in CI. On the pre-task-12 baseline the lazy chunks cost about 2 KB (218.0 KB of 216), because a dynamic import inside a route chunk makes the bundler split shared code out of the entry. The budget was left alone. Only 0.8 KB of headroom is left.
 
 **Not done yet:**
 - A real PDF renderer (print is still the browser's).
