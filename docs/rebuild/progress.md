@@ -291,8 +291,8 @@ Task 12 of parallel plan 3 (`task/12-bundle-ci`). No migration and no new string
 
 **Shipped:**
 - **First-load JS: 216.0 → 154.0 KB gz.** The plan asked for ≤190, and the long-term target in 03 §8 is 160. The CI budget goes from **216 to 156 KB** (measured + 2).
-  - `@pulse/i18n/format`: a small ICU formatter for the subset our messages use. It replaces `i18next-icu` + `intl-messageformat` in the browser (216.0 → 201.9). A parity test compares it with `intl-messageformat` on every UI message in both locales. ICU outside the subset throws, so that test fails when a new message needs more. The server is unchanged.
-  - The Better Auth client is out of the shell. It loads with the auth pages, and on demand to activate or switch organization and to sign out (→ 191.8).
+  - `@pulse/i18n/format`: a small ICU formatter for the subset our messages use. It replaces `i18next-icu` + `intl-messageformat` in the browser. A parity test compares it with `intl-messageformat` on every UI message in both locales. ICU outside the subset throws, so that test fails when a new message needs more. The server is unchanged.
+  - The Better Auth client is out of the shell. It loads with the auth pages, and on demand to activate or switch organization and to sign out. These first two changes together: 216.0 → 191.8.
   - `@pulse/ui`: `Select`, `Modal` and `TextField` are separate modules, and the package is marked side-effect free. The organization switcher is a lazy chunk, shown only to people in more than one organization. Their current organization's name shows while it loads (→ 154.0).
   - Each route's full download (shell + route chunk + locale, gz) is smaller too: landing 231 → 170, sign-in 237 → 192, Today 240 → 193, site 279 → 260, settings 248 → 242, reports 246 → 226.
   - No package is bundled twice (checked from the source maps).
