@@ -1,4 +1,5 @@
 import { newId, reports, sql, withOrg, type Db } from '@pulse/db';
+import { rollupReportSource } from '@pulse/insights/db';
 import { sendJob, type Boss } from '@pulse/jobs';
 import {
   ReportSiteGoneError,
@@ -45,13 +46,14 @@ export async function sweepMonthlyReports(
 
 /**
  * Builds and freezes the automatic report for one site and month, inside that org's RLS scope.
+ * Numbers come from daily rollups, with raw events for any day that has no complete rollup.
  * Idempotent: a second run (retry, re-sent job) finds the existing auto report and does nothing.
  */
 export async function generateMonthlyReport(
   db: Db,
   job: MonthlyReportJob,
   now: Date = new Date(),
-  source?: ReportMetricsSource,
+  source: ReportMetricsSource = rollupReportSource,
 ): Promise<{ status: 'created' | 'exists' | 'site_gone'; reportId?: string }> {
   return withOrg(db, job.orgId, async (tx) => {
     const existing = await tx.execute<{ id: string }>(

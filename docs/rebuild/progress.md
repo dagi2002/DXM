@@ -310,5 +310,35 @@ Task 12 of parallel plan 3 (`task/12-bundle-ci`). No migration and no new string
 - Further shell cuts would mean replacing the router (24 KB) or i18next (15 KB). Both are rewrites, not splits.
 - The cloud sandbox couldn't download Playwright's pinned Chromium, so local e2e ran on the sandbox's pre-installed Chromium. CI runs the pinned build.
 
+## 2026-11-12 — Data plumbing (task 14 of parallel plan 3) ✅
+
+Branch `task/14-rollups`, migration `0016_data_plumbing`. Closes the rollup follow-ups that slices 3 part 2, 5 and 6 left open. Details in [insights.md](./insights.md) and [detection.md](./detection.md).
+
+**Shipped:**
+- **Rollups v2 (`0016`):** `rollup_site_day.pv_visits` (visits with a page view: JS-error exposure), `rollup_page_day.uturn_reached` / `uturn_turned` (counted by the detector's own `uTurnStats`), and `rollup_site_day.version`. A rollup is *complete* when it's the current version and was computed ≥ 3 h after its day ended (`ROLLUP_SETTLE_HOURS`); readers that need whole days only trust complete ones.
+- **Backfill:** `insights.backfill` rebuilds every settled day that still has raw events and a missing, stale or old-version rollup, with the sweep's own `rollupDay`, per org under RLS. Candidates come from `pulse_rollup_backfill_candidates` (SECURITY DEFINER, ids and days only, deleted sites skipped). Idempotent: a second run finds nothing and changes nothing. Runs on every worker start (each deploy), daily at 03:47 UTC, and on demand (`pnpm --filter @pulse/worker backfill`, or `node dist/backfill.js` in a deploy).
+- **Reports on rollups:** `rollupReportSource` (in `@pulse/insights/db`) reads complete rollups and falls back to raw events for partial days and days without one. The monthly job and "Create report" use it. `rawEventsSource`'s p75 now follows contract 21 (`floor((n-1)×p)`) instead of interpolating, so the two agree exactly (one API test's expected p75 moved from 2675 to 2600 for this reason).
+- **Before/after for task 10's kinds:** reports measure form abandonment (visits that gave up on the form), slow pages (visits whose load was at or over the poor line), JS errors (visits that hit that error) and U-turns (visits that turned straight back), per day, the week before vs since the fix. `ReportMetricsSource.fixAffected` provides it (raw and rollup versions). EN + AM labels. Only tracking fixes stay "checked by the fix's own verification".
+- **Verification on rollups:** `issue.verify` now measures whole UTC days (the 7 days before the fix day vs days 3–6 after; tracking keeps its exact 24 h) through `measureFixWindow`: page-view exposure from complete rollups, the problem's own rare events (taps, errors, form events, vitals) and any day without a complete rollup from raw events. No raw `pv` scan when rollups exist.
+- **Retention:** `maintenance.retention` (daily 02:13 UTC). One exported `retentionDaysFor(org)` (`@pulse/insights`) returns the per-org default (`DATA_RETENTION_DAYS`, default 90, min 7) until billing sets it by plan. Per org, under that org's RLS: raw events and visits before the cutoff day are deleted; rollups are kept `max(retention, 400)` days (counts only, no visitor ids; reports compare months). Then `pulse_drop_empty_event_partitions` drops daily partitions past the shortest retention **only if empty**. `pulse_orgs_for_retention()` lists orgs and plans (ids only).
+- **Insights:** `slow-2g` is its own network bucket ("Slow 2G" / "ቀርፋፋ 2ጂ") instead of folding into 2G.
+
+**Tests:**
+- Worker (Postgres, real ingest), `plumbing.test.ts`, 13 tests: backfill builds every settled day and a second run leaves every rollup row (including `computed_at`) identical; only missing/stale/old-version days are rebuilt and deleted sites skipped; the raw and rollup report sources give the **same snapshot** with none, all and half the days rolled up; the rollup source keeps its numbers with raw page views and visits deleted; verification measures the same from rollups as from raw (7 + 4 rollup days) and verifies with no raw page views left; fallback for an old-version day; another org's id measures nothing; boundary tests per new measure with both sources (window start/end instants, submitted vs abandoned, LCP at vs 1 ms under the poor line, LCP vs INP and other pages, error message/source, U-turn at 10 s vs 11 s, partial edge days) and "too early" just under one day after the fix vs measured at exactly one day; retention deletes whole days past org A's retention while org B's counts stay identical (also when A's purge removes everything), and an old partition holding org B's row is never dropped while an empty one is.
+- Insights unit tests: U-turns per page at the time limit, settle/completeness boundaries, whole days, verification day windows, retention defaults/floor/cutoffs.
+- Web: report measure labels for the new kinds in EN and AM. Config: `DATA_RETENTION_DAYS` default and floor. RLS invariants: the three new helpers are callable by the app role and not by PUBLIC.
+
+**Decisions:**
+- Verification windows moved to whole UTC days so rollups can answer them; the fix day itself is left out of both windows. The check is still due at `fixed_at + 7 days` (never before the after window ends).
+- On rollup days a visit that crosses midnight counts once per day (exposure and U-turns). Equality tests use visits that don't.
+- Raw retention defaults to 90 days for everyone until billing; the brief's 7/30/90 by plan is task 11's to switch on through `retentionDaysFor`.
+
+**Not done yet:**
+- Billing overriding `retentionDaysFor` by plan (task 11), and showing retention in Settings.
+- Replays keep their own `REPLAY_RETENTION_DAYS` (30); if a plan's raw retention is shorter, replays should follow it too.
+- The backfill candidate query scans `events` for distinct site-days; fine at pilot volume, but at scale it should look at partitions newer than the oldest settled rollup only.
+- Merge note: `0016` is journal entry idx 15 with `when` 1791979544332. Task 11's `0015` must get a `when` greater than that, or drizzle will skip it on databases that already ran `0016`.
+- Amharic review of the new strings ("Slow 2G" and the four report measure labels).
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

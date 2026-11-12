@@ -71,6 +71,7 @@ const ZERO: SiteDayRollup = {
   rageClicks: 0,
   deadClicks: 0,
   errors: 0,
+  pvVisits: 0,
 };
 
 export function sumSiteDays(rows: readonly SiteDayRollup[]): SiteDayRollup {

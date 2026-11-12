@@ -388,6 +388,9 @@ importers:
       '@pulse/metrics':
         specifier: workspace:*
         version: link:../metrics
+      '@pulse/reports':
+        specifier: workspace:*
+        version: link:../reports
     devDependencies:
       vitest:
         specifier: ^5.0.4

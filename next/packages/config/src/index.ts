@@ -238,6 +238,11 @@ export const workerEnvSchema = z
     RESEND_API_KEY: optionalString,
     SENTRY_DSN: optionalString,
     WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(4250),
+    /**
+     * Days of raw visitor data (events, visits) kept per org until billing sets retention by plan
+     * (`retentionDaysFor` in @pulse/insights). Daily rollups are kept at least 400 days.
+     */
+    DATA_RETENTION_DAYS: z.coerce.number().int().min(7).max(3650).default(90),
     ...blobStoreShape,
     ...telegramEnv,
     ...aiEnv,

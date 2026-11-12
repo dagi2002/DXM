@@ -18,7 +18,7 @@ export const VITALS_MIN_SAMPLES = 5;
 
 export const DEVICES = ['mobile', 'desktop', 'tablet'] as const;
 /** `NetworkInformation.effectiveType` as the SDK reports it; `unknown` when the browser doesn't say. */
-export const INSIGHT_NETWORKS = ['4g', '3g', '2g', 'unknown'] as const;
+export const INSIGHT_NETWORKS = ['4g', '3g', '2g', 'slow-2g', 'unknown'] as const;
 export type Device = (typeof DEVICES)[number];
 export type InsightNetwork = (typeof INSIGHT_NETWORKS)[number];
 

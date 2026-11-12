@@ -77,6 +77,21 @@ describe('row-level security invariants', () => {
     }
   });
 
+  it('lets the app role call the task 14 helpers, and not PUBLIC', async () => {
+    const fns = [
+      'pulse_rollup_backfill_candidates(date, integer, integer, integer)',
+      'pulse_orgs_for_retention()',
+      'pulse_drop_empty_event_partitions(integer)',
+    ];
+    for (const fn of fns) {
+      const { rows } = await adminQuery<{ app: boolean; pub: boolean }>(
+        `select has_function_privilege($1, $2, 'EXECUTE') as app, has_function_privilege('public', $2, 'EXECUTE') as pub`,
+        [APP_ROLE, fn],
+      );
+      expect(rows[0], fn).toEqual({ app: true, pub: false });
+    }
+  });
+
   it('keeps the audit log append-only and internal helpers private for the app role', async () => {
     const { rows } = await adminQuery<{ upd: boolean; del: boolean; ins: boolean; protect: boolean }>(
       `select has_table_privilege($1, 'audit_log', 'UPDATE') as upd,

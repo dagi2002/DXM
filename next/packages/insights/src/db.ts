@@ -23,6 +23,7 @@ import {
 import { computeSiteInsights, computeWeekSummary, dayStart, rangeDays, utcDay } from './compute';
 import { FUNNEL_EVENT_TYPES, funnelCounts, funnelHash, type FunnelEvent } from './funnels';
 import {
+  ROLLUP_VERSION,
   rollupPagesDay,
   rollupSiteDay as rollupSiteDayRows,
   rollupVitalsDay as rollupVitalsDayRows,
@@ -31,7 +32,7 @@ import {
   type DayVital,
   type VisitDims,
 } from './rollup';
-import { percentile, type VitalMetric, type VitalSamples } from './vitals';
+import { type VitalMetric, type VitalSamples } from './vitals';
 import type { Device, InsightNetwork } from '@pulse/contracts';
 
 const DAY_MS = 86_400_000;
@@ -171,22 +172,34 @@ export async function rollupDay(
     visit_id: string;
     type: string;
     path: string | null;
+    at: string;
+    client_at: string | null;
     n: string | null;
     v: number | null;
   }>(sql`
     select visit_id, type, path,
+           to_char(ts_server at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as at,
+           case when type = 'pv' then to_char(ts_client at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') end as client_at,
            case when type = 'vt' then props->>'n' end as n,
            case when type = 'vt' then (props->>'v')::float8 end as v
       from events
      where site_id = ${siteId} and ts_server >= ${ts(from)} and ts_server < ${ts(to)}
-       and type in ('pv', 'rc', 'dc', 'er', 'vt')`);
+       and type in ('pv', 'rc', 'dc', 'er', 'vt')
+     order by ts_server, id`);
   const events: DayEvent[] = [];
   const vitals: DayVital[] = [];
   for (const r of evRes.rows) {
     if (r.type === 'vt') {
       if (r.n && r.v !== null)
         vitals.push({ visitId: r.visit_id, path: r.path, name: r.n, value: Number(r.v) });
-    } else events.push({ visitId: r.visit_id, type: r.type, path: r.path });
+    } else
+      events.push({
+        visitId: r.visit_id,
+        type: r.type,
+        path: r.path,
+        at: new Date(r.at),
+        clientAt: r.client_at ? new Date(r.client_at) : null,
+      });
   }
   const dims = await visitDims(tx, siteId, [...new Set(vitals.map((v) => v.visitId))]);
 
@@ -196,10 +209,10 @@ export async function rollupDay(
 
   await tx
     .insert(rollupSiteDay)
-    .values({ siteId, orgId, day, ...site })
+    .values({ siteId, orgId, day, ...site, version: ROLLUP_VERSION })
     .onConflictDoUpdate({
       target: [rollupSiteDay.siteId, rollupSiteDay.day],
-      set: { ...site, computedAt: new Date() },
+      set: { ...site, version: ROLLUP_VERSION, computedAt: sql`now()` },
     });
   await tx.delete(rollupPageDay).where(and(eq(rollupPageDay.siteId, siteId), eq(rollupPageDay.day, day)));
   if (pages.length) await tx.insert(rollupPageDay).values(pages.map((p) => ({ siteId, orgId, day, ...p })));
@@ -392,49 +405,3 @@ export async function loadWeekSummary(tx: Tx, now: Date = new Date()): Promise<W
     verified: { thisMonth: Number(v.this_month), lastMonth: Number(v.last_month) },
   });
 }
-
-/* ── For reports (task 9) ────────────────────────────────────────────────── */
-
-/**
- * Report numbers from rollups. Structurally matches task 9's `ReportMetricsSource`
- * (`packages/reports/src/source.ts`), so it can be passed straight to `buildReportSnapshot`.
- * Day boundaries are UTC; `from`/`to` are rounded to whole days.
- */
-export const rollupReportSource = {
-  async totals(tx: Tx, siteId: string, from: Date, to: Date) {
-    const res = await tx.execute<{ visits: number; pageviews: number; closed: number; bounced: number }>(sql`
-      select coalesce(sum(visits), 0)::int as visits, coalesce(sum(pageviews), 0)::int as pageviews,
-             coalesce(sum(closed_visits), 0)::int as closed, coalesce(sum(bounced_visits), 0)::int as bounced
-        from rollup_site_day
-       where site_id = ${siteId} and day >= ${utcDay(from)}::date and day < ${utcDay(to)}::date`);
-    const lcp = await tx.execute<{ v: number }>(sql`
-      select unnest(values) as v from rollup_vitals_day
-       where site_id = ${siteId} and metric = 'LCP' and device = 'mobile'
-         and day >= ${utcDay(from)}::date and day < ${utcDay(to)}::date`);
-    const p = percentile(
-      lcp.rows.map((r) => Number(r.v)),
-      0.75,
-    );
-    const row = res.rows[0]!;
-    return {
-      visits: Number(row.visits),
-      pageviews: Number(row.pageviews),
-      closedVisits: Number(row.closed),
-      bouncedVisits: Number(row.bounced),
-      lcpP75: p === null ? null : Math.round(p),
-    };
-  },
-
-  /** Visits per `bucketDays`-day bucket from `range.start` (7-day buckets, as reports use). */
-  async bucketVisits(tx: Tx, siteId: string, range: { start: Date; end: Date }, bucketDays = 7) {
-    const res = await tx.execute<{ b: number; n: number }>(sql`
-      select floor((day - ${utcDay(range.start)}::date) / ${bucketDays})::int as b, sum(visits)::int as n
-        from rollup_site_day
-       where site_id = ${siteId} and day >= ${utcDay(range.start)}::date and day < ${utcDay(range.end)}::date
-       group by 1`);
-    const days = Math.round((range.end.getTime() - range.start.getTime()) / DAY_MS);
-    const out = Array.from({ length: Math.ceil(days / bucketDays) }, () => 0);
-    for (const r of res.rows) if (r.b >= 0 && r.b < out.length) out[r.b] = Number(r.n);
-    return out;
-  },
-};

@@ -136,6 +136,7 @@ describe('monthly reports', () => {
         lcpP75: 2400,
       }),
       bucketVisits: async () => [200, 200, 200, 200, 100],
+      fixAffected: async () => null,
     };
     const res = await generateMonthlyReport(
       database.db,
