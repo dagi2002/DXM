@@ -1,6 +1,7 @@
 import type {
   InsightsRange,
   Me,
+  PublicConfig,
   Site,
   SiteFunnel,
   SiteInsights,
@@ -34,7 +35,7 @@ export const refreshMe = (qc: QueryClient) => qc.fetchQuery({ ...meQuery, staleT
 
 export const publicConfigQuery = queryOptions({
   queryKey: ['public-config'],
-  queryFn: () => api<{ googleEnabled: boolean }>('/public-config'),
+  queryFn: () => api<PublicConfig>('/public-config'),
   staleTime: Infinity,
 });
 

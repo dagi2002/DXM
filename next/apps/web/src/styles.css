@@ -91,3 +91,36 @@ h1[tabindex='-1']:focus {
     scroll-padding-block: 4.5rem 5.5rem;
   }
 }
+
+/*
+ * Printing a client report ("Download PDF" is the browser's print, task 13): A4 paper, the report
+ * sheet edge to edge, sections kept whole across page breaks. The report page switches to the
+ * light theme while printing (usePrintInLight), so these tokens are the light ones.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+  html,
+  body {
+    background: var(--surface);
+  }
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .report-sheet {
+    max-width: none;
+    gap: 1.75rem;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+  .report-sheet :is(section, header, footer, figure, li, tr) {
+    break-inside: avoid;
+  }
+  .report-sheet :is(h2, h3) {
+    break-after: avoid;
+  }
+}

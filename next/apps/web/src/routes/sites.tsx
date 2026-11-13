@@ -15,7 +15,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { ChevronRight, Globe, Plus } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { lazy, Suspense, useState, type FormEvent } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, fieldError } from '../lib/api';
@@ -25,6 +25,9 @@ import { ReplayBrowser } from '../components/replay-list';
 import { statusTabClass, tabPanelClass } from '../components/pulse';
 import { SiteOverview } from './site-overview';
 import type { Locale } from '@pulse/i18n';
+
+// Settings and editors load on first use, not with the site page.
+const ReplaySettings = lazy(() => import('../components/replay-settings'));
 
 const statusTone: Record<Site['status'], Tone> = { install: 'info', live: 'good', paused: 'warn' };
 
@@ -232,11 +235,15 @@ export function SitesPage() {
 const SITE_TABS = ['overview', 'replays', 'install'] as const;
 type SiteTab = (typeof SITE_TABS)[number];
 
-function SiteReplays({ siteId }: { siteId: string }) {
+function SiteReplays({ site, orgId, canEdit }: { site: Site; orgId: string; canEdit: boolean }) {
   const { t } = useTranslation();
+  const siteId = site.id;
   return (
     <div className="grid gap-4">
       <p className="text-[0.9375rem] text-text-muted">{t('replays.intro')}</p>
+      <Suspense fallback={<Skeleton className="h-32" />}>
+        <ReplaySettings orgId={orgId} site={site} canEdit={canEdit} />
+      </Suspense>
       <ReplayBrowser siteId={siteId} />
     </div>
   );
@@ -345,7 +352,7 @@ export function SiteDetailPage() {
           <SiteOverview orgId={orgId} siteId={siteId} stats={stats} locale={locale} canEdit={manage} />
         </TabPanel>
         <TabPanel id="replays" className={tabPanelClass}>
-          <SiteReplays siteId={siteId} />
+          <SiteReplays site={site} orgId={orgId} canEdit={manage} />
         </TabPanel>
         <TabPanel id="install" className={tabPanelClass}>
           <InstallPanel site={site} />

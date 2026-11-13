@@ -11,12 +11,15 @@ import { formatRelative, type Locale } from '@pulse/i18n';
 import { formatMetric, rateMetric, type Rating } from '@pulse/metrics';
 import { Banner, Button, Segmented, Select, Skeleton, StatusBadge, cx } from '@pulse/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HealthRing, Panel, Sparkline, healthTone, scrollRegionClass } from '../components/pulse';
 import { api } from '../lib/api';
 import { siteInsightsQuery } from '../lib/queries';
 import { Delta } from './today';
+
+// The editor loads when someone opens it, not with the Overview.
+const FunnelEditorDialog = lazy(() => import('../components/funnel-editor'));
 
 const ratingTone: Record<Rating, 'good' | 'warn' | 'bad'> = {
   good: 'good',
@@ -30,19 +33,9 @@ const lcpTone = (ms: number) => ratingTone[rateMetric('lcp', ms) ?? 'good'];
 const tileClass = 'grid content-start gap-1 rounded-lg border border-border bg-surface p-5';
 const bigNumberClass = 'font-display text-[1.875rem] leading-tight font-bold tracking-[-0.02em] tabular-nums';
 
-/** Builds a funnel from an Ethiopian template, with step labels in the owner's language. */
-export function useTemplateConfig() {
-  const { t } = useTranslation();
-  return (id: string): FunnelConfig | null => {
-    const def = FUNNEL_TEMPLATE_DEFS.find((d) => d.id === id);
-    if (!def) return null;
-    return {
-      name: t(def.nameKey),
-      template: def.id,
-      steps: def.steps.map((s) => ({ label: t(s.labelKey), match: s.match })),
-    };
-  };
-}
+import { useTemplateConfig } from '../lib/funnels';
+
+export { useTemplateConfig };
 
 function NotEnough({ children }: { children: string }) {
   return <span className="text-[0.9375rem] font-medium text-text-muted">{children}</span>;
@@ -79,7 +72,10 @@ function FunnelPanel({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const toConfig = useTemplateConfig();
-  const [template, setTemplate] = useState<string>(ins.funnel?.template ?? 'telebirr_checkout');
+  const [template, setTemplate] = useState<string>(
+    ins.funnel && ins.funnel.template !== 'custom' ? ins.funnel.template : 'telebirr_checkout',
+  );
+  const [editing, setEditing] = useState(false);
   const save = useMutation({
     mutationFn: (config: FunnelConfig | null) =>
       config
@@ -105,10 +101,18 @@ function FunnelPanel({
       >
         {ins.funnel ? t('funnel.useTemplate') : t('funnel.setUp')}
       </Button>
+      <Button variant="secondary" onPress={() => setEditing(true)}>
+        {ins.funnel ? t('funnel.editSteps') : t('funnel.buildOwn')}
+      </Button>
       {ins.funnel ? (
         <Button variant="danger-ghost" onPress={() => save.mutate(null)} isDisabled={save.isPending}>
           {t('funnel.remove')}
         </Button>
+      ) : null}
+      {editing ? (
+        <Suspense fallback={null}>
+          <FunnelEditorDialog orgId={orgId} siteId={siteId} isOpen={editing} onOpenChange={setEditing} />
+        </Suspense>
       ) : null}
     </div>
   ) : null;

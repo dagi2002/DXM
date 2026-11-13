@@ -7,6 +7,7 @@ export * from './reports';
 export * from './replays';
 export * from './insights';
 export * from './telegram';
+export * from './branding';
 export * from './notifications';
 // Explicit so the Zod schemas win over the same-named types in ./constants.
 export { FixKind, FixSeverity, FixStatus } from './fixes';

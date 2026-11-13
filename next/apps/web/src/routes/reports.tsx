@@ -1,5 +1,6 @@
 import { canWorkOnReports, REPORT_MIN_VISITS, REPORT_SHARE_DEFAULT_DAYS } from '@pulse/contracts/constants';
 import type {
+  ReportBrand,
   ReportDetail,
   ReportShare,
   ReportShareCreated,
@@ -24,7 +25,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ArrowLeft, CheckCircle2, ChevronRight, Download, FileText, Link2, Plus } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitch } from '../components/LanguageSwitch';
 import { api, ApiError } from '../lib/api';
@@ -172,9 +173,12 @@ const KPIS: { key: keyof ReportSnapshot['kpis']; metric: MetricId; label: string
 /** The client-facing report. The same view renders inside the app and on the public share link. */
 export function ReportView({
   snapshot,
+  brand = null,
   embedded = false,
 }: {
   snapshot: ReportSnapshot;
+  /** The org's current branding (agency name and logo); the snapshot's org name otherwise. */
+  brand?: ReportBrand | null;
   /** Inside the app the page already has an h1, so the report's outline starts one level down. */
   embedded?: boolean;
 }) {
@@ -184,11 +188,21 @@ export function ReportView({
   const Title = embedded ? 'h2' : 'h1';
   const Section = embedded ? 'h3' : 'h2';
   const s = snapshot;
+  const agency = brand?.agencyName ?? s.agency;
   return (
-    <article className="mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl border border-border bg-surface p-6 sm:p-12 lg:p-16">
+    <article className="report-sheet mx-auto grid w-full max-w-[60rem] gap-10 rounded-xl border border-border bg-surface p-6 sm:p-12 lg:p-16">
       <header className="grid gap-7 border-b border-border pb-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <span className="font-semibold">{s.agency}</span>
+          <span className="inline-flex min-w-0 items-center gap-3 font-semibold">
+            {brand?.logoUrl ? (
+              <img
+                src={brand.logoUrl}
+                alt={t('report.logoAlt', { agency })}
+                className="h-10 w-auto max-w-40 object-contain"
+              />
+            ) : null}
+            <span className="break-words">{agency}</span>
+          </span>
           <span className="text-sm text-text-muted">{t('report.monthly', { period: text.period(s) })}</span>
         </div>
         <div className="grid gap-3.5">
@@ -314,7 +328,7 @@ export function ReportView({
       </section>
 
       <footer className="flex flex-wrap justify-between gap-2 text-[0.8125rem] text-text-muted">
-        <span>{t('report.preparedBy', { agency: s.agency })}</span>
+        <span>{t('report.preparedBy', { agency })}</span>
         <span>{t('report.poweredBy')}</span>
       </footer>
     </article>
@@ -341,9 +355,10 @@ function CreateReportModal({
   const chosenSite = siteId ?? sites[0]?.id;
   const create = useMutation({
     mutationFn: (body: { siteId: string; period: string }) => api<ReportDetail>('/reports', { body }),
-    onSuccess: async ({ report }) => {
+    onSuccess: async (detail) => {
+      const { report } = detail;
       await qc.invalidateQueries({ queryKey: reportsQuery(orgId).queryKey });
-      qc.setQueryData(reportQuery(orgId, report.id).queryKey, { report, shares: [] });
+      qc.setQueryData(reportQuery(orgId, report.id).queryKey, detail);
       onOpenChange(false);
       await navigate({ to: '/reports/$reportId', params: { reportId: report.id } });
     },
@@ -677,7 +692,7 @@ export function ReportPage() {
       <div className="grid gap-6">
         <SharePanel detail={data} />
         <div className="rounded-xl bg-surface-sunken p-3 sm:p-6">
-          <ReportView snapshot={r.snapshot} embedded />
+          <ReportView snapshot={r.snapshot} brand={data.brand} embedded />
         </div>
       </div>
     </>
@@ -686,15 +701,46 @@ export function ReportPage() {
 
 /* ── /r/$token ───────────────────────────────────────────────────────────── */
 
+/**
+ * Paper is light: while printing (the "Download PDF" button or the browser's own print), the page
+ * switches to the light theme, then back. The print stylesheet in styles.css fits it to A4.
+ */
+function usePrintInLight() {
+  useEffect(() => {
+    const root = document.documentElement;
+    let before: string | null = null;
+    let printing = false;
+    const toLight = () => {
+      if (printing) return; // a second beforeprint must not save "light" as the user's theme
+      printing = true;
+      before = root.getAttribute('data-theme');
+      root.setAttribute('data-theme', 'light');
+    };
+    const restore = () => {
+      if (!printing) return;
+      printing = false;
+      if (before === null) root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', before);
+    };
+    window.addEventListener('beforeprint', toLight);
+    window.addEventListener('afterprint', restore);
+    return () => {
+      window.removeEventListener('beforeprint', toLight);
+      window.removeEventListener('afterprint', restore);
+    };
+  }, []);
+}
+
 /** Public, read-only share link. No sign-in; that one report only. */
 export function PublicReportPage() {
   const { t, i18n } = useTranslation();
   const { token } = useParams({ strict: false }) as { token: string };
   const { data: report, isLoading, isError } = useQuery(publicReportQuery(token));
   const locale = i18n.language as Locale;
+  usePrintInLight();
   return (
-    <div className="min-h-dvh bg-surface-sunken px-3 pt-6 pb-14 sm:px-8">
-      <div className="mx-auto mb-4 flex w-full max-w-[60rem] flex-wrap items-center justify-between gap-3">
+    <div className="min-h-dvh bg-surface-sunken px-3 pt-6 pb-14 sm:px-8 print:min-h-0 print:bg-surface print:p-0">
+      <div className="mx-auto mb-4 flex w-full max-w-[60rem] flex-wrap items-center justify-between gap-3 print:hidden">
         <span className="text-[0.8125rem] text-text-muted">
           {report ? t('report.sharedMeta', { date: formatCalendarDate(report.expiresAt, { locale }) }) : ' '}
         </span>
@@ -712,7 +758,7 @@ export function PublicReportPage() {
         {isLoading ? (
           <Skeleton className="mx-auto h-[40rem] max-w-[60rem]" />
         ) : report ? (
-          <ReportView snapshot={report.snapshot} />
+          <ReportView snapshot={report.snapshot} brand={report.brand} />
         ) : (
           <div className="mx-auto max-w-lg py-16">
             <EmptyState

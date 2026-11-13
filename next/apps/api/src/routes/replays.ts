@@ -1,6 +1,8 @@
 import {
   REPLAY_MARK_TYPES,
   ReplayListQuery,
+  ReplayRecapRequest,
+  type ReplayRecap,
   canManage,
   canWorkOnFixes,
   type ReplayDetail,
@@ -8,7 +10,18 @@ import {
   type ReplayMark,
   type ReplaySummary,
 } from '@pulse/contracts';
-import { auditLog, newId, sql, withOrg, type Tx } from '@pulse/db';
+import {
+  AnthropicClient,
+  RECAP_SYSTEM_PROMPT,
+  buildRecapPrompt,
+  hashInput,
+  monthStart,
+  parseRecap,
+  recapInput,
+  type AiClient,
+} from '@pulse/ai';
+import { aiConfigured } from '@pulse/config';
+import { aiArtifacts, and, auditLog, eq, gt, newId, sql, withOrg, type Tx } from '@pulse/db';
 import { replayVisitPrefix, type BlobStore } from '@pulse/storage';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -176,6 +189,12 @@ const requireTeam = createMiddleware<AppEnv>(async (c, next) => {
 
 export function replayRoutes(deps: AppDeps & { blobs: BlobStore }) {
   const r = new Hono<AppEnv>();
+  const aiOn = aiConfigured(deps.env);
+  const ai: AiClient | null = !aiOn
+    ? null
+    : deps.ai !== undefined
+      ? deps.ai
+      : new AnthropicClient(deps.env.ANTHROPIC_API_KEY!, deps.env.AI_MODEL);
   r.use('*', requireSession(deps), requireOrg(deps), requireTeam);
 
   /** The newest playable replay for this visit id (visit ids are random per tab, so collisions are theoretical). */
@@ -253,6 +272,111 @@ export function replayRoutes(deps: AppDeps & { blobs: BlobStore }) {
     return c.body(data as Uint8Array<ArrayBuffer>);
   });
 
+  /**
+   * AI recap (task 13). The input is this recording's server-side timeline plus the visit's
+   * device facts, in the reader's language; the cache key is a hash of that input. GET reads the
+   * cache only. POST writes one, against the org's monthly AI budget (shared with fix
+   * suggestions). With AI off both say `disabled` and nothing is ever generated.
+   */
+  const recapContext = async (tx: Tx, visitId: string, siteId: string | undefined, locale: 'en' | 'am') => {
+    const row = await findOne(tx, visitId, siteId);
+    const summary = toSummary(row);
+    const input = recapInput(row.site_domain, summary, await loadMarks(tx, row), locale);
+    const inputHash = hashInput(input);
+    const [cached] = await tx
+      .select({ content: aiArtifacts.content, createdAt: aiArtifacts.createdAt })
+      .from(aiArtifacts)
+      .where(
+        and(
+          eq(aiArtifacts.kind, 'replay_recap'),
+          eq(aiArtifacts.siteId, row.site_id),
+          eq(aiArtifacts.visitId, row.visit_id),
+          eq(aiArtifacts.inputHash, inputHash),
+        ),
+      )
+      .limit(1);
+    return { row, input, inputHash, cached };
+  };
+  const ready = (text: unknown, locale: 'en' | 'am', createdAt: Date): ReplayRecap => ({
+    status: 'ready',
+    recap: { text: String(text ?? ''), locale, createdAt: createdAt.toISOString() },
+  });
+  const recapParams = (c: { req: { param: (k: string) => string | undefined } }) => {
+    const visitId = VisitParam.safeParse(c.req.param('visitId'));
+    if (!visitId.success) throw notFound('Replay');
+    return visitId.data;
+  };
+
+  r.get('/:visitId/recap', async (c) => {
+    const visitId = recapParams(c);
+    const { siteId } = SiteParam.parse(c.req.query());
+    const { locale } = ReplayRecapRequest.parse({ locale: c.req.query('locale') });
+    const body = await withOrg(deps.db, c.get('orgId')!, async (tx): Promise<ReplayRecap> => {
+      const ctx = await recapContext(tx, visitId, siteId, locale);
+      if (!aiOn) return { status: 'disabled', recap: null };
+      return ctx.cached
+        ? ready(ctx.cached.content.text, locale, ctx.cached.createdAt)
+        : { status: 'none', recap: null };
+    });
+    return c.json(body);
+  });
+
+  r.post('/:visitId/recap', async (c) => {
+    const visitId = recapParams(c);
+    const { siteId } = SiteParam.parse(c.req.query());
+    const { locale } = ReplayRecapRequest.parse(await c.req.json().catch(() => ({})));
+    const orgId = c.get('orgId')!;
+    const prep = await withOrg(deps.db, orgId, async (tx) => {
+      const ctx = await recapContext(tx, visitId, siteId, locale);
+      if (!aiOn || !ai) return { done: { status: 'disabled', recap: null } satisfies ReplayRecap };
+      if (ctx.cached) return { done: ready(ctx.cached.content.text, locale, ctx.cached.createdAt) };
+      const [used] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(aiArtifacts)
+        .where(gt(aiArtifacts.createdAt, monthStart(new Date())));
+      if ((used?.n ?? 0) >= deps.env.AI_MONTHLY_BUDGET)
+        return { done: { status: 'over_budget', recap: null } satisfies ReplayRecap };
+      return { ctx };
+    });
+    if ('done' in prep) return c.json(prep.done);
+    const { ctx } = prep;
+    let text: string | null = null;
+    let completion: Awaited<ReturnType<AiClient['complete']>> | null = null;
+    try {
+      // Outside the transaction: a slow model must not hold a database connection.
+      completion = await ai!.complete({
+        system: RECAP_SYSTEM_PROMPT,
+        prompt: buildRecapPrompt(ctx.input),
+        maxTokens: 500,
+      });
+      text = parseRecap(completion.text);
+    } catch (err) {
+      c.get('log').warn({ err: (err as Error).message }, 'replay recap failed');
+    }
+    if (!text || !completion) return c.json({ status: 'unavailable', recap: null } satisfies ReplayRecap);
+    const done = completion;
+    const saved = await withOrg(deps.db, orgId, async (tx) => {
+      const [row] = await tx
+        .insert(aiArtifacts)
+        .values({
+          id: newId('ai'),
+          orgId,
+          siteId: ctx.row.site_id,
+          visitId: ctx.row.visit_id,
+          kind: 'replay_recap',
+          inputHash: ctx.inputHash,
+          model: done.model,
+          content: { text },
+          inputTokens: done.inputTokens,
+          outputTokens: done.outputTokens,
+        })
+        .onConflictDoNothing()
+        .returning({ createdAt: aiArtifacts.createdAt });
+      return row?.createdAt ?? new Date();
+    });
+    return c.json(ready(text, locale, saved));
+  });
+
   /** Deletes one visit's recording (a visitor asked to be forgotten). Owners and admins only. */
   r.delete('/:visitId', async (c) => {
     if (!canManage(c.get('role'))) throw forbidden();
@@ -268,6 +392,11 @@ export function replayRoutes(deps: AppDeps & { blobs: BlobStore }) {
         returning site_id`);
       const ids = [...new Set(res.rows.map((x) => x.site_id))];
       if (!ids.length) throw notFound('Replay');
+      // The AI recap describes this recording, so it goes with it.
+      await tx.execute(sql`
+        delete from ai_artifacts
+         where kind = 'replay_recap' and visit_id = ${visitId.data}
+           and site_id = any(${sql.param(ids)}::text[])`);
       await tx.insert(auditLog).values({
         id: newId('aud'),
         orgId,

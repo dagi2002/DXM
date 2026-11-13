@@ -359,5 +359,35 @@ Task 15 of parallel plan 3 (`task/15-notify`, migration `0018`). Details: [notif
 - Email is plain text (as before); an HTML template could come later.
 - Amharic strings for the new screens and the digest need a native review.
 
+## 2026-11-12 — Task 13: product gaps in the UI ✅
+
+Parallel plan 3, task 13 (`task/13-ui-gaps`, migration `0017_ui_gaps`). Closes the "not done yet" UI items from slices 4, 5 and 6.
+
+**Shipped:**
+- **Delete recording:** owners and admins get "Delete recording" on the replay page, behind a confirm dialog (lazy). It calls the existing `DELETE /replays/:visitId` (audited, blobs removed) and now also deletes the recording's AI recap. Members and client viewers don't see the button (the API returns 403 anyway).
+- **Replay sample rate:** a "Recording" panel in the site's Replays tab (lazy) with 100 / 50 / 25 / 10 % / off. Owners and admins change it through `PATCH /sites/:id`; everyone else reads it. Percentages go through `@pulse/metrics` (new `replay_sample_rate` ratio metric).
+- **Funnel editor:** "Edit steps" / "Build your own" on the Overview's funnel panel opens a lazy dialog: name, add (up to 8), remove (down to 2), move up/down, and a page address or an event name per step. Template rules that aren't a page or an event (clicks, forms, extra pages) stay attached to their step as removable chips. A template is a starting point that replaces the draft. Saved through the existing `PUT /sites/:id/funnel` as `template: 'custom'`. Keyboard: every control is a native button or field, the moved step keeps focus (the other move button takes it at the top or bottom), and a polite live region says where the step went.
+- **AI recap on the replay page:** shown only when `/public-config` says `aiEnabled`. `GET /replays/:visitId/recap` reads the cache; `POST` writes a recap on request ("Write a recap"), in the reader's language. Input = the server-side timeline (page views, clicks, form steps, errors) plus device facts; never the recording, never the visit id; visitor text is fenced in `<data>`. Cached per input hash in `ai_artifacts` (`kind = 'replay_recap'`), counted against the same per-org monthly budget as fix suggestions (`AI_MONTHLY_BUDGET`). States: disabled (no box at all), none, ready, over budget, unavailable (nothing stored when the model fails or answers off-shape).
+- **Report branding:** Settings → Organization → "Report branding" (lazy): agency name and logo. The logo is uploaded as the raw body to `PUT /api/v1/branding/logo`: capped at 256 KB while streaming (413), type read from the bytes (PNG, JPEG, WebP; SVG and anything else 415), stored in the `BlobStore` under `orgs/{org}/branding/`, a fresh key per upload, old blob removed. Served from our origin with the stored type and `nosniff`. Reports (in the app and on `/r/$token`) show the logo and name (falling back to the snapshot's org name). The public page gets the logo from `/api/v1/public/reports/:token/logo`, which serves only that link's org logo (SECURITY DEFINER `pulse_shared_report_brand`, same expiry/revocation rules as the report). Another org's logo is never readable: the app route reads the active org's row under RLS.
+- **Print:** "Download PDF" stays the browser's print. A print stylesheet sets A4 with 14/12 mm margins, drops the page chrome, keeps sections whole across pages, and the share page switches to the light theme while printing (and back after).
+- **Fix detail:** no sample "clip" story was left (checked; nothing to remove).
+- **`packages/ai`:** the Anthropic client moved here from the worker (the worker re-exports it), plus the recap's input shaping, prompt and parser.
+- **Data (`0017_ui_gaps`):** `ai_artifacts` gains `site_id` / `visit_id` (issue id now nullable) with a subject check per kind, a `(site_id, org_id)` composite FK and a partial unique index for recaps; `org_branding` (forced RLS + policy, name and logo checks); `pulse_shared_report_brand(token_hash)` and `pulse_purge_orphan_replay_recaps()` (replay retention also drops recaps whose recording is gone). New error codes `payload_too_large` and `unsupported_media_type`.
+- EN + AM strings for everything new (Amharic needs a native review).
+
+**Tests:**
+- API (`test/ui-gaps.test.ts`, 9): branding save/serve/replace/remove and audit; 413 at 256 KB + 1 byte, exactly 256 KB accepted, SVG/HTML/empty refused; another org never gets the logo; roles (members read, can't edit; client viewers out); CSRF on uploads; brand on report detail and public report; the share-link logo route serves only its org's logo and dies with the link; recap disabled with AI off (no model call), cache per language, fenced prompt with no visit id, budget shared with fix suggestions, nothing stored on bad output or provider failure, tenant isolation, client viewers 403, recap deleted with the recording; sample-rate PATCH bounds/roles/isolation. RLS invariants include `org_branding` and the two new helpers.
+- Worker: replay retention removes orphaned recaps and keeps the rest. `packages/ai`: input shaping, fencing, parsing. Contracts: logo sniffing and the branding schema.
+- Web: funnel editor model (every template round-trips), keyboard reorder keeps focus and announces, save payload, validation; sample-rate options; logo pre-checks.
+- E2E `e2e/ui-gaps.spec.ts` (desktop + 360px, axe light and dark): delete recording (cancel keeps it, confirm deletes rows and logs it; no AI box with AI off), sample rate chosen by keyboard and persisted, the funnel editor driven by keyboard alone (reorder, remove, add, page/event switch, validation, save), report branding (size and type limits, the logo on the report and on the share link without a session, the org route closed to guests, A4 print in the light theme).
+
+**Bundle:** every new dialog and editor is a lazy chunk. After merging `rebuild` (tasks 12, 14 and 15), first-load JS is 155.2 KB of the 156 KB budget in CI. On the pre-task-12 baseline the lazy chunks cost about 2 KB (218.0 KB of 216), because a dynamic import inside a route chunk makes the bundler split shared code out of the entry. The budget was left alone. Only 0.8 KB of headroom is left.
+
+**Not done yet:**
+- A real PDF renderer (print is still the browser's).
+- AI recaps in Amharic depend on the model's Amharic; they need the same native review as AI suggestions.
+- `S3BlobStore` still hasn't run against a real bucket (logos use the same store as replays).
+- Amharic review of the new strings.
+
 ## Customer evidence
 _(Add a line per pilot conversation: who, segment, pain, willingness to pay, quote.)_

@@ -40,6 +40,7 @@ import { createMiddleware } from 'hono/factory';
 import type { AppDeps } from '../app';
 import { requireOrg, requireSession } from '../guards';
 import { ApiError, forbidden, notFound, type AppEnv } from '../http';
+import { LOGO_PATH, loadBranding, toReportBrand } from './branding';
 
 const DAY_MS = 86_400_000;
 
@@ -118,9 +119,18 @@ async function loadDetail(tx: Tx, id: string): Promise<ReportDetail> {
     .where(eq(reportShares.reportId, id))
     .orderBy(desc(reportShares.createdAt), asc(reportShares.id));
   const now = new Date();
+  const brand = await loadBranding(tx);
   return {
     report: { ...toSummary(row), snapshot: ReportSnapshot.parse(row.snapshot) },
     shares: shares.map((s) => toShareDto(s, now)),
+    brand: toReportBrand(
+      brand && {
+        agencyName: brand.agencyName,
+        hasLogo: Boolean(brand.logoKey),
+        logoUpdatedAt: brand.logoUpdatedAt,
+      },
+      LOGO_PATH,
+    ),
   };
 }
 

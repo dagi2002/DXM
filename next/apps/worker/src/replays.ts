@@ -54,8 +54,8 @@ export async function purgeReplays(
   store: BlobStore,
   keepDays: number,
   batch = 2000,
-): Promise<{ rows: number; blobs: number; failed: number }> {
-  const out = { rows: 0, blobs: 0, failed: 0 };
+): Promise<{ rows: number; blobs: number; failed: number; recaps: number }> {
+  const out = { rows: 0, blobs: 0, failed: 0, recaps: 0 };
   for (;;) {
     const res = await db.execute<{ object_key: string }>(
       sql`select object_key from pulse_purge_replay_chunks(${keepDays}, ${batch})`,
@@ -69,6 +69,10 @@ export async function purgeReplays(
         out.failed++;
       }
     }
-    if (res.rows.length < batch) return out;
+    if (res.rows.length < batch) break;
   }
+  // AI recaps describe one recording; once its chunks are gone, the recap goes too (task 13).
+  const recaps = await db.execute<{ n: number }>(sql`select pulse_purge_orphan_replay_recaps() as n`);
+  out.recaps = Number(recaps.rows[0]?.n ?? 0);
+  return out;
 }
